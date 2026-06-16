@@ -89,4 +89,6 @@ Sin trimming ni NativeAOT: Lumina usa reflexión.
 - **F3** hecho: `src/FFXIVSpanishPatcher.App` (Avalonia MVVM, tema oscuro, layout del mockup:
   ruta+examinar, generar/abrir salida, consola en streaming, categorías EXD híbridas, toggle
   integridad, status bar). Embebe `data/translations.dat`. Compila 0 warnings (vuln DBus fijada).
-- **Siguiente: F4** — `GamePathLocator` completo (registry + Steam vdf) + smoke de la GUI.
+- **F4** hecho: `GamePathDetector` en Pipeline (XIVLauncher + registry uninstall + Steam
+  `libraryfolders.vdf` + rutas comunes); la GUI lo usa. Integración SO (reveal/clipboard) ya en F3.
+- **Siguiente: F5** — publish single-file self-contained + smoke contra juego real + pulido tema.

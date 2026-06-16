@@ -69,7 +69,7 @@ public partial class MainViewModel : ObservableObject
     /// window's DataContext is set.</summary>
     public void Start()
     {
-        GamePath = GamePathService.Detect();
+        GamePath = GamePathDetector.Detect();
         Console.Add(Info(GamePath is null
             ? "No se detectó la instalación de FFXIV. Indica la ruta manualmente."
             : $"Ruta del juego detectada: {GamePath}"));
@@ -106,7 +106,7 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    private bool CanGenerate => !IsBusy && TranslationsReady && GamePathService.IsValid(GamePath);
+    private bool CanGenerate => !IsBusy && TranslationsReady && GamePathDetector.IsValid(GamePath);
 
     [RelayCommand(CanExecute = nameof(CanGenerate))]
     private async Task GenerateModAsync()
@@ -162,7 +162,7 @@ public partial class MainViewModel : ObservableObject
         if (!string.IsNullOrWhiteSpace(picked))
         {
             GamePath = picked;
-            Console.Add(GamePathService.IsValid(picked)
+            Console.Add(GamePathDetector.IsValid(picked)
                 ? Info($"Ruta del juego: {picked}")
                 : Error($"La ruta no contiene datos válidos de FFXIV: {picked}"));
         }
