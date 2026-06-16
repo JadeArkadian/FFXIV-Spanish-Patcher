@@ -2,8 +2,12 @@
 [Bb]in/
 [Oo]bj/
 
-# Generated build artifacts (translations blob is regenerated from data/translations)
+# Generated build artifacts
 artifacts/
+
+# Raw translation corpus: synced locally from upstream and git-ignored. Only the compacted
+# data/translations.dat blob (regenerated from this tree) is versioned.
+data/translations/jsonl/
 
 # Publish output
 publish/

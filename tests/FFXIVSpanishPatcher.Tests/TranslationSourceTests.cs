@@ -1,3 +1,5 @@
+using System.IO.Compression;
+using System.Text;
 using System.Text.Json;
 using FFXIVSpanishPatcher.Pipeline;
 using XivSpanish.Translation;
@@ -50,5 +52,28 @@ public sealed class TranslationSourceTests : IDisposable
 
         Assert.Single(loaded);
         Assert.Equal("only", loaded[0].Id);
+    }
+
+    [Fact]
+    public void EmbeddedTranslationSource_LoadsGzippedJsonl()
+    {
+        // Mirrors the build-translations.ps1 blob format: gzip of newline-delimited TranslationEntry JSON.
+        var jsonl = string.Join('\n',
+            JsonSerializer.Serialize(new TranslationEntry { Id = "e1", Source = "A", Target = "a", Status = TranslationEntryStatus.Approved }),
+            JsonSerializer.Serialize(new TranslationEntry { Id = "e2", Source = "B", Target = "b", Status = TranslationEntryStatus.Approved }));
+
+        using var buffer = new MemoryStream();
+        using (var gzip = new GZipStream(buffer, CompressionLevel.Optimal, leaveOpen: true))
+        using (var writer = new StreamWriter(gzip, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)))
+        {
+            writer.Write(jsonl);
+        }
+
+        var blob = buffer.ToArray();
+        var loaded = new EmbeddedTranslationSource(() => new MemoryStream(blob)).Load();
+
+        Assert.Equal(2, loaded.Count);
+        Assert.Equal("a", loaded[0].Target);
+        Assert.Equal("b", loaded[1].Target);
     }
 }

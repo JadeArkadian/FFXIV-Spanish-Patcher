@@ -23,7 +23,8 @@ de extracción / parcheo binario de EXD / SeString / empaquetado se **reutiliza*
   `IProgress<>`; GUI y tests la consumen in-process. *(F1)*
 - `vendor/XivSpanish.Core` — modelos de traducción, hashing, `ManifestLoader`, `DomainMap`.
 - `vendor/XivSpanish.GameData` — Lumina, formato binario EXD, `ExdPatcher`, SeString, `GameLocator`.
-- `data/translations/` — manifest aprobado en JSONL (fuente del blob embebido).
+- `data/translations.dat` — blob gzip-JSONL versionado (~9 MB) que la App embebe. El corpus crudo
+  `data/translations/jsonl/` (~60 MB) NO se versiona; se sincroniza local solo para regenerar el blob.
 - `tests/FFXIVSpanishPatcher.Tests` — unit + integración con EXD **sintético**.
 - `build/` — `sync-vendor.ps1`, `sync-translations.ps1` *(F2)*, `build-translations.ps1` *(F2)*.
 - `docs/DESIGN.md` — diseño completo y plan por fases.
@@ -53,8 +54,8 @@ Si la lógica core necesita un arreglo, se hace en upstream y se re-sincroniza, 
 dotnet build                              # compila la solución
 dotnet test                               # unit + integración
 build/sync-vendor.ps1                     # re-sincroniza vendor/ desde upstream
-build/sync-translations.ps1               # (F2) trae el manifest JSONL desde upstream
-build/build-translations.ps1              # (F2) compacta data/translations -> artifacts/translations.dat
+build/sync-translations.ps1 -Build        # trae el corpus crudo desde upstream y regenera el blob
+build/build-translations.ps1              # compacta data/translations/jsonl -> data/translations.dat
 # Publicar single-file self-contained:
 dotnet publish src/FFXIVSpanishPatcher.App -c Release -r win-x64 `
   --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
@@ -83,4 +84,6 @@ Sin trimming ni NativeAOT: Lumina usa reflexión.
 - **F1** hecho: `vendor/XivSpanish.Packaging` (primitivas) + `src/FFXIVSpanishPatcher.Pipeline`
   (orquestación `PatchPipeline` con eventos de progreso, ported del `Program.cs` upstream) + tests
   (14, incl. integración con EXD sintético: content + write-at-offset + broadcast + `.pmp`).
-- **Siguiente: F2** — `sync-translations.ps1` + `build-translations.ps1` + `EmbeddedTranslationSource`.
+- **F2** hecho: `sync-translations.ps1` + `build-translations.ps1` + `EmbeddedTranslationSource`.
+  Blob `data/translations.dat` versionado (9.26 MB, 163 368 entradas); corpus crudo git-ignored.
+- **Siguiente: F3** — GUI Avalonia (MVVM) matching el mockup, bindeada al Pipeline.

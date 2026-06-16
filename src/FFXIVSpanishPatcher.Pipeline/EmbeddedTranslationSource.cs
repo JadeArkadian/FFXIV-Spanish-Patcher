@@ -1,0 +1,48 @@
+using System.IO.Compression;
+using System.Reflection;
+using System.Text;
+using System.Text.Json;
+using XivSpanish.Translation;
+
+namespace FFXIVSpanishPatcher.Pipeline;
+
+/// <summary>
+/// Loads translation entries from a gzip-compressed JSONL blob — the <c>translations.dat</c> the app
+/// embeds as a resource (built by <c>build/build-translations.ps1</c>). The blob is opened lazily so
+/// the source can wrap an embedded resource, a file, or an in-memory buffer (tests).
+/// </summary>
+public sealed class EmbeddedTranslationSource(Func<Stream> openCompressedBlob) : ITranslationSource
+{
+    private static readonly JsonSerializerOptions Options = new() { PropertyNameCaseInsensitive = true };
+    private readonly Func<Stream> _open = openCompressedBlob;
+
+    /// <summary>Wraps a gzip-JSONL resource embedded in <paramref name="assembly"/>.</summary>
+    public static EmbeddedTranslationSource FromAssemblyResource(Assembly assembly, string resourceName)
+        => new(() => assembly.GetManifestResourceStream(resourceName)
+            ?? throw new InvalidOperationException($"Embedded translation resource not found: {resourceName}"));
+
+    public IReadOnlyList<TranslationEntry> Load()
+    {
+        using var compressed = _open();
+        using var gzip = new GZipStream(compressed, CompressionMode.Decompress);
+        using var reader = new StreamReader(gzip, Encoding.UTF8);
+
+        var entries = new List<TranslationEntry>();
+        string? line;
+        while ((line = reader.ReadLine()) is not null)
+        {
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                continue;
+            }
+
+            var entry = JsonSerializer.Deserialize<TranslationEntry>(line, Options);
+            if (entry is not null)
+            {
+                entries.Add(entry);
+            }
+        }
+
+        return entries;
+    }
+}

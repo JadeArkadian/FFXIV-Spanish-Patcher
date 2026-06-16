@@ -84,17 +84,20 @@ skip-con-warning, nunca crash; se reporta en consola y lo cuenta el verificador.
 
 ## 6. Datos
 
-**Fuente (versionada):** `data/translations/*.jsonl` (manifest aprobado; texto curado humano, no
-assets). Se sincroniza desde upstream con `sync-translations.ps1`.
+El corpus crudo son ~60 MB de JSONL; comprimido, ~9 MB. Se versiona **solo el blob comprimido**.
 
-**Blob (NO versionado, `artifacts/`):** `build-translations.ps1` compacta el JSONL a
-`artifacts/translations.dat`, que se marca `EmbeddedResource` en `FFXIVSpanishPatcher.App`.
+**Blob (versionado): `data/translations.dat`** — gzip-JSONL con el corpus aprobado, fuente de
+registro compacta que la App embebe como `EmbeddedResource`.
+
+**Corpus crudo (NO versionado, en `.gitignore`): `data/translations/jsonl/`** — se sincroniza
+localmente desde upstream solo para regenerar el blob; su historial línea-a-línea vive en upstream.
 
 ```
-data/translations/*.jsonl → build-translations.ps1 → artifacts/translations.dat → EmbeddedResource → publish
+upstream jsonl → sync-translations.ps1 → data/translations/jsonl/ (git-ignored)
+              → build-translations.ps1 → data/translations.dat (versionado) → EmbeddedResource → publish
 ```
 
-CI hace el mismo flujo tras checkout (el JSONL ya está en el repo); no depende del repo upstream local.
+CI (F7) NO reconstruye el blob: usa el `data/translations.dat` ya versionado tras el checkout.
 
 ## 7. Build y distribución
 
@@ -130,7 +133,7 @@ reflexión). Linux/Mac: mismo comando con `-r linux-x64` / `osx-arm64` / `osx-x6
 | F0   | Scaffold + git init + sln + vendor Core/GameData + `sync-vendor.ps1`. Compila vendored. | hecho |
 | F0.5 | `CLAUDE.md` (→`@AGENTS.md`) + `AGENTS.md` + `docs/DESIGN.md`. | hecho |
 | F1   | Lib `Pipeline` (interfaces + orquestación + eventos) reusando GameData/Packaging; unit + integración sintética. Headless. | hecho |
-| F2   | `sync-translations.ps1` + `build-translations.ps1` + `TranslationSource` (embebido). | pendiente |
+| F2   | `sync-translations.ps1` + `build-translations.ps1` + `EmbeddedTranslationSource` (blob versionado). | hecho |
 | F3   | GUI Avalonia matching mockup, bindeada al Pipeline. | pendiente |
 | F4   | `GamePathLocator` (registry + Steam vdf + rutas comunes) + integración SO (abrir carpeta, copiar log). | pendiente |
 | F5   | Publish single-file + smoke contra juego real + pulido del tema. | pendiente |
