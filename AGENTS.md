@@ -91,4 +91,8 @@ Sin trimming ni NativeAOT: Lumina usa reflexión.
   integridad, status bar). Embebe `data/translations.dat`. Compila 0 warnings (vuln DBus fijada).
 - **F4** hecho: `GamePathDetector` en Pipeline (XIVLauncher + registry uninstall + Steam
   `libraryfolders.vdf` + rutas comunes); la GUI lo usa. Integración SO (reveal/clipboard) ya en F3.
-- **Siguiente: F5** — publish single-file self-contained + smoke contra juego real + pulido tema.
+- **F5** hecho: publish single-file self-contained win-x64 (55.8 MB, comprimido) + smoke headless
+  de la GUI (`FFXIVSpanishPatcher.App.Tests`, valida que MainWindow instancia/bind/tema). Smoke
+  contra el juego real es manual (requiere FFXIV instalado + display). Total: 21 tests.
+- **Siguiente: F7** — workflows GitHub: CI (build+test) + Release matrix (Win/Linux/Mac).
+  (F6 = validación Linux/Mac contra juego real, diferida.)

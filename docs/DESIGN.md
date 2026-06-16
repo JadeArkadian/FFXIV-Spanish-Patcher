@@ -136,6 +136,6 @@ reflexión). Linux/Mac: mismo comando con `-r linux-x64` / `osx-arm64` / `osx-x6
 | F2   | `sync-translations.ps1` + `build-translations.ps1` + `EmbeddedTranslationSource` (blob versionado). | hecho |
 | F3   | GUI Avalonia matching mockup, bindeada al Pipeline. | hecho |
 | F4   | `GamePathDetector` (registry + Steam vdf + rutas comunes) + integración SO (abrir carpeta, copiar log). | hecho |
-| F5   | Publish single-file + smoke contra juego real + pulido del tema. | pendiente |
+| F5   | Publish single-file (55.8 MB) + smoke headless de la GUI + pulido. Smoke contra juego real = manual. | hecho |
 | F6   | (diferido) Validación Linux/Mac contra juego real. | pendiente |
 | F7   | Workflows GitHub: CI (build+test) + Release matrix (win-x64/linux-x64/osx-arm64/osx-x64). | pendiente |
