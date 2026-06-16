@@ -86,4 +86,7 @@ Sin trimming ni NativeAOT: Lumina usa reflexión.
   (14, incl. integración con EXD sintético: content + write-at-offset + broadcast + `.pmp`).
 - **F2** hecho: `sync-translations.ps1` + `build-translations.ps1` + `EmbeddedTranslationSource`.
   Blob `data/translations.dat` versionado (9.26 MB, 163 368 entradas); corpus crudo git-ignored.
-- **Siguiente: F3** — GUI Avalonia (MVVM) matching el mockup, bindeada al Pipeline.
+- **F3** hecho: `src/FFXIVSpanishPatcher.App` (Avalonia MVVM, tema oscuro, layout del mockup:
+  ruta+examinar, generar/abrir salida, consola en streaming, categorías EXD híbridas, toggle
+  integridad, status bar). Embebe `data/translations.dat`. Compila 0 warnings (vuln DBus fijada).
+- **Siguiente: F4** — `GamePathLocator` completo (registry + Steam vdf) + smoke de la GUI.

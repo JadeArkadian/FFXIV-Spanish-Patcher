@@ -134,7 +134,7 @@ reflexión). Linux/Mac: mismo comando con `-r linux-x64` / `osx-arm64` / `osx-x6
 | F0.5 | `CLAUDE.md` (→`@AGENTS.md`) + `AGENTS.md` + `docs/DESIGN.md`. | hecho |
 | F1   | Lib `Pipeline` (interfaces + orquestación + eventos) reusando GameData/Packaging; unit + integración sintética. Headless. | hecho |
 | F2   | `sync-translations.ps1` + `build-translations.ps1` + `EmbeddedTranslationSource` (blob versionado). | hecho |
-| F3   | GUI Avalonia matching mockup, bindeada al Pipeline. | pendiente |
+| F3   | GUI Avalonia matching mockup, bindeada al Pipeline. | hecho |
 | F4   | `GamePathLocator` (registry + Steam vdf + rutas comunes) + integración SO (abrir carpeta, copiar log). | pendiente |
 | F5   | Publish single-file + smoke contra juego real + pulido del tema. | pendiente |
 | F6   | (diferido) Validación Linux/Mac contra juego real. | pendiente |

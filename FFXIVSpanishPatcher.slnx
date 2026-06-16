@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj" />
     <Project Path="src/FFXIVSpanishPatcher.Pipeline/FFXIVSpanishPatcher.Pipeline.csproj" />
   </Folder>
   <Folder Name="/tests/">
