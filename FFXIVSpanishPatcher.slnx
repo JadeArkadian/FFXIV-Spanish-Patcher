@@ -1,6 +1,13 @@
 <Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FFXIVSpanishPatcher.Pipeline/FFXIVSpanishPatcher.Pipeline.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FFXIVSpanishPatcher.Tests/FFXIVSpanishPatcher.Tests.csproj" />
+  </Folder>
   <Folder Name="/vendor/">
     <Project Path="vendor/XivSpanish.Core/XivSpanish.Core.csproj" />
     <Project Path="vendor/XivSpanish.GameData/XivSpanish.GameData.csproj" />
+    <Project Path="vendor/XivSpanish.Packaging/XivSpanish.Packaging.csproj" />
   </Folder>
 </Solution>

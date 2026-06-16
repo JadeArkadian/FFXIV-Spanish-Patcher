@@ -80,4 +80,7 @@ Sin trimming ni NativeAOT: Lumina usa reflexión.
 
 - **F0** hecho: scaffold + vendor de Core/GameData + `sync-vendor.ps1`. Compila limpio.
 - **F0.5** hecho: `CLAUDE.md` (→`@AGENTS.md`), este `AGENTS.md`, `docs/DESIGN.md`.
-- **Siguiente: F1** — librería `FFXIVSpanishPatcher.Pipeline` + tests (headless). Ver `docs/DESIGN.md`.
+- **F1** hecho: `vendor/XivSpanish.Packaging` (primitivas) + `src/FFXIVSpanishPatcher.Pipeline`
+  (orquestación `PatchPipeline` con eventos de progreso, ported del `Program.cs` upstream) + tests
+  (14, incl. integración con EXD sintético: content + write-at-offset + broadcast + `.pmp`).
+- **Siguiente: F2** — `sync-translations.ps1` + `build-translations.ps1` + `EmbeddedTranslationSource`.

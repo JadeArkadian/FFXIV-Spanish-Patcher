@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>FFXIVSpanishPatcher.Pipeline</RootNamespace>
+    <AssemblyName>FFXIVSpanishPatcher.Pipeline</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\vendor\XivSpanish.Core\XivSpanish.Core.csproj" />
+    <ProjectReference Include="..\..\vendor\XivSpanish.GameData\XivSpanish.GameData.csproj" />
+    <ProjectReference Include="..\..\vendor\XivSpanish.Packaging\XivSpanish.Packaging.csproj" />
+  </ItemGroup>
+</Project>

@@ -129,7 +129,7 @@ reflexión). Linux/Mac: mismo comando con `-r linux-x64` / `osx-arm64` / `osx-x6
 |------|-----------|--------|
 | F0   | Scaffold + git init + sln + vendor Core/GameData + `sync-vendor.ps1`. Compila vendored. | hecho |
 | F0.5 | `CLAUDE.md` (→`@AGENTS.md`) + `AGENTS.md` + `docs/DESIGN.md`. | hecho |
-| F1   | Lib `Pipeline` (interfaces + orquestación + eventos) reusando GameData/Packaging; unit + integración sintética. Headless. | pendiente |
+| F1   | Lib `Pipeline` (interfaces + orquestación + eventos) reusando GameData/Packaging; unit + integración sintética. Headless. | hecho |
 | F2   | `sync-translations.ps1` + `build-translations.ps1` + `TranslationSource` (embebido). | pendiente |
 | F3   | GUI Avalonia matching mockup, bindeada al Pipeline. | pendiente |
 | F4   | `GamePathLocator` (registry + Steam vdf + rutas comunes) + integración SO (abrir carpeta, copiar log). | pendiente |
