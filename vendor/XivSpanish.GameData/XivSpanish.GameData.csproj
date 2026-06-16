@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>XivSpanish.GameData</RootNamespace>
+    <AssemblyName>XivSpanish.GameData</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Lumina" Version="7.5.0" />
+    <PackageReference Include="Lumina.Excel" Version="7.4.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\XivSpanish.Core\XivSpanish.Core.csproj" />
+  </ItemGroup>
+</Project>

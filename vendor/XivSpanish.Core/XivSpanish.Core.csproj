@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>XivSpanish</RootNamespace>
+    <AssemblyName>XivSpanish.Core</AssemblyName>
+  </PropertyGroup>
+</Project>
+

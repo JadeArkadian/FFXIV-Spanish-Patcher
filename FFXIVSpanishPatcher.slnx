@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/vendor/">
+    <Project Path="vendor/XivSpanish.Core/XivSpanish.Core.csproj" />
+    <Project Path="vendor/XivSpanish.GameData/XivSpanish.GameData.csproj" />
+  </Folder>
+</Solution>

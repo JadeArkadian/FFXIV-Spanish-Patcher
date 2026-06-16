@@ -1,0 +1,20 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+
+# Generated build artifacts (translations blob is regenerated from data/translations)
+artifacts/
+
+# Publish output
+publish/
+
+# IDE / user
+.vs/
+.idea/
+*.user
+*.suo
+*.DotSettings.user
+
+# OS
+.DS_Store
+Thumbs.db
