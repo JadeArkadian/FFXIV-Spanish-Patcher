@@ -1,0 +1,50 @@
+name: Release
+
+# Tag a commit (e.g. v1.2.3) to build self-contained single-file executables for Windows, Linux and
+# macOS and attach them to a GitHub Release. All RIDs are cross-published from one Linux runner.
+on:
+  push:
+    tags: [ 'v*' ]
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rid: [ win-x64, linux-x64, osx-x64, osx-arm64 ]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Derive version from tag
+        id: ver
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish ${{ matrix.rid }}
+        run: >
+          dotnet publish src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj
+          -c Release -r ${{ matrix.rid }} --self-contained
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:Version=${{ steps.ver.outputs.version }}
+          -o publish/${{ matrix.rid }}
+
+      - name: Package
+        run: |
+          cd publish/${{ matrix.rid }}
+          rm -f *.pdb
+          cp ../../README.md ./README.md
+          zip -r "../../FFXIVSpanishPatcher-${{ steps.ver.outputs.version }}-${{ matrix.rid }}.zip" .
+
+      - name: Attach to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: FFXIVSpanishPatcher-${{ steps.ver.outputs.version }}-${{ matrix.rid }}.zip

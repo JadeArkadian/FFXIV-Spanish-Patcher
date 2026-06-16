@@ -29,4 +29,13 @@ dotnet publish src/FFXIVSpanishPatcher.App -c Release -r win-x64 `
   --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
 ```
 
+El ejecutable resultante es un único `.exe` self-contained (~56 MB comprimido), sin instalación.
+
+## Releases (CI/CD)
+
+- `.github/workflows/ci.yml`: en cada push/PR a `main` compila y pasa los tests (incluido el smoke
+  headless de la GUI).
+- `.github/workflows/release.yml`: al empujar un tag `vX.Y.Z` publica los ejecutables single-file
+  para `win-x64`, `linux-x64`, `osx-x64` y `osx-arm64` y los adjunta a un GitHub Release.
+
 Ver `docs/DESIGN.md` para el diseño completo y `AGENTS.md` para el contexto de agentes IA.

@@ -138,4 +138,8 @@ reflexión). Linux/Mac: mismo comando con `-r linux-x64` / `osx-arm64` / `osx-x6
 | F4   | `GamePathDetector` (registry + Steam vdf + rutas comunes) + integración SO (abrir carpeta, copiar log). | hecho |
 | F5   | Publish single-file (55.8 MB) + smoke headless de la GUI + pulido. Smoke contra juego real = manual. | hecho |
 | F6   | (diferido) Validación Linux/Mac contra juego real. | pendiente |
-| F7   | Workflows GitHub: CI (build+test) + Release matrix (win-x64/linux-x64/osx-arm64/osx-x64). | pendiente |
+| F7   | Workflows GitHub: CI (build+test) + Release matrix (win-x64/linux-x64/osx-arm64/osx-x64). | hecho |
+
+Workflows en `.github/workflows/`: `ci.yml` (push/PR → restore+build+test, incl. smoke headless)
+y `release.yml` (tag `v*` → publica los 4 RID self-contained single-file desde un runner Linux y
+los adjunta a un GitHub Release). Se activan al crear el repo en GitHub y empujar (remote pendiente).
