@@ -6,24 +6,32 @@ namespace FFXIVSpanishPatcher.App.Services;
 public sealed record CategoryInfo(string Domain, string Label, string Tooltip);
 
 /// <summary>
-/// The curated category catalog. Domains match <c>TranslationCategories</c> /
-/// <c>DomainMap.Sprint2Default</c>, the unit the pipeline filters on. A domain present in the
+/// The curated category catalog. Domains match the patcher taxonomy in
+/// <c>TranslationCategories.Domains</c>, the unit the pipeline filters on. A domain present in the
 /// manifest but absent here would still appear (gated dynamically); listing it here just gives it a
-/// nice Spanish label, tooltip and a stable order.
+/// nice Spanish label, tooltip and a stable order. The order below is the advanced-panel order.
 /// </summary>
 public static class CategoryCatalog
 {
     public static IReadOnlyList<CategoryInfo> All { get; } =
     [
         new("misiones", "Misiones (quests)",
-            "Texto de misiones: títulos, objetivos y diálogos de quest (Quest, DefaultTalk, CustomTalk)."),
+            "Texto de misiones: títulos, objetivos y diálogos de quest (Quest, DefaultTalk, CustomTalk, Journal*, ContentFinderCondition)."),
         new("nombres", "Nombres (NPC, lugares)",
-            "Nombres propios: NPC, criaturas, lugares y objetos del mundo (ENpcResident, BNpcName, PlaceName, EObjName)."),
+            "Nombres propios y términos del mundo: NPC, criaturas, lugares, títulos, clima, razas y emotes (ENpcResident, BNpcName, PlaceName, EObjName, Title, Weather, ClassJob…)."),
         new("items", "Objetos (items)",
-            "Nombres y descripciones de objetos del inventario (Item)."),
+            "Nombres y descripciones de objetos del inventario, incl. categorías de UI, pesca/recolección y mazmorras profundas (Item, ItemUICategory, FishParameter, DeepDungeonItem…)."),
+        new("eventos", "Objetos de evento",
+            "Objetos clave y de misión con su texto de ayuda, distintos del inventario normal (EventItem, EventItemHelp)."),
+        new("coleccionables", "Coleccionables",
+            "Monturas, acompañantes, mascotas, adornos, rollos de Orchestrion y cartas de Triple Tríada (Mount, Companion, Pet, Ornament, Orchestrion, TripleTriadCard…)."),
         new("acciones", "Acciones y habilidades",
-            "Acciones, rasgos y estados de combate (Action, Trait, Status)."),
+            "Acciones de combate y artesanía, rasgos y estados (Action, ActionTransient, Trait, Status, CraftAction…)."),
+        new("logros", "Logros",
+            "Nombres y descripciones de logros y sus categorías (Achievement, AchievementCategory)."),
+        new("registro", "Registro de combate",
+            "Mensajes del registro/log de combate y del sistema, y sus filtros (LogMessage, LogFilter, LogKind)."),
         new("interfaz", "Interfaz (UI)",
-            "Texto de la interfaz: menús, ventanas y mensajes del sistema (Addon, Completion, Lobby)."),
+            "Texto de la interfaz: menús, comandos, ayuda/tutoriales y mensajes del sistema (Addon, Lobby, TextCommand, HowTo, Error…)."),
     ];
 }

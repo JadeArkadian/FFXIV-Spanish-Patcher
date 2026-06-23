@@ -85,7 +85,15 @@ Sin trimming ni NativeAOT: Lumina usa reflexión.
   (orquestación `PatchPipeline` con eventos de progreso, ported del `Program.cs` upstream) + tests
   (14, incl. integración con EXD sintético: content + write-at-offset + broadcast + `.pmp`).
 - **F2** hecho: `sync-translations.ps1` + `build-translations.ps1` + `EmbeddedTranslationSource`.
-  Blob `data/translations.dat` versionado (9.26 MB, 163 368 entradas); corpus crudo git-ignored.
+  Blob `data/translations.dat` versionado (20.17 MB, 331 919 entradas, 284 985 `approved`);
+  corpus crudo git-ignored. Resincronizado 2026-06-23 desde upstream `7769d82`: nuevo dominio
+  `items` (`Item`, 161 639 approved — antes 0) y ~20 sheets nuevos (Aetheryte, Orchestrion,
+  EventItemHelp, JournalGenre, Weather…). El pipeline ya los extrae/parchea (es data-driven vía
+  Lumina, sin allowlist). Taxonomía del panel ampliada a **9 dominios**: se añaden categorías
+  propias `logros`, `registro`, `eventos`, `coleccionables` y el resto se pliega en los 5 buckets
+  existentes, de modo que cada sheet enviado cae en una categoría visible/toggleable (sin bucket
+  invisible por-sheet). Mapeo en `Pipeline/TranslationCategories.cs` (supera a `DomainMap.Sprint2Default`
+  sin tocar `vendor/`); metadatos en `App/Services/CategoryCatalog.cs`.
 - **F3** hecho: `src/FFXIVSpanishPatcher.App` (Avalonia MVVM, tema oscuro, layout del mockup:
   ruta+examinar, generar/abrir salida, consola en streaming, categorías EXD híbridas, toggle
   integridad, status bar). Embebe `data/translations.dat`. Compila 0 warnings (vuln DBus fijada).

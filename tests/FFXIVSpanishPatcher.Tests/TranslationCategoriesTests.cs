@@ -15,6 +15,18 @@ public sealed class TranslationCategoriesTests
     [InlineData("Action", "acciones")]
     [InlineData("Quest", "misiones")]
     [InlineData("PlaceName", "nombres")]
+    // New individual domains for the post-Sprint-2 sheets.
+    [InlineData("Achievement", "logros")]
+    [InlineData("LogMessage", "registro")]
+    [InlineData("EventItem", "eventos")]
+    [InlineData("Orchestrion", "coleccionables")]
+    [InlineData("TripleTriadCard", "coleccionables")]
+    // Long-tail sheets folded into the broader existing buckets.
+    [InlineData("FishParameter", "items")]
+    [InlineData("ActionTransient", "acciones")]
+    [InlineData("Title", "nombres")]
+    [InlineData("JournalGenre", "misiones")]
+    [InlineData("TextCommand", "interfaz")]
     public void DomainOf_MapsCuratedSheets(string sheet, string expectedDomain)
         => Assert.Equal(expectedDomain, TranslationCategories.DomainOf(ForSheet(sheet)));
 
