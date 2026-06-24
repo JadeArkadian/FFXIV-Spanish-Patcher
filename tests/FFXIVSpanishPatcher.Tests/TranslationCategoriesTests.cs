@@ -21,6 +21,9 @@ public sealed class TranslationCategoriesTests
     [InlineData("EventItem", "eventos")]
     [InlineData("Orchestrion", "coleccionables")]
     [InlineData("TripleTriadCard", "coleccionables")]
+    // Class/job names get their own toggle so users can keep them in English.
+    [InlineData("ClassJob", "clases")]
+    [InlineData("ClassJobCategory", "clases")]
     // Long-tail sheets folded into the broader existing buckets.
     [InlineData("FishParameter", "items")]
     [InlineData("ActionTransient", "acciones")]

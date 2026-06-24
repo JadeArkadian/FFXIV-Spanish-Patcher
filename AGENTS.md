@@ -104,8 +104,9 @@ Sin trimming ni NativeAOT: Lumina usa reflexión.
   ~161 639 approved — antes 0) y ~20 sheets nuevos (Aetheryte, Orchestrion, EventItemHelp,
   JournalGenre, Weather…). El pipeline los extrae/parchea (es data-driven vía Lumina, sin allowlist) y
   aplica `{approved, gold}` (`PackageableStatus.Default`; antes solo `approved`). Taxonomía del panel
-  ampliada a **9 dominios**: categorías propias `logros`, `registro`, `eventos`, `coleccionables` y el
-  resto plegado en los 5 buckets existentes, de modo que cada sheet enviado cae en una categoría
+  ampliada a **10 dominios**: categorías propias `logros`, `registro`, `eventos`, `coleccionables`,
+  `clases` (ClassJob/ClassJobCategory, casilla aparte para dejar clases/jobs en inglés) y el resto
+  plegado en los 5 buckets existentes, de modo que cada sheet enviado cae en una categoría
   visible/toggleable (sin bucket invisible por-sheet). Mapeo en `Pipeline/TranslationCategories.cs`
   (supera a `DomainMap.Sprint2Default` sin tocar `vendor/`); metadatos en `App/Services/CategoryCatalog.cs`.
 - **F3** hecho: `src/FFXIVSpanishPatcher.App` (Avalonia MVVM, tema oscuro, layout del mockup:

@@ -65,8 +65,11 @@ public static class TranslationCategories
         ["MonsterNote"] = "nombres",
         ["Emote"] = "nombres",
         ["EmoteCategory"] = "nombres",
-        ["ClassJob"] = "nombres",
-        ["ClassJobCategory"] = "nombres",
+
+        // Clases / trabajos: nombres de clases y trabajos y sus categorías (toggle propio para que
+        // el usuario pueda dejarlos en inglés sin afectar al resto de nombres).
+        ["ClassJob"] = "clases",
+        ["ClassJobCategory"] = "clases",
 
         // Items: inventory, gear/UI categories, gathering/fishing and deep-dungeon items.
         ["Item"] = "items",
