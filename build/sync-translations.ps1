@@ -12,7 +12,7 @@
 .PARAMETER Upstream
   Path to the upstream FFXIV-Spanish repo. Defaults to the sibling directory of this repo.
 .PARAMETER Build
-  Also run build-translations.ps1 after syncing.
+  Also run build/build-translations.py (regenerates data/translations.dat) after syncing.
 #>
 [CmdletBinding()]
 param(
@@ -43,4 +43,9 @@ Get-ChildItem $src -Recurse -File -Filter *.jsonl | ForEach-Object {
 $count = (Get-ChildItem $dst -Recurse -File -Filter *.jsonl).Count
 Write-Host "Synced $count .jsonl files from upstream into data/translations/jsonl"
 
-if ($Build) { & "$PSScriptRoot/build-translations.ps1" }
+if ($Build) {
+    $py = Get-Command python -ErrorAction SilentlyContinue
+    if (-not $py) { throw "python no encontrado en PATH; necesario para build-translations.py" }
+    & $py.Source "$PSScriptRoot/build-translations.py"
+    if ($LASTEXITCODE -ne 0) { throw "build-translations.py falló (exit $LASTEXITCODE)" }
+}

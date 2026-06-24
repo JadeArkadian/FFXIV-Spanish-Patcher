@@ -49,7 +49,7 @@ public sealed class PatchPipeline
 
         var selection = TranslationCategories.BuildSelection(request.Categories);
         bool IsCandidate(TranslationEntry e)
-            => Packageable(e, request.Status) is null && TranslationCategories.IsSelected(e, selection);
+            => Packageable(e, request.Statuses) is null && TranslationCategories.IsSelected(e, selection);
 
         // 2. Hard SeString gate over the build candidates (all offending rows listed; never stops first).
         var gate = ManifestSeStringGate.Check(entries.Where(IsCandidate));
@@ -138,7 +138,7 @@ public sealed class PatchPipeline
             }
 
             // 5. Broadcast table: approved target per sheet+field+source (ambiguous source -> null).
-            var broadcast = BuildBroadcast(entries, request.Status, selection);
+            var broadcast = BuildBroadcast(entries, request.Statuses, selection);
 
             // 6. Patch each page into the staging tree.
             var writer = new PackageWriter(request.StagingPath);
@@ -270,11 +270,11 @@ public sealed class PatchPipeline
     }
 
     /// <summary>Reason an entry is not packageable, or null when it is.</summary>
-    private static string? Packageable(TranslationEntry entry, string requiredStatus)
+    private static string? Packageable(TranslationEntry entry, IReadOnlySet<string> statuses)
     {
-        if (!string.Equals(entry.Status, requiredStatus, StringComparison.OrdinalIgnoreCase))
+        if (!PackageableStatus.IsPackageable(entry, statuses))
         {
-            return $"status '{entry.Status}' != '{requiredStatus}'";
+            return $"status '{entry.Status}' not in [{string.Join(", ", statuses)}]";
         }
 
         if (string.IsNullOrEmpty(entry.Target))
@@ -292,12 +292,12 @@ public sealed class PatchPipeline
     }
 
     private static Dictionary<string, Dictionary<string, Dictionary<string, string?>>> BuildBroadcast(
-        IReadOnlyList<TranslationEntry> entries, string status, IReadOnlySet<string>? selection)
+        IReadOnlyList<TranslationEntry> entries, IReadOnlySet<string> statuses, IReadOnlySet<string>? selection)
     {
         var broadcast = new Dictionary<string, Dictionary<string, Dictionary<string, string?>>>(StringComparer.OrdinalIgnoreCase);
         foreach (var entry in entries)
         {
-            if (Packageable(entry, status) is not null || !TranslationCategories.IsSelected(entry, selection))
+            if (Packageable(entry, statuses) is not null || !TranslationCategories.IsSelected(entry, selection))
             {
                 continue;
             }
