@@ -86,11 +86,15 @@ Sin trimming ni NativeAOT: Lumina usa reflexión.
   (orquestación `PatchPipeline` con eventos de progreso, ported del `Program.cs` upstream) + tests
   (14, incl. integración con EXD sintético: content + write-at-offset + broadcast + `.pmp`).
 - **F2** hecho: `sync-translations.ps1` + `build-translations.py` + `EmbeddedTranslationSource`.
-  Blob `data/translations.dat` versionado (20.36 MB, 296 345 filas empaquetables = 295 648 `approved`
-  + 697 `gold`); corpus crudo git-ignored. El blob **solo** contiene filas con `status ∈ {approved,
-  gold}` — `build-translations.py` descarta el resto (`rejected`, `needs-review`, `draft`…) porque el
-  pipeline no las aplica. El creador del blob es **Python** (no PowerShell); `sync-translations.ps1
-  -Build` lo invoca. Resincronizado 2026-06-24 desde upstream: nuevo dominio `items` (`Item`,
+  Blob `data/translations.dat` versionado (**7.12 MB**, 296 344 filas empaquetables ≈ 295 648
+  `approved` + 697 `gold` − filas con target vacío); corpus crudo git-ignored. `build-translations.py`
+  aplica dos reducciones, ambas sin pérdida para el patcher (la ficha completa vive en el corpus
+  upstream): (a) **filtra filas** al criterio exacto de `Packageable` (`status ∈ {approved, gold}` +
+  target no vacío + sourceKey con sheet+rowId); (b) **proyecta campos**: solo emite `source`,
+  `target`, `status` y `sourceKey{sheet,rowId,field,exdPath}`, tirando metadatos de procedencia que el
+  runtime nunca lee (`hash` —hex aleatorio casi incompresible—, `id`, `category`, `translator`,
+  `reviewer`, `notes`, `context`, `subRowId`). La proyección recorta el gzip ~65 % (antes 20.36 MB).
+  El creador del blob es **Python** (no PowerShell); `sync-translations.ps1 -Build` lo invoca. Resincronizado 2026-06-24 desde upstream: nuevo dominio `items` (`Item`,
   ~161 639 approved — antes 0) y ~20 sheets nuevos (Aetheryte, Orchestrion, EventItemHelp,
   JournalGenre, Weather…). El pipeline los extrae/parchea (es data-driven vía Lumina, sin allowlist) y
   aplica `{approved, gold}` (`PackageableStatus.Default`; antes solo `approved`). Taxonomía del panel
