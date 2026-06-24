@@ -26,19 +26,20 @@ de extracción / parcheo binario de EXD / SeString / empaquetado se **reutiliza*
 - `data/translations.dat` — blob gzip-JSONL versionado (~9 MB) que la App embebe. El corpus crudo
   `data/translations/jsonl/` (~60 MB) NO se versiona; se sincroniza local solo para regenerar el blob.
 - `tests/FFXIVSpanishPatcher.Tests` — unit + integración con EXD **sintético**.
-- `build/` — `sync-vendor.ps1`, `sync-translations.ps1` *(F2)*, `build-translations.py` *(F2)*.
+- `build/` — `sync-translations.ps1` *(F2)*, `build-translations.py` *(F2)*.
 - `docs/DESIGN.md` — diseño completo y plan por fases.
 
 ## `vendor/`: código propio (origen sembrado desde upstream)
 
-`vendor/` se **sembró** copiando `XivSpanish.Core` / `XivSpanish.GameData` (+ primitivas del Packager)
-desde upstream FFXIV-Spanish, pero es **código que mantenemos en este repo y se puede editar a mano**.
-La antigua regla read-only se levantó (2026-06-24): el patcher y upstream pueden divergir.
+`vendor/` se **sembró** una vez copiando `XivSpanish.Core` / `XivSpanish.GameData` (+ primitivas del
+Packager) desde upstream FFXIV-Spanish, pero es **código que mantenemos en este repo y editamos a
+mano**. La regla read-only se levantó (2026-06-24) y ya ha divergido de upstream (modelo recortado,
+`gold` añadido, código muerto eliminado).
 
-⚠️ `build/sync-vendor.ps1` **reimporta upstream borrando y recopiando `vendor/`**, así que
-**sobreescribe cualquier edición local**. Por eso ahora exige `-Force` y avisa: úsalo solo cuando
-quieras adoptar el estado de upstream (perdiendo tus cambios locales) o tras haber portado tus
-ediciones a upstream. La procedencia del sembrado vive en `vendor/VENDORED.md` (histórica).
+No hay script de re-sync: se borró `sync-vendor.ps1` (2026-06-24) porque reimportaba upstream
+**sobreescribiendo** `vendor/`, lo que ahora destruiría esa divergencia. Si algún día quieres una
+mejora concreta de upstream (p.ej. lógica de Lumina/EXD), pórtala a mano. La procedencia del sembrado
+original vive en `vendor/VENDORED.md` (histórica).
 
 ## Decisiones cerradas (NO re-litigar)
 
@@ -59,7 +60,6 @@ ediciones a upstream. La procedencia del sembrado vive en `vendor/VENDORED.md` (
 ```powershell
 dotnet build                              # compila la solución
 dotnet test                               # unit + integración
-build/sync-vendor.ps1                     # re-sincroniza vendor/ desde upstream
 build/sync-translations.ps1 -Build        # trae el corpus crudo desde upstream y regenera el blob (llama a python)
 python build/build-translations.py        # compacta data/translations/jsonl (approved+gold) -> data/translations.dat
 # Publicar single-file self-contained:
@@ -80,12 +80,12 @@ Sin trimming ni NativeAOT: Lumina usa reflexión.
 
 - No modificar archivos originales de FFXIV ni reinyectar DATs.
 - No redistribuir bytes de SquareEnix (`.exd`/`.exh`/`.pmp`/dumps): nunca versionados.
-- No correr `build/sync-vendor.ps1` sin querer adoptar upstream: **sobreescribe** `vendor/` (exige `-Force`).
 - No añadir traducción automática: el corpus llega curado desde upstream.
 
 ## Estado
 
-- **F0** hecho: scaffold + vendor de Core/GameData + `sync-vendor.ps1`. Compila limpio.
+- **F0** hecho: scaffold + sembrado de `vendor/` Core/GameData (vía el extinto `sync-vendor.ps1`).
+  Compila limpio.
 - **F0.5** hecho: `CLAUDE.md` (→`@AGENTS.md`), este `AGENTS.md`, `docs/DESIGN.md`.
 - **F1** hecho: `vendor/XivSpanish.Packaging` (primitivas) + `src/FFXIVSpanishPatcher.Pipeline`
   (orquestación `PatchPipeline` con eventos de progreso, ported del `Program.cs` upstream) + tests

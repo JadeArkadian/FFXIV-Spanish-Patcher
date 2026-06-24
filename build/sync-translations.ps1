@@ -5,9 +5,9 @@
   data/translations/jsonl.
 
 .DESCRIPTION
-  Translation cadence differs from code cadence, so this is separate from sync-vendor.ps1: update
-  translations without re-syncing the vendored libraries. Pass -Build to also regenerate
-  artifacts/translations.dat afterwards.
+  Syncs the approved translation corpus from upstream FFXIV-Spanish; the vendored libraries under
+  vendor/ are owned code in this repo and are NOT synced (no script for that). Pass -Build to also
+  regenerate data/translations.dat afterwards.
 
 .PARAMETER Upstream
   Path to the upstream FFXIV-Spanish repo. Defaults to the sibling directory of this repo.

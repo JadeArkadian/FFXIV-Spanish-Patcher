@@ -1,7 +1,9 @@
-# Vendored code
+# Vendored code (historical provenance)
 
-vendor/ mirrors core libraries copied from the upstream FFXIV-Spanish repo.
-DO NOT edit these files by hand: run build/sync-vendor.ps1 to refresh, then rebuild and commit.
+vendor/ was SEEDED once by copying core libraries from the upstream FFXIV-Spanish repo at the commit
+below. It is now owned, hand-edited code in this repo and has diverged from upstream. There is no
+re-sync script anymore (sync-vendor.ps1 was removed 2026-06-24); this file is a static record of the
+original seed, not a live sync target.
 
 | Field    | Value |
 | -------- | ----- |

@@ -19,7 +19,7 @@ parcheo binario de EXD, SeString, packager), reutilizada por código vendorizado
 |---|----------|---------|--------|
 | 1 | GUI framework | .NET 10 + Avalonia UI (MVVM) | Cross-platform, reutiliza el core C# tal cual, tema oscuro Fluent, publica a single-file. WPF sería más rápido en Windows pero Windows-only. |
 | 2 | Modelo de datos | Traducciones embebidas + extracción lean | Solo se leen los sheets que se traducen, en vivo desde el juego del usuario. No se redistribuyen assets de SquareEnix (legal-clean) y resiste parches del juego. |
-| 3 | Reuso / repo | Repo standalone que vendoriza (copia) el core | Producto distribuible desacoplado del repo de traducción. Coste: sync manual entre repos, acotado por `sync-vendor.ps1`. |
+| 3 | Reuso / repo | Repo standalone que sembró `vendor/` copiando el core; ahora código propio editable | Producto distribuible desacoplado del repo de traducción. `vendor/` puede divergir de upstream; no hay re-sync automático. |
 | 4 | Bundling traducciones | Solo embebido en el `.exe` | Un único fichero para el usuario. Actualizar traducciones = re-publicar. Sin fichero lateral. |
 | 5 | Test de integración | EXD sintético generado en código | No se versionan `.exd` reales (regla del repo) ni se depende del juego en CI. Reproducible. |
 | 6 | Categorías panel avanzado | Híbrido: metadatos curados + gating por manifest | Etiquetas/tooltips/orden bonitos y controlados, pero contadores y habilitación reales según lo que hay en el manifest. |
@@ -41,7 +41,6 @@ FFXIV-Spanish-Patcher/
   data/translations/                # manifest aprobado en JSONL (fuente del blob)
   tests/FFXIVSpanishPatcher.Tests/  # unit + integración EXD sintético
   build/
-    sync-vendor.ps1                 # re-import upstream→vendor (sobreescribe; exige -Force)
     sync-translations.ps1           # [F2] one-way upstream→data/translations (JSONL)
     build-translations.py           # [F2] data/translations (approved+gold) → data/translations.dat (embebido)
   docs/DESIGN.md
@@ -49,10 +48,10 @@ FFXIV-Spanish-Patcher/
 
 ### Vendoring (sembrado, no espejo)
 
-`vendor/` se sembró copiando el core de upstream pero es **código propio editable** (regla read-only
-levantada 2026-06-24); patcher y upstream pueden divergir. `sync-vendor.ps1 -Force` reimporta upstream
-**sobreescribiendo** `vendor/` (descarta ediciones locales); úsalo solo para adoptar upstream o tras
-portar tus cambios allí. DRY entre repos = best-effort (coste aceptado al elegir "copiar" en vez de
+`vendor/` se sembró una vez copiando el core de upstream pero es **código propio editable** (regla
+read-only levantada 2026-06-24); ya ha divergido de upstream. No hay re-sync automático: se borró
+`sync-vendor.ps1` porque reimportaba upstream sobreescribiendo la divergencia. Para una mejora puntual
+de upstream, pórtala a mano. DRY entre repos = best-effort (coste aceptado al elegir "copiar" en vez de
 submodule/referencia cruzada).
 
 ## 4. Capa Pipeline (SOLID)
@@ -132,7 +131,7 @@ reflexión). Linux/Mac: mismo comando con `-r linux-x64` / `osx-arm64` / `osx-x6
 
 | Fase | Contenido | Estado |
 |------|-----------|--------|
-| F0   | Scaffold + git init + sln + vendor Core/GameData + `sync-vendor.ps1`. Compila vendored. | hecho |
+| F0   | Scaffold + git init + sln + sembrado de `vendor/` Core/GameData (vía el extinto `sync-vendor.ps1`). Compila vendored. | hecho |
 | F0.5 | `CLAUDE.md` (→`@AGENTS.md`) + `AGENTS.md` + `docs/DESIGN.md`. | hecho |
 | F1   | Lib `Pipeline` (interfaces + orquestación + eventos) reusando GameData/Packaging; unit + integración sintética. Headless. | hecho |
 | F2   | `sync-translations.ps1` + `build-translations.py` + `EmbeddedTranslationSource` (blob versionado, solo approved+gold). | hecho |
