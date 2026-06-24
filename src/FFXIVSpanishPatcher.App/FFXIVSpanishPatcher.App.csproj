@@ -7,6 +7,8 @@
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Windows .exe file icon. -->
+    <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
     <!-- Single-file publish tuning: embed symbols (no loose .pdb), compress the bundle, and drop
          non-English satellite assemblies, for a smaller single executable. -->
     <DebugType>embedded</DebugType>
@@ -26,6 +28,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\FFXIVSpanishPatcher.Pipeline\FFXIVSpanishPatcher.Pipeline.csproj" />
+  </ItemGroup>
+
+  <!-- App assets (window/taskbar icon) bundled as Avalonia resources. -->
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\**" />
   </ItemGroup>
 
   <!-- The versioned translation blob is embedded directly into the executable. -->
