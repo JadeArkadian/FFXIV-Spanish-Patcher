@@ -39,10 +39,27 @@ jobs:
 
       - name: Package
         run: |
-          cd publish/${{ matrix.rid }}
-          rm -f *.pdb
-          cp ../../README.md ./README.md
-          zip -r "../../FFXIVSpanishPatcher-${{ steps.ver.outputs.version }}-${{ matrix.rid }}.zip" .
+          set -euo pipefail
+          VERSION="${{ steps.ver.outputs.version }}"
+          RID="${{ matrix.rid }}"
+          OUT="publish/$RID"
+          ASSET="FFXIVSpanishPatcher-$VERSION-$RID.zip"
+          rm -f "$OUT"/*.pdb
+          if [[ "$RID" == osx-* ]]; then
+            # Assemble a proper .app bundle so macOS shows the icon (Dock/Finder) and a real app name.
+            APP="FFXIVSpanishPatcher.app"
+            rm -rf "$APP"
+            mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+            cp "$OUT/FFXIVSpanishPatcher" "$APP/Contents/MacOS/FFXIVSpanishPatcher"
+            chmod +x "$APP/Contents/MacOS/FFXIVSpanishPatcher"
+            cp src/FFXIVSpanishPatcher.App/Assets/icon.icns "$APP/Contents/Resources/icon.icns"
+            sed "s/__VERSION__/$VERSION/g" build/macos/Info.plist > "$APP/Contents/Info.plist"
+            # -y keeps symlinks; zip preserves the +x bit so the bundle stays launchable.
+            zip -r -y "$ASSET" "$APP" README.md
+          else
+            cp README.md "$OUT/README.md"
+            ( cd "$OUT" && zip -r "../../$ASSET" . )
+          fi
 
       - name: Attach to release
         uses: softprops/action-gh-release@v2
