@@ -41,7 +41,7 @@ FFXIV-Spanish-Patcher/
   data/translations/                # manifest aprobado en JSONL (fuente del blob)
   tests/FFXIVSpanishPatcher.Tests/  # unit + integración EXD sintético
   build/
-    sync-translations.ps1           # [F2] one-way upstream→data/translations (JSONL)
+    sync-translations.py            # [F2] one-way upstream→data/translations (JSONL)
     build-translations.py           # [F2] data/translations (approved+gold) → data/translations.dat (embebido)
   docs/DESIGN.md
 ```
@@ -94,7 +94,7 @@ registro compacta que la App embebe como `EmbeddedResource`.
 localmente desde upstream solo para regenerar el blob; su historial línea-a-línea vive en upstream.
 
 ```
-upstream jsonl → sync-translations.ps1 → data/translations/jsonl/ (git-ignored)
+upstream jsonl → sync-translations.py → data/translations/jsonl/ (git-ignored)
               → build-translations.py (approved+gold) → data/translations.dat (versionado) → EmbeddedResource → publish
 ```
 
@@ -134,7 +134,7 @@ reflexión). Linux/Mac: mismo comando con `-r linux-x64` / `osx-arm64` / `osx-x6
 | F0   | Scaffold + git init + sln + sembrado de `vendor/` Core/GameData (vía el extinto `sync-vendor.ps1`). Compila vendored. | hecho |
 | F0.5 | `CLAUDE.md` (→`@AGENTS.md`) + `AGENTS.md` + `docs/DESIGN.md`. | hecho |
 | F1   | Lib `Pipeline` (interfaces + orquestación + eventos) reusando GameData/Packaging; unit + integración sintética. Headless. | hecho |
-| F2   | `sync-translations.ps1` + `build-translations.py` + `EmbeddedTranslationSource` (blob versionado, solo approved+gold). | hecho |
+| F2   | `sync-translations.py` + `build-translations.py` + `EmbeddedTranslationSource` (blob versionado, solo approved+gold). | hecho |
 | F3   | GUI Avalonia matching mockup, bindeada al Pipeline. | hecho |
 | F4   | `GamePathDetector` (registry + Steam vdf + rutas comunes) + integración SO (abrir carpeta, copiar log). | hecho |
 | F5   | Publish single-file (55.8 MB) + smoke headless de la GUI + pulido. Smoke contra juego real = manual. | hecho |

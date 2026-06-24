@@ -26,7 +26,7 @@ de extracción / parcheo binario de EXD / SeString / empaquetado se **reutiliza*
 - `data/translations.dat` — blob gzip-JSONL versionado (~9 MB) que la App embebe. El corpus crudo
   `data/translations/jsonl/` (~60 MB) NO se versiona; se sincroniza local solo para regenerar el blob.
 - `tests/FFXIVSpanishPatcher.Tests` — unit + integración con EXD **sintético**.
-- `build/` — `sync-translations.ps1` *(F2)*, `build-translations.py` *(F2)*.
+- `build/` — `sync-translations.py` *(F2)*, `build-translations.py` *(F2)*. (Todo Python, cross-platform.)
 - `docs/DESIGN.md` — diseño completo y plan por fases.
 
 ## `vendor/`: código propio (origen sembrado desde upstream)
@@ -60,7 +60,7 @@ original vive en `vendor/VENDORED.md` (histórica).
 ```powershell
 dotnet build                              # compila la solución
 dotnet test                               # unit + integración
-build/sync-translations.ps1 -Build        # trae el corpus crudo desde upstream y regenera el blob (llama a python)
+python build/sync-translations.py --build # trae el corpus crudo desde upstream y regenera el blob
 python build/build-translations.py        # compacta data/translations/jsonl (approved+gold) -> data/translations.dat
 # Publicar single-file self-contained:
 dotnet publish src/FFXIVSpanishPatcher.App -c Release -r win-x64 `
@@ -90,7 +90,7 @@ Sin trimming ni NativeAOT: Lumina usa reflexión.
 - **F1** hecho: `vendor/XivSpanish.Packaging` (primitivas) + `src/FFXIVSpanishPatcher.Pipeline`
   (orquestación `PatchPipeline` con eventos de progreso, ported del `Program.cs` upstream) + tests
   (14, incl. integración con EXD sintético: content + write-at-offset + broadcast + `.pmp`).
-- **F2** hecho: `sync-translations.ps1` + `build-translations.py` + `EmbeddedTranslationSource`.
+- **F2** hecho: `sync-translations.py` + `build-translations.py` + `EmbeddedTranslationSource`.
   Blob `data/translations.dat` versionado (**7.12 MB**, 296 344 filas empaquetables ≈ 295 648
   `approved` + 697 `gold` − filas con target vacío); corpus crudo git-ignored. `build-translations.py`
   aplica dos reducciones, ambas sin pérdida para el patcher (la ficha completa vive en el corpus
@@ -99,7 +99,8 @@ Sin trimming ni NativeAOT: Lumina usa reflexión.
   `target`, `status` y `sourceKey{sheet,rowId,field,exdPath}`, tirando metadatos de procedencia que el
   runtime nunca lee (`hash` —hex aleatorio casi incompresible—, `id`, `category`, `translator`,
   `reviewer`, `notes`, `context`, `subRowId`). La proyección recorta el gzip ~65 % (antes 20.36 MB).
-  El creador del blob es **Python** (no PowerShell); `sync-translations.ps1 -Build` lo invoca. Resincronizado 2026-06-24 desde upstream: nuevo dominio `items` (`Item`,
+  Toda la cadena de build es **Python** (sin PowerShell); `python build/sync-translations.py --build`
+  sincroniza y regenera. Resincronizado 2026-06-24 desde upstream: nuevo dominio `items` (`Item`,
   ~161 639 approved — antes 0) y ~20 sheets nuevos (Aetheryte, Orchestrion, EventItemHelp,
   JournalGenre, Weather…). El pipeline los extrae/parchea (es data-driven vía Lumina, sin allowlist) y
   aplica `{approved, gold}` (`PackageableStatus.Default`; antes solo `approved`). Taxonomía del panel

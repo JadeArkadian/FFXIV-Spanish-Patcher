@@ -14,7 +14,7 @@ Two reductions, both lossless for the patcher (the full record stays in the upst
    ``reviewer``, ``notes``, ``context``, ``subRowId`` — shrinks the gzip blob by ~65%. The
    TranslationEntry model deserializes fine; the omitted fields default to empty/null.
 
-Run this after a translation update (build/sync-translations.ps1 syncs the raw corpus first), then
+Run this after a translation update (build/sync-translations.py syncs the raw corpus first), then
 re-publish the app so the embedded resource changes. The output (data/translations.dat) IS versioned:
 it is the compact source-of-record this repo ships, regenerated from the raw jsonl tree which is
 synced locally and git-ignored.
@@ -67,7 +67,7 @@ def is_packageable(entry: dict) -> bool:
 def build(source: Path, output: Path) -> int:
     if not source.is_dir():
         raise SystemExit(
-            f"Translation source not found: {source}. Run build/sync-translations.ps1 first."
+            f"Translation source not found: {source}. Run build/sync-translations.py first."
         )
 
     files = sorted(source.rglob("*.jsonl"), key=lambda p: str(p))
