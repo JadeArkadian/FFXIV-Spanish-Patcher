@@ -6,7 +6,7 @@ namespace FFXIVSpanishPatcher.App.Tests;
 
 /// <summary>
 /// Guards the build → consume contract for the embedded <c>translations.dat</c>: the compact blob
-/// emitted by <c>build/build-translations.py</c> (field-projected, filtered to approved+gold) must
+/// emitted by <c>tools/XivSpanish.BlobBuilder</c> (field-projected, filtered to approved+gold) must
 /// still deserialize into packageable <c>TranslationEntry</c> rows the pipeline can apply. Loading
 /// the real resource catches a projection that drops a field the model needs.
 /// </summary>

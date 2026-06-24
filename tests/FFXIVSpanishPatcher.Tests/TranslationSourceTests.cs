@@ -57,7 +57,7 @@ public sealed class TranslationSourceTests : IDisposable
     [Fact]
     public void EmbeddedTranslationSource_LoadsBrotliJsonl()
     {
-        // Mirrors the build-translations.py blob format: Brotli of newline-delimited TranslationEntry JSON.
+        // Mirrors the XivSpanish.BlobBuilder blob format: Brotli of newline-delimited TranslationEntry JSON.
         var jsonl = string.Join('\n',
             JsonSerializer.Serialize(new TranslationEntry { Source = "A", Target = "a", Status = TranslationEntryStatus.Approved }),
             JsonSerializer.Serialize(new TranslationEntry { Source = "B", Target = "b", Status = TranslationEntryStatus.Approved }));

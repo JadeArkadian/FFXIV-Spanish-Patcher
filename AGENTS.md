@@ -26,7 +26,8 @@ de extracción / parcheo binario de EXD / SeString / empaquetado se **reutiliza*
 - `data/translations.dat` — blob Brotli-JSONL versionado (~5 MB) que la App embebe. El corpus crudo
   `data/translations/jsonl/` (~60 MB) NO se versiona; se sincroniza local solo para regenerar el blob.
 - `tests/FFXIVSpanishPatcher.Tests` — unit + integración con EXD **sintético**.
-- `build/` — `sync-translations.py` *(F2)*, `build-translations.py` *(F2)*. (Todo Python, cross-platform.)
+- `tools/XivSpanish.BlobBuilder` — tool C# (subcomandos `sync`/`build`) que regenera el blob *(F2)*.
+- `build/` — `macos/Info.plist` (metadatos del bundle `.app`).
 - `docs/DESIGN.md` — diseño completo y plan por fases.
 
 ## `vendor/`: código propio (origen sembrado desde upstream)
@@ -49,7 +50,7 @@ original vive en `vendor/VENDORED.md` (histórica).
 3. Reuso = repo standalone que **sembró** `vendor/` copiando el core de FFXIV-Spanish (no submodule).
    `vendor/` es código propio editable; pueden divergir de upstream (regla read-only levantada 2026-06-24).
 4. Bundling traducciones = **solo embebido** en el `.exe`. Actualizar traducciones = re-publicar
-   (re-correr `build-translations.py` + `dotnet publish`). Sin fichero lateral. El blob solo contiene
+   (regenerar el blob con `XivSpanish.BlobBuilder` + `dotnet publish`). Sin fichero lateral. El blob solo contiene
    filas empaquetables (`status ∈ {approved, gold}`); el resto no se aplica y se excluye.
 5. Test de integración = **EXD sintético** generado en código (no se versionan `.exd` reales).
 6. Categorías del panel avanzado = **híbrido**: metadatos curados (nombre/orden/tooltip) en código,
@@ -60,8 +61,9 @@ original vive en `vendor/VENDORED.md` (histórica).
 ```powershell
 dotnet build                              # compila la solución
 dotnet test                               # unit + integración
-python build/sync-translations.py --build # trae el corpus crudo desde upstream y regenera el blob
-python build/build-translations.py        # compacta data/translations/jsonl (approved+gold) -> data/translations.dat
+# Regenerar el blob (corpus crudo desde upstream + compactar). Tool C#, cross-platform:
+dotnet run --project tools/XivSpanish.BlobBuilder -- sync --build
+dotnet run --project tools/XivSpanish.BlobBuilder -- build   # solo recompacta jsonl -> data/translations.dat
 # Publicar single-file self-contained:
 dotnet publish src/FFXIVSpanishPatcher.App -c Release -r win-x64 `
   --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
@@ -90,19 +92,20 @@ Sin trimming ni NativeAOT: Lumina usa reflexión.
 - **F1** hecho: `vendor/XivSpanish.Packaging` (primitivas) + `src/FFXIVSpanishPatcher.Pipeline`
   (orquestación `PatchPipeline` con eventos de progreso, ported del `Program.cs` upstream) + tests
   (14, incl. integración con EXD sintético: content + write-at-offset + broadcast + `.pmp`).
-- **F2** hecho: `sync-translations.py` + `build-translations.py` + `EmbeddedTranslationSource`.
+- **F2** hecho: `tools/XivSpanish.BlobBuilder` (sync+build, C#) + `EmbeddedTranslationSource`.
   Blob `data/translations.dat` versionado (**~5.1 MB**, ~296 k filas empaquetables ≈ `approved` +
-  `gold` − filas con target vacío); corpus crudo git-ignored. `build-translations.py`
-  aplica dos reducciones, ambas sin pérdida para el patcher (la ficha completa vive en el corpus
+  `gold` − filas con target vacío); corpus crudo git-ignored. El tool `XivSpanish.BlobBuilder`
+  aplica tres reducciones, todas sin pérdida para el patcher (la ficha completa vive en el corpus
   upstream): (a) **filtra filas** al criterio exacto de `Packageable` (`status ∈ {approved, gold}` +
-  target no vacío + sourceKey con sheet+rowId); (b) **proyecta campos**: solo emite `source`,
-  `target`, `status` y `sourceKey{sheet,rowId,field,exdPath}`, tirando metadatos de procedencia que el
-  runtime nunca lee (`hash` —hex aleatorio casi incompresible—, `id`, `category`, `translator`,
-  `reviewer`, `notes`, `context`, `subRowId`); y (c) comprime con **Brotli** (q11) en vez de gzip
-  (otro ~30 %; .NET lo descomprime con `BrotliStream` nativo, sin dependencia en runtime). El recorrido
-  total: 20.36 MB (gzip, todo) → 7.1 MB (gzip, proyectado) → ~5.1 MB (brotli, proyectado).
-  Toda la cadena de build es **Python** (sin PowerShell); `python build/sync-translations.py --build`
-  sincroniza y regenera. Resincronizado 2026-06-24 desde upstream: nuevo dominio `items` (`Item`,
+  target no vacío + sourceKey con sheet+rowId); (b) **proyecta campos**: como `TranslationEntry` está
+  recortado a `source/target/status/sourceKey`, reserializar el modelo **es** la proyección (no hay
+  lista de campos duplicada); se tiran los metadatos de procedencia que el runtime nunca lee (`hash`,
+  `id`, `category`, `translator`, `reviewer`, `notes`, `context`, `subRowId`); y (c) comprime con
+  **Brotli** (`CompressionLevel.SmallestSize`) en vez de gzip; .NET lo descomprime con `BrotliStream`
+  nativo, **sin dependencia ni en build ni en runtime**. Recorrido total: 20.36 MB (gzip, todo) →
+  7.1 MB (gzip, proyectado) → ~5.2 MB (brotli, proyectado). El tool es **C#** (`dotnet run`,
+  cross-platform; sin Python ni PowerShell); `dotnet run --project tools/XivSpanish.BlobBuilder --
+  sync --build` sincroniza y regenera. Resincronizado 2026-06-24 desde upstream: nuevo dominio `items` (`Item`,
   ~161 639 approved — antes 0) y ~20 sheets nuevos (Aetheryte, Orchestrion, EventItemHelp,
   JournalGenre, Weather…). El pipeline los extrae/parchea (es data-driven vía Lumina, sin allowlist) y
   aplica `{approved, gold}` (`PackageableStatus.Default`; antes solo `approved`). Taxonomía del panel

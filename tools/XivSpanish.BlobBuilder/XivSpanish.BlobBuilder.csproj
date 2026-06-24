@@ -1,0 +1,18 @@
+<!-- Build-time tool that regenerates data/translations.dat. Cross-platform (dotnet run), no Python
+     or pip deps: it reuses the trimmed TranslationEntry model and .NET's built-in BrotliStream.
+     In the solution so `dotnet build` compiles it, but CI/release do NOT run it (the .dat is
+     versioned); run it by hand when translations change. -->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>XivSpanish.BlobBuilder</RootNamespace>
+    <AssemblyName>XivSpanish.BlobBuilder</AssemblyName>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\vendor\XivSpanish.Core\XivSpanish.Core.csproj" />
+  </ItemGroup>
+</Project>

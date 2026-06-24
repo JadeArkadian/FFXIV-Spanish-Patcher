@@ -41,8 +41,9 @@ FFXIV-Spanish-Patcher/
   data/translations/                # manifest aprobado en JSONL (fuente del blob)
   tests/FFXIVSpanishPatcher.Tests/  # unit + integración EXD sintético
   build/
-    sync-translations.py            # [F2] one-way upstream→data/translations (JSONL)
-    build-translations.py           # [F2] data/translations (approved+gold) → data/translations.dat (embebido)
+    macos/Info.plist                # metadatos del bundle .app (release)
+  tools/
+    XivSpanish.BlobBuilder/         # [F2] tool C#: sync (corpus) + build (→ data/translations.dat)
   docs/DESIGN.md
 ```
 
@@ -94,8 +95,8 @@ registro compacta que la App embebe como `EmbeddedResource`; .NET lo lee con `Br
 localmente desde upstream solo para regenerar el blob; su historial línea-a-línea vive en upstream.
 
 ```
-upstream jsonl → sync-translations.py → data/translations/jsonl/ (git-ignored)
-              → build-translations.py (approved+gold) → data/translations.dat (versionado) → EmbeddedResource → publish
+upstream jsonl → BlobBuilder sync → data/translations/jsonl/ (git-ignored)
+              → BlobBuilder build (approved+gold, brotli) → data/translations.dat (versionado) → EmbeddedResource → publish
 ```
 
 CI (F7) NO reconstruye el blob: usa el `data/translations.dat` ya versionado tras el checkout.
@@ -134,7 +135,7 @@ reflexión). Linux/Mac: mismo comando con `-r linux-x64` / `osx-arm64` / `osx-x6
 | F0   | Scaffold + git init + sln + sembrado de `vendor/` Core/GameData (vía el extinto `sync-vendor.ps1`). Compila vendored. | hecho |
 | F0.5 | `CLAUDE.md` (→`@AGENTS.md`) + `AGENTS.md` + `docs/DESIGN.md`. | hecho |
 | F1   | Lib `Pipeline` (interfaces + orquestación + eventos) reusando GameData/Packaging; unit + integración sintética. Headless. | hecho |
-| F2   | `sync-translations.py` + `build-translations.py` + `EmbeddedTranslationSource` (blob versionado, solo approved+gold). | hecho |
+| F2   | `tools/XivSpanish.BlobBuilder` (sync+build, C#) + `EmbeddedTranslationSource` (blob brotli versionado, solo approved+gold). | hecho |
 | F3   | GUI Avalonia matching mockup, bindeada al Pipeline. | hecho |
 | F4   | `GamePathDetector` (registry + Steam vdf + rutas comunes) + integración SO (abrir carpeta, copiar log). | hecho |
 | F5   | Publish single-file (55.8 MB) + smoke headless de la GUI + pulido. Smoke contra juego real = manual. | hecho |

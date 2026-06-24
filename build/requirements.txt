@@ -1,8 +1,0 @@
-# Build-time Python dependencies for the translation blob pipeline.
-# Runtime (the .NET app) needs none of this: it decodes the Brotli blob with the built-in
-# System.IO.Compression.BrotliStream.
-#
-#   python -m pip install -r build/requirements.txt
-#
-brotli>=1.1.0   # build-translations.py compresses data/translations.dat with Brotli (q11)
-pillow>=10.0.0  # build/macos icon generation (icon.ico / icon.icns from the source PNG)

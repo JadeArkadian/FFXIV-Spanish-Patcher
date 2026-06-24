@@ -16,12 +16,12 @@ Flujo:
 
 ```
 upstream FFXIV-Spanish/data/translations/jsonl
-  -> build/sync-translations.py    (copia local del corpus crudo, git-ignored)
-  -> build/build-translations.py   (filtra approved+gold y compacta a data/translations.dat, versionado)
+  -> XivSpanish.BlobBuilder sync   (copia local del corpus crudo, git-ignored)
+  -> XivSpanish.BlobBuilder build  (filtra approved+gold, proyecta y comprime brotli -> data/translations.dat)
   -> EmbeddedResource en FFXIVSpanishPatcher.App (F3)
   -> publish
 ```
 
-Atajo: `python build/sync-translations.py --build` hace ambos pasos. Actualizar la traducción = re-correr
-esto + re-publicar (la App vuelve a embeber el blob nuevo). CI (F7) no reconstruye el blob: usa el
-`data/translations.dat` ya versionado.
+Atajo: `dotnet run --project tools/XivSpanish.BlobBuilder -- sync --build` hace ambos pasos. Actualizar
+la traducción = re-correr esto + re-publicar (la App vuelve a embeber el blob nuevo). CI (F7) no
+reconstruye el blob: usa el `data/translations.dat` ya versionado.

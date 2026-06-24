@@ -8,7 +8,7 @@ namespace FFXIVSpanishPatcher.Pipeline;
 
 /// <summary>
 /// Loads translation entries from a Brotli-compressed JSONL blob — the <c>translations.dat</c> the
-/// app embeds as a resource (built by <c>build/build-translations.py</c>). The blob is opened lazily
+/// app embeds as a resource (built by the <c>tools/XivSpanish.BlobBuilder</c> tool). The blob is opened lazily
 /// so the source can wrap an embedded resource, a file, or an in-memory buffer (tests).
 /// </summary>
 public sealed class EmbeddedTranslationSource(Func<Stream> openCompressedBlob) : ITranslationSource

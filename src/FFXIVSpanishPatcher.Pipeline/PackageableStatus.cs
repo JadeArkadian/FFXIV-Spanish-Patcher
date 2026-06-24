@@ -5,7 +5,7 @@ namespace FFXIVSpanishPatcher.Pipeline;
 /// <summary>
 /// The translation statuses the patcher actually applies. A row in any other status (<c>rejected</c>,
 /// <c>needs-review</c>, <c>draft</c>...) is never written into an EXD page, so it is excluded both
-/// from the embedded blob (<c>build/build-translations.py</c>) and at patch time here.
+/// from the embedded blob (built by <c>tools/XivSpanish.BlobBuilder</c>) and at patch time here.
 /// </summary>
 /// <remarks>
 /// The default set is <c>approved</c> + <c>gold</c> (the gold-standard tier); both status constants

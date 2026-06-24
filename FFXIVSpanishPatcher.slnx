@@ -3,6 +3,9 @@
     <Project Path="src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj" />
     <Project Path="src/FFXIVSpanishPatcher.Pipeline/FFXIVSpanishPatcher.Pipeline.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/XivSpanish.BlobBuilder/XivSpanish.BlobBuilder.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/FFXIVSpanishPatcher.App.Tests/FFXIVSpanishPatcher.App.Tests.csproj" />
     <Project Path="tests/FFXIVSpanishPatcher.Tests/FFXIVSpanishPatcher.Tests.csproj" />

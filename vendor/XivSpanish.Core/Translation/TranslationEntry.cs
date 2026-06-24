@@ -6,7 +6,7 @@ namespace XivSpanish.Translation;
 /// A translation row as the patcher consumes it. Only the fields the pipeline reads are modelled —
 /// <c>source</c>, <c>target</c>, <c>status</c> and <c>sourceKey</c>. The upstream corpus carries more
 /// provenance metadata (id, hash, category, translator, reviewer, notes, context), but
-/// build-translations.py projects it away, so it is intentionally not modelled here.
+/// the XivSpanish.BlobBuilder tool projects it away, so it is intentionally not modelled here.
 /// </summary>
 public sealed class TranslationEntry
 {
