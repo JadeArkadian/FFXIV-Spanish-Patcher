@@ -115,7 +115,7 @@ public sealed class PatchPipeline
                 {
                     skipped++;
                     Report(PipelineComponent.Extractor,
-                        $"omitido {entry.Id}: no se resuelve la ruta EXD de {key.Sheet}/{key.RowId}", PipelineLevel.Warning);
+                        $"omitido: no se resuelve la ruta EXD de {key.Sheet}/{key.RowId}", PipelineLevel.Warning);
                     continue;
                 }
 
