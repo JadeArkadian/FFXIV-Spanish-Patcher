@@ -26,7 +26,7 @@ de extracción / parcheo binario de EXD / SeString / empaquetado se **reutiliza*
 - `data/translations.dat` — blob gzip-JSONL versionado (~9 MB) que la App embebe. El corpus crudo
   `data/translations/jsonl/` (~60 MB) NO se versiona; se sincroniza local solo para regenerar el blob.
 - `tests/FFXIVSpanishPatcher.Tests` — unit + integración con EXD **sintético**.
-- `build/` — `sync-vendor.ps1`, `sync-translations.ps1` *(F2)*, `build-translations.ps1` *(F2)*.
+- `build/` — `sync-vendor.ps1`, `sync-translations.ps1` *(F2)*, `build-translations.py` *(F2)*.
 - `docs/DESIGN.md` — diseño completo y plan por fases.
 
 ## Regla de frontera del código vendorizado
@@ -43,7 +43,8 @@ Si la lógica core necesita un arreglo, se hace en upstream y se re-sincroniza, 
    en vivo desde el juego del usuario). Legal-clean: no se redistribuyen bytes de SquareEnix.
 3. Reuso = repo standalone que **vendoriza** (copia) el core de FFXIV-Spanish. No submodule.
 4. Bundling traducciones = **solo embebido** en el `.exe`. Actualizar traducciones = re-publicar
-   (re-correr `build-translations.ps1` + `dotnet publish`). Sin fichero lateral.
+   (re-correr `build-translations.py` + `dotnet publish`). Sin fichero lateral. El blob solo contiene
+   filas empaquetables (`status ∈ {approved, gold}`); el resto no se aplica y se excluye.
 5. Test de integración = **EXD sintético** generado en código (no se versionan `.exd` reales).
 6. Categorías del panel avanzado = **híbrido**: metadatos curados (nombre/orden/tooltip) en código,
    habilitación y contadores reales según el manifest embebido.
@@ -54,8 +55,8 @@ Si la lógica core necesita un arreglo, se hace en upstream y se re-sincroniza, 
 dotnet build                              # compila la solución
 dotnet test                               # unit + integración
 build/sync-vendor.ps1                     # re-sincroniza vendor/ desde upstream
-build/sync-translations.ps1 -Build        # trae el corpus crudo desde upstream y regenera el blob
-build/build-translations.ps1              # compacta data/translations/jsonl -> data/translations.dat
+build/sync-translations.ps1 -Build        # trae el corpus crudo desde upstream y regenera el blob (llama a python)
+python build/build-translations.py        # compacta data/translations/jsonl (approved+gold) -> data/translations.dat
 # Publicar single-file self-contained:
 dotnet publish src/FFXIVSpanishPatcher.App -c Release -r win-x64 `
   --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
@@ -84,16 +85,19 @@ Sin trimming ni NativeAOT: Lumina usa reflexión.
 - **F1** hecho: `vendor/XivSpanish.Packaging` (primitivas) + `src/FFXIVSpanishPatcher.Pipeline`
   (orquestación `PatchPipeline` con eventos de progreso, ported del `Program.cs` upstream) + tests
   (14, incl. integración con EXD sintético: content + write-at-offset + broadcast + `.pmp`).
-- **F2** hecho: `sync-translations.ps1` + `build-translations.ps1` + `EmbeddedTranslationSource`.
-  Blob `data/translations.dat` versionado (20.17 MB, 331 919 entradas, 284 985 `approved`);
-  corpus crudo git-ignored. Resincronizado 2026-06-23 desde upstream `7769d82`: nuevo dominio
-  `items` (`Item`, 161 639 approved — antes 0) y ~20 sheets nuevos (Aetheryte, Orchestrion,
-  EventItemHelp, JournalGenre, Weather…). El pipeline ya los extrae/parchea (es data-driven vía
-  Lumina, sin allowlist). Taxonomía del panel ampliada a **9 dominios**: se añaden categorías
-  propias `logros`, `registro`, `eventos`, `coleccionables` y el resto se pliega en los 5 buckets
-  existentes, de modo que cada sheet enviado cae en una categoría visible/toggleable (sin bucket
-  invisible por-sheet). Mapeo en `Pipeline/TranslationCategories.cs` (supera a `DomainMap.Sprint2Default`
-  sin tocar `vendor/`); metadatos en `App/Services/CategoryCatalog.cs`.
+- **F2** hecho: `sync-translations.ps1` + `build-translations.py` + `EmbeddedTranslationSource`.
+  Blob `data/translations.dat` versionado (20.36 MB, 296 345 filas empaquetables = 295 648 `approved`
+  + 697 `gold`); corpus crudo git-ignored. El blob **solo** contiene filas con `status ∈ {approved,
+  gold}` — `build-translations.py` descarta el resto (`rejected`, `needs-review`, `draft`…) porque el
+  pipeline no las aplica. El creador del blob es **Python** (no PowerShell); `sync-translations.ps1
+  -Build` lo invoca. Resincronizado 2026-06-24 desde upstream: nuevo dominio `items` (`Item`,
+  ~161 639 approved — antes 0) y ~20 sheets nuevos (Aetheryte, Orchestrion, EventItemHelp,
+  JournalGenre, Weather…). El pipeline los extrae/parchea (es data-driven vía Lumina, sin allowlist) y
+  aplica `{approved, gold}` (`PackageableStatus.Default`; antes solo `approved`). Taxonomía del panel
+  ampliada a **9 dominios**: categorías propias `logros`, `registro`, `eventos`, `coleccionables` y el
+  resto plegado en los 5 buckets existentes, de modo que cada sheet enviado cae en una categoría
+  visible/toggleable (sin bucket invisible por-sheet). Mapeo en `Pipeline/TranslationCategories.cs`
+  (supera a `DomainMap.Sprint2Default` sin tocar `vendor/`); metadatos en `App/Services/CategoryCatalog.cs`.
 - **F3** hecho: `src/FFXIVSpanishPatcher.App` (Avalonia MVVM, tema oscuro, layout del mockup:
   ruta+examinar, generar/abrir salida, consola en streaming, categorías EXD híbridas, toggle
   integridad, status bar). Embebe `data/translations.dat`. Compila 0 warnings (vuln DBus fijada).

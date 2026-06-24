@@ -18,8 +18,9 @@ public sealed record PatchRequest
     /// </summary>
     public IReadOnlyCollection<string>? Categories { get; init; }
 
-    /// <summary>Only entries with this status are packaged. Defaults to <c>approved</c>.</summary>
-    public string Status { get; init; } = TranslationEntryStatus.Approved;
+    /// <summary>Only entries with one of these statuses are packaged. Defaults to
+    /// <see cref="PackageableStatus.Default"/> (<c>approved</c> + <c>gold</c>).</summary>
+    public IReadOnlySet<string> Statuses { get; init; } = PackageableStatus.Default;
 
     /// <summary>Output <c>.pmp</c> path.</summary>
     public string OutputPath { get; init; } = DefaultOutputPath();

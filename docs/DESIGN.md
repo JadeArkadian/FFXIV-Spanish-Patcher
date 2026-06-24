@@ -43,7 +43,7 @@ FFXIV-Spanish-Patcher/
   build/
     sync-vendor.ps1                 # one-way upstream→vendor (código)
     sync-translations.ps1           # [F2] one-way upstream→data/translations (JSONL)
-    build-translations.ps1          # [F2] data/translations → artifacts/translations.dat (embebido)
+    build-translations.py           # [F2] data/translations (approved+gold) → data/translations.dat (embebido)
   docs/DESIGN.md
 ```
 
@@ -94,7 +94,7 @@ localmente desde upstream solo para regenerar el blob; su historial línea-a-lí
 
 ```
 upstream jsonl → sync-translations.ps1 → data/translations/jsonl/ (git-ignored)
-              → build-translations.ps1 → data/translations.dat (versionado) → EmbeddedResource → publish
+              → build-translations.py (approved+gold) → data/translations.dat (versionado) → EmbeddedResource → publish
 ```
 
 CI (F7) NO reconstruye el blob: usa el `data/translations.dat` ya versionado tras el checkout.
@@ -133,7 +133,7 @@ reflexión). Linux/Mac: mismo comando con `-r linux-x64` / `osx-arm64` / `osx-x6
 | F0   | Scaffold + git init + sln + vendor Core/GameData + `sync-vendor.ps1`. Compila vendored. | hecho |
 | F0.5 | `CLAUDE.md` (→`@AGENTS.md`) + `AGENTS.md` + `docs/DESIGN.md`. | hecho |
 | F1   | Lib `Pipeline` (interfaces + orquestación + eventos) reusando GameData/Packaging; unit + integración sintética. Headless. | hecho |
-| F2   | `sync-translations.ps1` + `build-translations.ps1` + `EmbeddedTranslationSource` (blob versionado). | hecho |
+| F2   | `sync-translations.ps1` + `build-translations.py` + `EmbeddedTranslationSource` (blob versionado, solo approved+gold). | hecho |
 | F3   | GUI Avalonia matching mockup, bindeada al Pipeline. | hecho |
 | F4   | `GamePathDetector` (registry + Steam vdf + rutas comunes) + integración SO (abrir carpeta, copiar log). | hecho |
 | F5   | Publish single-file (55.8 MB) + smoke headless de la GUI + pulido. Smoke contra juego real = manual. | hecho |

@@ -2,8 +2,10 @@
 
 La traducción que se embebe en el ejecutable.
 
-- **`data/translations.dat`** (versionado): blob gzip-JSONL con todo el corpus aprobado. Es la
-  **fuente de registro** compacta que este repo distribuye y que la App embebe como recurso. ~9 MB.
+- **`data/translations.dat`** (versionado): blob gzip-JSONL con las filas **empaquetables**
+  (`status ∈ {approved, gold}`); las demás (`rejected`, `needs-review`, `draft`…) no se aplican y se
+  excluyen del blob. Es la **fuente de registro** compacta que este repo distribuye y que la App
+  embebe como recurso. ~20 MB.
 - **`data/translations/jsonl/`** (NO versionado, en `.gitignore`): el corpus crudo (~60 MB, un
   fichero por sheet). Se sincroniza localmente desde el repo upstream **FFXIV-Spanish** solo para
   poder regenerar el blob. Su historial línea-a-línea vive en upstream.
@@ -13,7 +15,7 @@ Flujo:
 ```
 upstream FFXIV-Spanish/data/translations/jsonl
   -> build/sync-translations.ps1   (copia local del corpus crudo, git-ignored)
-  -> build/build-translations.ps1  (compacta a data/translations.dat, versionado)
+  -> build/build-translations.py   (filtra approved+gold y compacta a data/translations.dat, versionado)
   -> EmbeddedResource en FFXIVSpanishPatcher.App (F3)
   -> publish
 ```

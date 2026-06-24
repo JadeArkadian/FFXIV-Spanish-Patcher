@@ -57,7 +57,7 @@ public sealed class TranslationSourceTests : IDisposable
     [Fact]
     public void EmbeddedTranslationSource_LoadsGzippedJsonl()
     {
-        // Mirrors the build-translations.ps1 blob format: gzip of newline-delimited TranslationEntry JSON.
+        // Mirrors the build-translations.py blob format: gzip of newline-delimited TranslationEntry JSON.
         var jsonl = string.Join('\n',
             JsonSerializer.Serialize(new TranslationEntry { Id = "e1", Source = "A", Target = "a", Status = TranslationEntryStatus.Approved }),
             JsonSerializer.Serialize(new TranslationEntry { Id = "e2", Source = "B", Target = "b", Status = TranslationEntryStatus.Approved }));
