@@ -85,10 +85,10 @@ skip-con-warning, nunca crash; se reporta en consola y lo cuenta el verificador.
 
 ## 6. Datos
 
-El corpus crudo son ~60 MB de JSONL; comprimido, ~9 MB. Se versiona **solo el blob comprimido**.
+El corpus crudo son ~60 MB de JSONL; proyectado y comprimido, ~5 MB. Se versiona **solo el blob**.
 
-**Blob (versionado): `data/translations.dat`** — gzip-JSONL con el corpus aprobado, fuente de
-registro compacta que la App embebe como `EmbeddedResource`.
+**Blob (versionado): `data/translations.dat`** — Brotli-JSONL (proyectado a approved+gold), fuente de
+registro compacta que la App embebe como `EmbeddedResource`; .NET lo lee con `BrotliStream` nativo.
 
 **Corpus crudo (NO versionado, en `.gitignore`): `data/translations/jsonl/`** — se sincroniza
 localmente desde upstream solo para regenerar el blob; su historial línea-a-línea vive en upstream.

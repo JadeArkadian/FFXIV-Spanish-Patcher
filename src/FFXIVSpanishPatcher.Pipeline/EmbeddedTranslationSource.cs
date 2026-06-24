@@ -7,16 +7,16 @@ using XivSpanish.Translation;
 namespace FFXIVSpanishPatcher.Pipeline;
 
 /// <summary>
-/// Loads translation entries from a gzip-compressed JSONL blob — the <c>translations.dat</c> the app
-/// embeds as a resource (built by <c>build/build-translations.py</c>). The blob is opened lazily so
-/// the source can wrap an embedded resource, a file, or an in-memory buffer (tests).
+/// Loads translation entries from a Brotli-compressed JSONL blob — the <c>translations.dat</c> the
+/// app embeds as a resource (built by <c>build/build-translations.py</c>). The blob is opened lazily
+/// so the source can wrap an embedded resource, a file, or an in-memory buffer (tests).
 /// </summary>
 public sealed class EmbeddedTranslationSource(Func<Stream> openCompressedBlob) : ITranslationSource
 {
     private static readonly JsonSerializerOptions Options = new() { PropertyNameCaseInsensitive = true };
     private readonly Func<Stream> _open = openCompressedBlob;
 
-    /// <summary>Wraps a gzip-JSONL resource embedded in <paramref name="assembly"/>.</summary>
+    /// <summary>Wraps a Brotli-JSONL resource embedded in <paramref name="assembly"/>.</summary>
     public static EmbeddedTranslationSource FromAssemblyResource(Assembly assembly, string resourceName)
         => new(() => assembly.GetManifestResourceStream(resourceName)
             ?? throw new InvalidOperationException($"Embedded translation resource not found: {resourceName}"));
@@ -24,8 +24,8 @@ public sealed class EmbeddedTranslationSource(Func<Stream> openCompressedBlob) :
     public IReadOnlyList<TranslationEntry> Load()
     {
         using var compressed = _open();
-        using var gzip = new GZipStream(compressed, CompressionMode.Decompress);
-        using var reader = new StreamReader(gzip, Encoding.UTF8);
+        using var brotli = new BrotliStream(compressed, CompressionMode.Decompress);
+        using var reader = new StreamReader(brotli, Encoding.UTF8);
 
         var entries = new List<TranslationEntry>();
         string? line;

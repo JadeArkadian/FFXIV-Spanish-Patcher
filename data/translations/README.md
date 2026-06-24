@@ -2,12 +2,12 @@
 
 La traducción que se embebe en el ejecutable.
 
-- **`data/translations.dat`** (versionado): blob gzip-JSONL con las filas **empaquetables**
+- **`data/translations.dat`** (versionado): blob Brotli-JSONL con las filas **empaquetables**
   (`status ∈ {approved, gold}` + target no vacío + sourceKey completo); las demás no se aplican y se
   excluyen. Además cada fila está **proyectada** a los campos que el runtime lee (`source`, `target`,
-  `status`, `sourceKey`); los metadatos de procedencia (`hash`, `id`, `category`, `notes`…) se omiten
-  para comprimir ~65 %. Es la **fuente de registro** compacta que este repo distribuye y que la App
-  embebe como recurso. ~7 MB.
+  `status`, `sourceKey`); los metadatos de procedencia (`hash`, `id`, `category`, `notes`…) se omiten.
+  Se comprime con **Brotli** (q11; .NET lo lee con `BrotliStream` nativo). Es la **fuente de registro**
+  compacta que este repo distribuye y que la App embebe como recurso. ~5 MB.
 - **`data/translations/jsonl/`** (NO versionado, en `.gitignore`): el corpus crudo (~60 MB, un
   fichero por sheet). Se sincroniza localmente desde el repo upstream **FFXIV-Spanish** solo para
   poder regenerar el blob. Su historial línea-a-línea vive en upstream.

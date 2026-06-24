@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Compact the versioned JSONL corpus into data/translations.dat, the gzip-JSONL blob the app
-embeds as a resource.
+"""Compact the versioned JSONL corpus into data/translations.dat, the Brotli-compressed JSONL blob
+the app embeds as a resource (the .NET side decodes it with the built-in BrotliStream).
 
 Two reductions, both lossless for the patcher (the full record stays in the upstream corpus):
 
@@ -11,8 +11,11 @@ Two reductions, both lossless for the patcher (the full record stays in the upst
 2. Field projection: emit ONLY the fields the runtime reads (``source``, ``target``, ``status`` and
    ``sourceKey`` = sheet/rowId/field/exdPath). Dropping the upstream provenance metadata the patcher
    never touches — ``hash`` (random hex, nearly incompressible), ``id``, ``category``, ``translator``,
-   ``reviewer``, ``notes``, ``context``, ``subRowId`` — shrinks the gzip blob by ~65%. The
-   TranslationEntry model deserializes fine; the omitted fields default to empty/null.
+   ``reviewer``, ``notes``, ``context``, ``subRowId`` — shrinks the blob a lot (the projection alone
+   cut the old gzip blob ~65%). The TranslationEntry model deserializes fine; the omitted fields
+   default to empty/null.
+
+The compacted stream is then Brotli-compressed (q11), ~30% smaller than the old gzip output.
 
 Run this after a translation update (build/sync-translations.py syncs the raw corpus first), then
 re-publish the app so the embedded resource changes. The output (data/translations.dat) IS versioned:
@@ -25,11 +28,15 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import gzip
 import json
 import sys
 from collections import Counter
 from pathlib import Path
+
+import brotli  # build-only dependency (pip install brotli); runtime uses .NET's BrotliStream.
+
+# Max Brotli quality. Slow to compress (build-time only) but best ratio; ~30% smaller than gzip here.
+_BROTLI_QUALITY = 11
 
 # Keep in sync with PackageableStatus.Default in the Pipeline: the statuses the patcher actually
 # applies. A row with any other status is never written into an EXD page, so it is excluded here.
@@ -80,29 +87,31 @@ def build(source: Path, output: Path) -> int:
     skipped = 0
     skipped_incomplete = 0
     by_status: Counter[str] = Counter()
-    # newline="\n" + utf-8 without BOM matches the previous PowerShell writer byte-for-byte.
-    with gzip.open(output, "wt", encoding="utf-8", newline="\n", compresslevel=9) as out:
-        for file in files:
-            with file.open("r", encoding="utf-8") as fh:
-                for line in fh:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        entry = json.loads(line)
-                    except json.JSONDecodeError as exc:
-                        raise SystemExit(f"Invalid JSON in {file}: {exc}") from exc
-                    status = (entry.get("status") or "").lower()
-                    by_status[status or "(none)"] += 1
-                    if status not in PACKAGEABLE_STATUSES:
-                        skipped += 1
-                        continue
-                    if not is_packageable(entry):
-                        skipped_incomplete += 1
-                        continue
-                    out.write(project(entry))
-                    out.write("\n")
-                    kept += 1
+    lines: list[str] = []
+    for file in files:
+        with file.open("r", encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                except json.JSONDecodeError as exc:
+                    raise SystemExit(f"Invalid JSON in {file}: {exc}") from exc
+                status = (entry.get("status") or "").lower()
+                by_status[status or "(none)"] += 1
+                if status not in PACKAGEABLE_STATUSES:
+                    skipped += 1
+                    continue
+                if not is_packageable(entry):
+                    skipped_incomplete += 1
+                    continue
+                lines.append(project(entry))
+                kept += 1
+
+    # One newline-delimited JSONL stream (utf-8, no BOM), Brotli-compressed in one shot.
+    payload = ("\n".join(lines) + "\n").encode("utf-8")
+    output.write_bytes(brotli.compress(payload, quality=_BROTLI_QUALITY))
 
     size_mb = output.stat().st_size / (1024 * 1024)
     detail = ", ".join(f"{s}={n}" for s, n in by_status.most_common())

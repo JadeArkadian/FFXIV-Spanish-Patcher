@@ -55,16 +55,16 @@ public sealed class TranslationSourceTests : IDisposable
     }
 
     [Fact]
-    public void EmbeddedTranslationSource_LoadsGzippedJsonl()
+    public void EmbeddedTranslationSource_LoadsBrotliJsonl()
     {
-        // Mirrors the build-translations.py blob format: gzip of newline-delimited TranslationEntry JSON.
+        // Mirrors the build-translations.py blob format: Brotli of newline-delimited TranslationEntry JSON.
         var jsonl = string.Join('\n',
             JsonSerializer.Serialize(new TranslationEntry { Source = "A", Target = "a", Status = TranslationEntryStatus.Approved }),
             JsonSerializer.Serialize(new TranslationEntry { Source = "B", Target = "b", Status = TranslationEntryStatus.Approved }));
 
         using var buffer = new MemoryStream();
-        using (var gzip = new GZipStream(buffer, CompressionLevel.Optimal, leaveOpen: true))
-        using (var writer = new StreamWriter(gzip, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)))
+        using (var brotli = new BrotliStream(buffer, CompressionLevel.Optimal, leaveOpen: true))
+        using (var writer = new StreamWriter(brotli, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)))
         {
             writer.Write(jsonl);
         }
