@@ -34,7 +34,7 @@ FFXIV-Spanish-Patcher/
     FFXIVSpanishPatcher.App/        # GUI Avalonia (MVVM, entry point, tema oscuro)   [F3]
     FFXIVSpanishPatcher.Pipeline/   # orquestación extract→patch→package + IProgress  [F1]
   vendor/                           # sembrado desde upstream; código propio editable
-    XivSpanish.Core/                #   modelos, hashing, ManifestLoader, DomainMap
+    XivSpanish.Core/                #   modelos, ManifestLoader, DomainMap
     XivSpanish.GameData/            #   Lumina, EXD binario, ExdPatcher, SeString, GameLocator
     VENDORED.md                     #   procedencia (commit upstream + fecha)
   src vendorizado del Packager      # [F1] lógica de Program.cs extraída a librería

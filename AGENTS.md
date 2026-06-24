@@ -21,7 +21,7 @@ de extracción / parcheo binario de EXD / SeString / empaquetado se **reutiliza*
 - `src/FFXIVSpanishPatcher.App` — GUI Avalonia (MVVM, entry point, tema oscuro). *(F3)*
 - `src/FFXIVSpanishPatcher.Pipeline` — orquestación `extract→patch→package` con eventos
   `IProgress<>`; GUI y tests la consumen in-process. *(F1)*
-- `vendor/XivSpanish.Core` — modelos de traducción, hashing, `ManifestLoader`, `DomainMap`.
+- `vendor/XivSpanish.Core` — modelos de traducción, `ManifestLoader`, `DomainMap`.
 - `vendor/XivSpanish.GameData` — Lumina, formato binario EXD, `ExdPatcher`, SeString, `GameLocator`.
 - `data/translations.dat` — blob gzip-JSONL versionado (~9 MB) que la App embebe. El corpus crudo
   `data/translations/jsonl/` (~60 MB) NO se versiona; se sincroniza local solo para regenerar el blob.

@@ -2,46 +2,25 @@ using System.Text.Json.Serialization;
 
 namespace XivSpanish.Translation;
 
+/// <summary>
+/// A translation row as the patcher consumes it. Only the fields the pipeline reads are modelled —
+/// <c>source</c>, <c>target</c>, <c>status</c> and <c>sourceKey</c>. The upstream corpus carries more
+/// provenance metadata (id, hash, category, translator, reviewer, notes, context), but
+/// build-translations.py projects it away, so it is intentionally not modelled here.
+/// </summary>
 public sealed class TranslationEntry
 {
-    private string? _context;
-
-    [JsonPropertyName("id")]
-    public string Id { get; set; } = string.Empty;
-
-    [JsonPropertyName("category")]
-    public string Category { get; set; } = string.Empty;
-
     [JsonPropertyName("source")]
     public string Source { get; set; } = string.Empty;
 
     [JsonPropertyName("target")]
     public string Target { get; set; } = string.Empty;
 
-    [JsonPropertyName("context")]
-    public string? Context
-    {
-        get => _context;
-        set => _context = string.IsNullOrWhiteSpace(value) ? null : value;
-    }
-
-    [JsonPropertyName("hash")]
-    public string Hash { get; set; } = string.Empty;
-
     [JsonPropertyName("sourceKey")]
     public TranslationSourceKey? SourceKey { get; set; }
 
     [JsonPropertyName("status")]
     public string? Status { get; set; }
-
-    [JsonPropertyName("translator")]
-    public string? Translator { get; set; }
-
-    [JsonPropertyName("reviewer")]
-    public string? Reviewer { get; set; }
-
-    [JsonPropertyName("notes")]
-    public string? Notes { get; set; }
 }
 
 public static class TranslationEntryStatus

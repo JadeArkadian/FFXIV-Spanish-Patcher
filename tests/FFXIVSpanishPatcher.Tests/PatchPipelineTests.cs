@@ -46,10 +46,9 @@ public sealed class PatchPipelineTests : IDisposable
             .AddLayout("Addon", new ExdLayout(4, [0], 1));
     }
 
-    private static TranslationEntry Approved(string id, uint rowId, string source, string target)
+    private static TranslationEntry Approved(uint rowId, string source, string target)
         => new()
         {
-            Id = id,
             Source = source,
             Target = target,
             Status = TranslationEntryStatus.Approved,
@@ -58,9 +57,9 @@ public sealed class PatchPipelineTests : IDisposable
 
     private static IReadOnlyList<TranslationEntry> ApprovedManifest() =>
     [
-        Approved("a1", 1u, "Independent Arms Mender", "Armero independiente"),
-        Approved("a2", 2u, string.Empty, "Texto generado"),
-        Approved("a3", 262u, "Healing Magic Potency", "Potencia de magia curativa"),
+        Approved(1u, "Independent Arms Mender", "Armero independiente"),
+        Approved(2u, string.Empty, "Texto generado"),
+        Approved(262u, "Healing Magic Potency", "Potencia de magia curativa"),
     ];
 
     private PatchRequest Request(IReadOnlyCollection<string>? categories = null) => new()

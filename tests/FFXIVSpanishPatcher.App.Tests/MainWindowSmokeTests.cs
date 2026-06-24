@@ -22,8 +22,8 @@ public class MainWindowSmokeTests
     {
         var entries = new List<TranslationEntry>
         {
-            new() { Id = "i", Status = TranslationEntryStatus.Approved, Target = "x", SourceKey = new TranslationSourceKey { Sheet = "Item", RowId = 1 } },
-            new() { Id = "q", Status = TranslationEntryStatus.Approved, Target = "y", SourceKey = new TranslationSourceKey { Sheet = "Quest", RowId = 2 } },
+            new() { Status = TranslationEntryStatus.Approved, Target = "x", SourceKey = new TranslationSourceKey { Sheet = "Item", RowId = 1 } },
+            new() { Status = TranslationEntryStatus.Approved, Target = "y", SourceKey = new TranslationSourceKey { Sheet = "Quest", RowId = 2 } },
         };
 
         var viewModel = new MainViewModel(new NoopShell(), new ListTranslationSource(entries));

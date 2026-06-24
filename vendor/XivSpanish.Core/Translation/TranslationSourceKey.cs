@@ -10,9 +10,6 @@ public sealed class TranslationSourceKey
     [JsonPropertyName("rowId")]
     public uint? RowId { get; set; }
 
-    [JsonPropertyName("subRowId")]
-    public uint? SubRowId { get; set; }
-
     [JsonPropertyName("field")]
     public string Field { get; set; } = string.Empty;
 

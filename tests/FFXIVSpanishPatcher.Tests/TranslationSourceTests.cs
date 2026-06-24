@@ -30,8 +30,8 @@ public sealed class TranslationSourceTests : IDisposable
     {
         var entries = new[]
         {
-            new TranslationEntry { Id = "x1", Source = "Hello", Target = "Hola", Status = TranslationEntryStatus.Approved },
-            new TranslationEntry { Id = "x2", Source = "World", Target = "Mundo", Status = TranslationEntryStatus.Approved },
+            new TranslationEntry { Source = "Hello", Target = "Hola", Status = TranslationEntryStatus.Approved },
+            new TranslationEntry { Source = "World", Target = "Mundo", Status = TranslationEntryStatus.Approved },
         };
         var path = Path.Combine(_temp, "manifest.jsonl");
         File.WriteAllLines(path, entries.Select(e => JsonSerializer.Serialize(e)));
@@ -46,12 +46,12 @@ public sealed class TranslationSourceTests : IDisposable
     [Fact]
     public void ListTranslationSource_ReturnsTheSameEntries()
     {
-        var entries = new List<TranslationEntry> { new() { Id = "only" } };
+        var entries = new List<TranslationEntry> { new() { Source = "only" } };
 
         var loaded = new ListTranslationSource(entries).Load();
 
         Assert.Single(loaded);
-        Assert.Equal("only", loaded[0].Id);
+        Assert.Equal("only", loaded[0].Source);
     }
 
     [Fact]
@@ -59,8 +59,8 @@ public sealed class TranslationSourceTests : IDisposable
     {
         // Mirrors the build-translations.py blob format: gzip of newline-delimited TranslationEntry JSON.
         var jsonl = string.Join('\n',
-            JsonSerializer.Serialize(new TranslationEntry { Id = "e1", Source = "A", Target = "a", Status = TranslationEntryStatus.Approved }),
-            JsonSerializer.Serialize(new TranslationEntry { Id = "e2", Source = "B", Target = "b", Status = TranslationEntryStatus.Approved }));
+            JsonSerializer.Serialize(new TranslationEntry { Source = "A", Target = "a", Status = TranslationEntryStatus.Approved }),
+            JsonSerializer.Serialize(new TranslationEntry { Source = "B", Target = "b", Status = TranslationEntryStatus.Approved }));
 
         using var buffer = new MemoryStream();
         using (var gzip = new GZipStream(buffer, CompressionLevel.Optimal, leaveOpen: true))

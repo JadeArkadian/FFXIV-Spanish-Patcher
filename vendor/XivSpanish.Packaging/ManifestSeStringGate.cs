@@ -8,15 +8,16 @@ namespace XivSpanish.Packager;
 /// </summary>
 public sealed record ManifestSeStringViolation(TranslationEntry Entry, SeStringCompatibilityReport Report)
 {
-    /// <summary>Stable row label for CLI output: id plus sheet/row when the source key carries them.</summary>
+    /// <summary>Stable row label for CLI output: sheet/row(.field) from the source key, falling back
+    /// to the source text when the key is absent.</summary>
     public string Label
     {
         get
         {
             var key = Entry.SourceKey;
             return key is null
-                ? Entry.Id
-                : $"{Entry.Id} ({key.Sheet}/{key.RowId}{(string.IsNullOrWhiteSpace(key.Field) ? string.Empty : $".{key.Field}")})";
+                ? Entry.Source
+                : $"{key.Sheet}/{key.RowId}{(string.IsNullOrWhiteSpace(key.Field) ? string.Empty : $".{key.Field}")}";
         }
     }
 
