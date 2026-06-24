@@ -1,7 +1,8 @@
 name: Release
 
 # Tag a commit (e.g. v1.2.3) to build self-contained single-file executables for Windows, Linux and
-# macOS and attach them to a GitHub Release. All RIDs are cross-published from one Linux runner.
+# macOS and attach them to a GitHub Release. win/linux cross-publish from a Linux runner; the macOS
+# RIDs build on a macOS runner so the .app bundle can be ad-hoc codesigned.
 on:
   push:
     tags: [ 'v*' ]
@@ -11,11 +12,17 @@ permissions:
 
 jobs:
   publish:
-    runs-on: ubuntu-latest
+    # win/linux cross-publish from Linux; osx builds on a macOS runner so the bundle can be ad-hoc
+    # codesigned (mandatory for arm64 to run at all, and removes the "damaged" Gatekeeper error).
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        rid: [ win-x64, linux-x64, osx-x64, osx-arm64 ]
+        include:
+          - { rid: win-x64,   os: ubuntu-latest }
+          - { rid: linux-x64, os: ubuntu-latest }
+          - { rid: osx-x64,   os: macos-latest }
+          - { rid: osx-arm64, os: macos-latest }
     steps:
       - uses: actions/checkout@v4
 
@@ -54,8 +61,13 @@ jobs:
             chmod +x "$APP/Contents/MacOS/FFXIVSpanishPatcher"
             cp src/FFXIVSpanishPatcher.App/Assets/icon.icns "$APP/Contents/Resources/icon.icns"
             sed "s/__VERSION__/$VERSION/g" build/macos/Info.plist > "$APP/Contents/Info.plist"
-            # -y keeps symlinks; zip preserves the +x bit so the bundle stays launchable.
-            zip -r -y "$ASSET" "$APP" README.md
+            # Ad-hoc sign (inner Mach-O, then the bundle). Required for arm64 to launch and removes
+            # the "is damaged" Gatekeeper error. Not notarized: users still "Open Anyway" once.
+            codesign --force --timestamp=none --sign - "$APP/Contents/MacOS/FFXIVSpanishPatcher"
+            codesign --force --timestamp=none --sign - "$APP"
+            codesign --verify --strict --verbose=2 "$APP"
+            # ditto is Apple's archiver; it preserves the code signature and bundle layout.
+            ditto -c -k --keepParent "$APP" "$ASSET"
           else
             cp README.md "$OUT/README.md"
             ( cd "$OUT" && zip -r "../../$ASSET" . )
