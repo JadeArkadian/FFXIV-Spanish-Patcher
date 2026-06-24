@@ -4,19 +4,29 @@
   Re-sync the vendored core libraries from the upstream FFXIV-Spanish repo.
 
 .DESCRIPTION
-  vendor/ mirrors XivSpanish.Core and XivSpanish.GameData from upstream. It is NOT edited by
-  hand: changes flow one way (upstream -> vendor) through this script. After running, review the
-  diff, rebuild, and commit. Provenance (upstream commit + sync date) is written to
-  vendor/VENDORED.md.
+  vendor/ was SEEDED from upstream XivSpanish.Core / XivSpanish.GameData, but it is now owned,
+  hand-editable code in this repo (the old read-only rule was lifted 2026-06-24). This script
+  re-imports upstream by WIPING and recopying vendor/, so it OVERWRITES any local edits. It is
+  therefore guarded behind -Force: run it only when you intend to adopt upstream's state (losing
+  local changes) or after porting your edits upstream. After running, review the diff, rebuild,
+  and commit. Provenance (upstream commit + sync date) is written to vendor/VENDORED.md.
 
 .PARAMETER Upstream
   Path to the upstream FFXIV-Spanish repo. Defaults to the sibling directory of this repo.
+.PARAMETER Force
+  Required acknowledgement that this overwrites local vendor/ edits with upstream.
 #>
 [CmdletBinding()]
 param(
-    [string]$Upstream = "$PSScriptRoot/../../FFXIV-Spanish"
+    [string]$Upstream = "$PSScriptRoot/../../FFXIV-Spanish",
+    [switch]$Force
 )
 $ErrorActionPreference = 'Stop'
+
+if (-not $Force) {
+    throw "sync-vendor.ps1 SOBREESCRIBE vendor/ con upstream (pierde ediciones locales). " +
+          "Re-ejecuta con -Force si es lo que quieres."
+}
 
 $repoRoot   = (Resolve-Path "$PSScriptRoot/..").Path
 $vendorRoot = Join-Path $repoRoot 'vendor'
@@ -89,8 +99,9 @@ $date   = Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz'
 $md = @"
 # Vendored code
 
-vendor/ mirrors core libraries copied from the upstream FFXIV-Spanish repo.
-DO NOT edit these files by hand: run build/sync-vendor.ps1 to refresh, then rebuild and commit.
+vendor/ was SEEDED by copying core libraries from the upstream FFXIV-Spanish repo. It is now owned,
+hand-editable code in this repo (read-only rule lifted 2026-06-24); it may diverge from upstream.
+build/sync-vendor.ps1 -Force re-imports upstream by OVERWRITING vendor/, discarding local edits.
 
 | Field    | Value |
 | -------- | ----- |

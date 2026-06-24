@@ -29,19 +29,24 @@ de extracción / parcheo binario de EXD / SeString / empaquetado se **reutiliza*
 - `build/` — `sync-vendor.ps1`, `sync-translations.ps1` *(F2)*, `build-translations.py` *(F2)*.
 - `docs/DESIGN.md` — diseño completo y plan por fases.
 
-## Regla de frontera del código vendorizado
+## `vendor/`: código propio (origen sembrado desde upstream)
 
-`vendor/` es un espejo de solo-lectura de upstream FFXIV-Spanish. **No editar a mano.** Los cambios
-fluyen en un solo sentido (upstream → vendor) ejecutando `build/sync-vendor.ps1`; luego se revisa el
-diff, se recompila y se commitea. La procedencia (commit upstream + fecha) vive en `vendor/VENDORED.md`.
-Si la lógica core necesita un arreglo, se hace en upstream y se re-sincroniza, no en `vendor/`.
+`vendor/` se **sembró** copiando `XivSpanish.Core` / `XivSpanish.GameData` (+ primitivas del Packager)
+desde upstream FFXIV-Spanish, pero es **código que mantenemos en este repo y se puede editar a mano**.
+La antigua regla read-only se levantó (2026-06-24): el patcher y upstream pueden divergir.
+
+⚠️ `build/sync-vendor.ps1` **reimporta upstream borrando y recopiando `vendor/`**, así que
+**sobreescribe cualquier edición local**. Por eso ahora exige `-Force` y avisa: úsalo solo cuando
+quieras adoptar el estado de upstream (perdiendo tus cambios locales) o tras haber portado tus
+ediciones a upstream. La procedencia del sembrado vive en `vendor/VENDORED.md` (histórica).
 
 ## Decisiones cerradas (NO re-litigar)
 
 1. GUI = **.NET 10 + Avalonia UI** (cross-platform; WPF descartado por ser Windows-only).
 2. Modelo de datos = traducciones **embebidas** + extracción **lean** (solo sheets traducidos,
    en vivo desde el juego del usuario). Legal-clean: no se redistribuyen bytes de SquareEnix.
-3. Reuso = repo standalone que **vendoriza** (copia) el core de FFXIV-Spanish. No submodule.
+3. Reuso = repo standalone que **sembró** `vendor/` copiando el core de FFXIV-Spanish (no submodule).
+   `vendor/` es código propio editable; pueden divergir de upstream (regla read-only levantada 2026-06-24).
 4. Bundling traducciones = **solo embebido** en el `.exe`. Actualizar traducciones = re-publicar
    (re-correr `build-translations.py` + `dotnet publish`). Sin fichero lateral. El blob solo contiene
    filas empaquetables (`status ∈ {approved, gold}`); el resto no se aplica y se excluye.
@@ -75,7 +80,7 @@ Sin trimming ni NativeAOT: Lumina usa reflexión.
 
 - No modificar archivos originales de FFXIV ni reinyectar DATs.
 - No redistribuir bytes de SquareEnix (`.exd`/`.exh`/`.pmp`/dumps): nunca versionados.
-- No editar `vendor/` a mano.
+- No correr `build/sync-vendor.ps1` sin querer adoptar upstream: **sobreescribe** `vendor/` (exige `-Force`).
 - No añadir traducción automática: el corpus llega curado desde upstream.
 
 ## Estado

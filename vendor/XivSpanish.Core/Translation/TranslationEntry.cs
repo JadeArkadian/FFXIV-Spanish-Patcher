@@ -47,6 +47,11 @@ public sealed class TranslationEntry
 public static class TranslationEntryStatus
 {
     public const string Approved = "approved";
+
+    /// <summary>Gold-standard tier: a manually verified, highest-confidence translation. Packaged
+    /// alongside <see cref="Approved"/>.</summary>
+    public const string Gold = "gold";
+
     public const string Draft = "draft";
     public const string NeedsReview = "needs-review";
     public const string Rejected = "rejected";

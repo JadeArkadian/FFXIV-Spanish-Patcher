@@ -33,7 +33,7 @@ FFXIV-Spanish-Patcher/
   src/
     FFXIVSpanishPatcher.App/        # GUI Avalonia (MVVM, entry point, tema oscuro)   [F3]
     FFXIVSpanishPatcher.Pipeline/   # orquestación extract→patch→package + IProgress  [F1]
-  vendor/                           # espejo de upstream, NO editar a mano
+  vendor/                           # sembrado desde upstream; código propio editable
     XivSpanish.Core/                #   modelos, hashing, ManifestLoader, DomainMap
     XivSpanish.GameData/            #   Lumina, EXD binario, ExdPatcher, SeString, GameLocator
     VENDORED.md                     #   procedencia (commit upstream + fecha)
@@ -41,17 +41,19 @@ FFXIV-Spanish-Patcher/
   data/translations/                # manifest aprobado en JSONL (fuente del blob)
   tests/FFXIVSpanishPatcher.Tests/  # unit + integración EXD sintético
   build/
-    sync-vendor.ps1                 # one-way upstream→vendor (código)
+    sync-vendor.ps1                 # re-import upstream→vendor (sobreescribe; exige -Force)
     sync-translations.ps1           # [F2] one-way upstream→data/translations (JSONL)
     build-translations.py           # [F2] data/translations (approved+gold) → data/translations.dat (embebido)
   docs/DESIGN.md
 ```
 
-### Frontera de vendoring
+### Vendoring (sembrado, no espejo)
 
-`vendor/` no se edita a mano; los cambios entran solo por `sync-vendor.ps1` (upstream → vendor). Si la
-lógica core necesita un arreglo, se hace en upstream y se re-sincroniza. DRY entre repos = best-effort
-documentado (coste aceptado al elegir "copiar" en vez de submodule/referencia cruzada).
+`vendor/` se sembró copiando el core de upstream pero es **código propio editable** (regla read-only
+levantada 2026-06-24); patcher y upstream pueden divergir. `sync-vendor.ps1 -Force` reimporta upstream
+**sobreescribiendo** `vendor/` (descarta ediciones locales); úsalo solo para adoptar upstream o tras
+portar tus cambios allí. DRY entre repos = best-effort (coste aceptado al elegir "copiar" en vez de
+submodule/referencia cruzada).
 
 ## 4. Capa Pipeline (SOLID)
 

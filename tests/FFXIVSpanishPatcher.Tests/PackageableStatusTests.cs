@@ -24,7 +24,7 @@ public sealed class PackageableStatusTests
     public void Default_IsApprovedAndGold()
     {
         Assert.Contains(TranslationEntryStatus.Approved, PackageableStatus.Default);
-        Assert.Contains(PackageableStatus.Gold, PackageableStatus.Default);
+        Assert.Contains(TranslationEntryStatus.Gold, PackageableStatus.Default);
         Assert.Equal(2, PackageableStatus.Default.Count);
     }
 }
