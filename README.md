@@ -1,41 +1,142 @@
 # FFXIVSpanish Patcher
 
-Aplicación de escritorio (un solo ejecutable, sin instalación) que extrae los `.exd`
-necesarios de una instalación local de Final Fantasy XIV, los parchea con traducciones al
-castellano embebidas y genera un `.pmp` instalable con Penumbra.
+<p align="center">
+  <img src="docs/assets/logo-git.png" alt="FFXIV en español" width="360">
+</p>
 
-GUI en **.NET 10 + Avalonia UI**. La lógica de extracción / parcheo / empaquetado se reutiliza
-del proyecto **FFXIV-Spanish** mediante código vendorizado (ver `vendor/`).
+Parcheador de español para **Final Fantasy XIV**.
 
-## Estructura
+Esta aplicación genera un mod `.pmp` para Penumbra usando los archivos de tu propia instalación del
+juego. No modifica los archivos originales de FFXIV y no incluye archivos del juego: extrae solo los
+datos necesarios, aplica las traducciones incluidas en el programa y crea un paquete listo para
+instalar.
 
-- `src/FFXIVSpanishPatcher.App` — GUI Avalonia (MVVM). *(F3)*
-- `src/FFXIVSpanishPatcher.Pipeline` — orquestación extract→patch→package con eventos de progreso. *(F1)*
-- `vendor/` — librerías core copiadas de FFXIV-Spanish. **No editar a mano** (ver `vendor/VENDORED.md`).
-- `data/translations/` — manifest aprobado en JSONL (fuente del blob embebido).
-- `tests/FFXIVSpanishPatcher.Tests` — unit + integración con EXD sintético.
-- `build/` — scripts de sincronización y empaquetado de traducciones.
+La traducción todavía está en progreso. Gran parte de la interfaz, nombres de personajes, NPC,
+monstruos, objetos y textos del sistema ya está traducida, pero parte del guion, conversaciones y
+prosa narrativa puede seguir en inglés.
 
-## Build
+## Descargar
+
+Ve a la página de **Releases** del proyecto y descarga el ZIP de tu sistema:
+
+- `FFXIVSpanishPatcher-...-win-x64.zip` para Windows.
+- `FFXIVSpanishPatcher-...-linux-x64.zip` para Linux.
+- `FFXIVSpanishPatcher-...-osx-x64.zip` o `osx-arm64.zip` para macOS.
+
+Descomprime el ZIP y ejecuta `FFXIVSpanishPatcher`.
+
+No hace falta instalar .NET ni ningún runtime aparte: el programa viene empaquetado como ejecutable
+autónomo.
+
+## Requisitos
+
+- Final Fantasy XIV instalado.
+- Penumbra instalado y funcionando en Dalamud.
+- Una versión del juego compatible con la release descargada.
+
+Si el juego acaba de actualizarse, lo recomendable es quitar el mod de Penumbra y esperar una release
+nueva del parcheador, o en su defecto, recrear el mod a partir de los nuevos ficheros postparche. 
+FFXIV cambia archivos internos en cada parche y un paquete generado para una versión antigua puede provocar 
+textos rotos o cierres del juego.
+
+## Crear el mod
+
+1. Abre `FFXIVSpanishPatcher`.
+2. Si detecta la instalación de FFXIV, la ruta aparecerá automáticamente.
+3. Si no la detecta, pulsa **Examinar** y selecciona la carpeta del juego.
+4. Elige las categorías que quieras traducir. Puedes dejar todo marcado si no tienes una preferencia
+   concreta.
+5. Pulsa **Generar mod**.
+6. Cuando termine, abre la carpeta de salida desde la propia aplicación.
+
+El archivo generado tendrá un nombre parecido a:
+
+```text
+FFXIVSpanish-2026-06-24_18-30-00.pmp
+```
+
+Por defecto se guarda en:
+
+```text
+Documentos/FFXIVSpanish Patcher/Output
+```
+
+## Instalar en Penumbra
+
+1. Abre Penumbra dentro del juego.
+2. Importa el `.pmp` generado por el parcheador.
+3. Activa el mod.
+4. En los ajustes de Dalamud, marca **Wait for plugins before game loads**. Si no se hace este paso los textos no se cargarán adecuadamente.
+5. Reinicia el juego.
+
+Ese ajuste es importante: si Dalamud carga tarde, Penumbra puede no aplicar el mod a tiempo y verás
+el juego sin traducir.
+
+## Actualizar o quitar el mod
+
+Cuando salga una release nueva:
+
+1. Descarga el nuevo parcheador.
+2. Genera un `.pmp` nuevo.
+3. Quita o desactiva el paquete anterior en Penumbra.
+4. Importa y activa el paquete nuevo.
+
+Después de un parche oficial de FFXIV, desactiva el mod antiguo hasta que haya una versión nueva de
+este proyecto.
+
+## Qué se traduce
+
+La aplicación permite activar o desactivar bloques de traducción:
+
+- Misiones.
+- Nombres de NPC, enemigos, lugares y términos del mundo.
+- Clases y jobs.
+- Objetos.
+- Objetos de evento.
+- Coleccionables.
+- Acciones, habilidades, rasgos y estados.
+- Logros.
+- Registro de combate y mensajes del sistema.
+- Interfaz.
+
+Algunos textos pueden seguir en inglés aunque la categoría esté marcada. Eso suele significar que esa
+parte aún no está traducida o que el juego cambió el dato en un parche reciente.
+
+## Avisar de errores
+
+Si encuentras bugs, textos mal colocados, traducciones raras o inconsistencias, puedes enviarlo aquí:
+
+https://tally.so/r/1ARKzp
+
+Lo más útil es incluir:
+
+- Captura del texto.
+- Zona, misión, NPC, objeto o menú donde aparece.
+- Qué esperabas ver.
+- Versión del juego y versión del parcheador.
+
+## Seguridad y límites
+
+- El parcheador no toca los archivos originales del juego.
+- El `.pmp` se instala como cualquier otro mod de Penumbra.
+- No se redistribuyen archivos de Square Enix.
+- El proyecto no está afiliado a Square Enix.
+- Usar mods en FFXIV depende de herramientas externas y queda bajo tu responsabilidad.
+
+## Compilar desde código
+
+Para desarrollo necesitas el SDK indicado en `global.json`.
 
 ```powershell
 dotnet build
+dotnet test
 ```
 
-## Publicar (single-file, self-contained)
+Para publicar un ejecutable autónomo de Windows:
 
 ```powershell
 dotnet publish src/FFXIVSpanishPatcher.App -c Release -r win-x64 `
   --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
 ```
 
-El ejecutable resultante es un único `.exe` self-contained (~56 MB comprimido), sin instalación.
-
-## Releases (CI/CD)
-
-- `.github/workflows/ci.yml`: en cada push/PR a `main` compila y pasa los tests (incluido el smoke
-  headless de la GUI).
-- `.github/workflows/release.yml`: al empujar un tag `vX.Y.Z` publica los ejecutables single-file
-  para `win-x64`, `linux-x64`, `osx-x64` y `osx-arm64` y los adjunta a un GitHub Release.
-
-Ver `docs/DESIGN.md` para el diseño completo y `AGENTS.md` para el contexto de agentes IA.
+El diseño técnico y las decisiones internas están en `docs/DESIGN.md`.
