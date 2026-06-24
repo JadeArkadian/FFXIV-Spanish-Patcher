@@ -46,6 +46,10 @@ public static class TranslationCategories
         ["MultipleHelp"] = "interfaz",
         ["MultipleHelpString"] = "interfaz",
         ["OnlineStatus"] = "interfaz",
+        ["Balloon"] = "interfaz",
+        ["AkatsukiNoteString"] = "interfaz",
+        ["CreditListText"] = "interfaz",
+        ["RetainerTaskRandom"] = "interfaz",
 
         // Nombres: NPC/creatures, places, world flavor and character-creation lore terms.
         ["ENpcResident"] = "nombres",
@@ -83,6 +87,7 @@ public static class TranslationCategories
         ["FishParameter"] = "items",
         ["GatheringPointName"] = "items",
         ["GatheringPointBonusType"] = "items",
+        ["SecretRecipeBook"] = "items",
 
         // Acciones / habilidades: combat and crafting actions, traits, statuses.
         ["Action"] = "acciones",
@@ -97,7 +102,7 @@ public static class TranslationCategories
         ["GeneralAction"] = "acciones",
         ["BuddyAction"] = "acciones",
 
-        // Misiones: quest text/dialogue, journal structure and duty names.
+        // Misiones: quest text/dialogue, journal structure, duty names, FATEs and levequests.
         ["Quest"] = "misiones",
         ["DefaultTalk"] = "misiones",
         ["CustomTalk"] = "misiones",
@@ -106,6 +111,12 @@ public static class TranslationCategories
         ["JournalSection"] = "misiones",
         ["ContentFinderCondition"] = "misiones",
         ["ContentType"] = "misiones",
+        ["ContentRoulette"] = "misiones",
+        ["ContentTalk"] = "misiones",
+        ["GimmickTalk"] = "misiones",
+        ["WeeklyBingoText"] = "misiones",
+        ["Fate"] = "misiones",
+        ["Leve"] = "misiones",
 
         // Logros: achievements.
         ["Achievement"] = "logros",

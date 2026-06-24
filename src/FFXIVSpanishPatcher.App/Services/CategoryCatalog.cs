@@ -16,7 +16,7 @@ public static class CategoryCatalog
     public static IReadOnlyList<CategoryInfo> All { get; } =
     [
         new("misiones", "Misiones (quests)",
-            "Texto de misiones: títulos, objetivos y diálogos de quest (Quest, DefaultTalk, CustomTalk, Journal*, ContentFinderCondition)."),
+            "Texto de misiones: títulos, objetivos y diálogos de quest, FATEs y misiones de localización (Quest, DefaultTalk, CustomTalk, Journal*, ContentFinderCondition, Fate, Leve)."),
         new("nombres", "Nombres (NPC, lugares)",
             "Nombres propios y términos del mundo: NPC, criaturas, lugares, títulos, clima, razas y emotes (ENpcResident, BNpcName, PlaceName, EObjName, Title, Weather…)."),
         new("clases", "Clases y Jobs",

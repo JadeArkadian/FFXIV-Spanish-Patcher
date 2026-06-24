@@ -93,7 +93,7 @@ Sin trimming ni NativeAOT: Lumina usa reflexión.
   (orquestación `PatchPipeline` con eventos de progreso, ported del `Program.cs` upstream) + tests
   (14, incl. integración con EXD sintético: content + write-at-offset + broadcast + `.pmp`).
 - **F2** hecho: `tools/XivSpanish.BlobBuilder` (sync+build, C#) + `EmbeddedTranslationSource`.
-  Blob `data/translations.dat` versionado (**~5.1 MB**, ~296 k filas empaquetables ≈ `approved` +
+  Blob `data/translations.dat` versionado (**~5.7 MB**, ~306 k filas empaquetables ≈ `approved` +
   `gold` − filas con target vacío); corpus crudo git-ignored. El tool `XivSpanish.BlobBuilder`
   aplica tres reducciones, todas sin pérdida para el patcher (la ficha completa vive en el corpus
   upstream): (a) **filtra filas** al criterio exacto de `Packageable` (`status ∈ {approved, gold}` +
@@ -112,7 +112,9 @@ Sin trimming ni NativeAOT: Lumina usa reflexión.
   ampliada a **10 dominios**: categorías propias `logros`, `registro`, `eventos`, `coleccionables`,
   `clases` (ClassJob/ClassJobCategory, casilla aparte para dejar clases/jobs en inglés) y el resto
   plegado en los 5 buckets existentes, de modo que cada sheet enviado cae en una categoría
-  visible/toggleable (sin bucket invisible por-sheet). Mapeo en `Pipeline/TranslationCategories.cs`
+  visible/toggleable (sin bucket invisible por-sheet). Cubre las **89 sheets** del blob; al traer más
+  se mapean en `TranslationCategories` (último lote: `Fate`/`Leve`→misiones + 9 cola pre-existentes).
+  Mapeo en `Pipeline/TranslationCategories.cs`
   (supera a `DomainMap.Sprint2Default` sin tocar `vendor/`); metadatos en `App/Services/CategoryCatalog.cs`.
 - **F3** hecho: `src/FFXIVSpanishPatcher.App` (Avalonia MVVM, tema oscuro, layout del mockup:
   ruta+examinar, generar/abrir salida, consola en streaming, categorías EXD híbridas, toggle
