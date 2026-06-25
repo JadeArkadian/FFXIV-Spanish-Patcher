@@ -106,6 +106,7 @@ public static class TranslationCategories
         ["Quest"] = "misiones",
         ["DefaultTalk"] = "misiones",
         ["CustomTalk"] = "misiones",
+        ["NpcYell"] = "misiones",
         ["JournalGenre"] = "misiones",
         ["JournalCategory"] = "misiones",
         ["JournalSection"] = "misiones",

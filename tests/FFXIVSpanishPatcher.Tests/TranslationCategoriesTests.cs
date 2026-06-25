@@ -28,6 +28,7 @@ public sealed class TranslationCategoriesTests
     [InlineData("FishParameter", "items")]
     [InlineData("ActionTransient", "acciones")]
     [InlineData("Title", "nombres")]
+    [InlineData("NpcYell", "misiones")]
     [InlineData("JournalGenre", "misiones")]
     [InlineData("Fate", "misiones")]
     [InlineData("Leve", "misiones")]
