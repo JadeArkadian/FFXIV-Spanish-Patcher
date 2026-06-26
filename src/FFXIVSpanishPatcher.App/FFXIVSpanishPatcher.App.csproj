@@ -40,5 +40,8 @@
     <EmbeddedResource Include="..\..\data\translations.dat">
       <LogicalName>FFXIVSpanishPatcher.App.translations.dat</LogicalName>
     </EmbeddedResource>
+    <EmbeddedResource Include="..\..\data\recommended-game-version.txt">
+      <LogicalName>FFXIVSpanishPatcher.App.recommended-game-version.txt</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
 </Project>

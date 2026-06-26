@@ -48,11 +48,15 @@ public sealed class PatchPipeline
         Report(PipelineComponent.Patcher, "Cargando traducciones (FFXIVSpanish)", PipelineLevel.Ok, entries.Count);
 
         var selection = TranslationCategories.BuildSelection(request.Categories);
-        bool IsCandidate(TranslationEntry e)
+        var unsafeSeStringEntries = new HashSet<TranslationEntry>();
+        bool IsPackageableForSelection(TranslationEntry e)
             => Packageable(e, request.Statuses) is null && TranslationCategories.IsSelected(e, selection);
+        bool IsCandidate(TranslationEntry e)
+            => IsPackageableForSelection(e) && !unsafeSeStringEntries.Contains(e);
 
-        // 2. Hard SeString gate over the build candidates (all offending rows listed; never stops first).
-        var gate = ManifestSeStringGate.Check(entries.Where(IsCandidate));
+        // 2. SeString gate over the build candidates. Unsafe rows are skipped by default; a few bad
+        // corpus rows must not abort an otherwise valid package.
+        var gate = ManifestSeStringGate.Check(entries.Where(IsPackageableForSelection));
         if (gate.Count > 0)
         {
             if (request.ForceSeString)
@@ -69,12 +73,12 @@ public sealed class PatchPipeline
             {
                 foreach (var violation in gate)
                 {
-                    Report(PipelineComponent.Patcher, violation.Describe(), PipelineLevel.Error);
+                    unsafeSeStringEntries.Add(violation.Entry);
+                    Report(PipelineComponent.Patcher, $"omitida fila insegura: {violation.Describe()}", PipelineLevel.Warning);
                 }
 
                 Report(PipelineComponent.Pipeline,
-                    $"SeString gate: {gate.Count} fila(s) con destino incompatible. Generación abortada.", PipelineLevel.Error);
-                return PatchResult.Failure(PatchOutcome.SeStringGate);
+                    $"SeString gate: {gate.Count} fila(s) omitida(s) por SeString incompatible. Se continúa con el resto.", PipelineLevel.Warning);
             }
         }
 
@@ -138,7 +142,7 @@ public sealed class PatchPipeline
             }
 
             // 5. Broadcast table: approved target per sheet+field+source (ambiguous source -> null).
-            var broadcast = BuildBroadcast(entries, request.Statuses, selection);
+            var broadcast = BuildBroadcast(entries.Where(e => !unsafeSeStringEntries.Contains(e)).ToList(), request.Statuses, selection);
 
             // 6. Patch each page into the staging tree.
             var writer = new PackageWriter(request.StagingPath);

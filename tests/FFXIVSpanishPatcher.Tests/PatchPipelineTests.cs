@@ -129,6 +129,27 @@ public sealed class PatchPipelineTests : IDisposable
     }
 
     [Fact]
+    public void Run_SkipsUnsafeSeStringRows_AndPackagesRest()
+    {
+        var entries = ApprovedManifest()
+            .Append(Approved(999u, "Legacy <PayloadFF> source", "Fuente <PayloadFF> legacy"))
+            .ToList();
+        var pipeline = new PatchPipeline(new ListTranslationSource(entries), new FakePatchBackendFactory(BuildSource()));
+        var events = new List<PipelineEvent>();
+
+        var result = pipeline.Run(Request(), new SyncProgress<PipelineEvent>(events.Add));
+
+        Assert.True(result.Success);
+        Assert.Equal(PatchOutcome.Ok, result.Outcome);
+        Assert.Equal(4, result.Applied);
+        Assert.Equal(1, result.Skipped);
+        Assert.Contains(events, e =>
+            e.Level == PipelineLevel.Warning
+            && e.Message.Contains("SeString gate", StringComparison.OrdinalIgnoreCase)
+            && e.Message.Contains("omitida", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public void Run_WhenGameDataCannotBeOpened_ReturnsGameDataError()
     {
         var pipeline = new PatchPipeline(new ListTranslationSource(ApprovedManifest()), new ThrowingBackendFactory());

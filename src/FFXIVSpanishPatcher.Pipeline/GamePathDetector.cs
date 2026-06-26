@@ -19,6 +19,32 @@ public static partial class GamePathDetector
     /// <summary>True when the path resolves to a usable sqpack directory (handles <c>game/sqpack</c>).</summary>
     public static bool IsValid(string? path) => path is not null && GameLocator.ResolveSqpackPath(path) is not null;
 
+    /// <summary>Reads the installed game version from <c>ffxivgame.ver</c>, when the path is valid.</summary>
+    public static string? TryReadGameVersion(string? path)
+    {
+        var sqpack = GameLocator.ResolveSqpackPath(path);
+        if (sqpack is null)
+        {
+            return null;
+        }
+
+        foreach (var candidate in GameVersionCandidates(path!, sqpack))
+        {
+            if (!File.Exists(candidate))
+            {
+                continue;
+            }
+
+            var version = File.ReadAllText(candidate).Trim();
+            if (!string.IsNullOrWhiteSpace(version))
+            {
+                return version;
+            }
+        }
+
+        return null;
+    }
+
     private static IEnumerable<string?> Candidates()
     {
         yield return GameLocator.TryFindGamePathFromXivLauncherConfig();
@@ -55,6 +81,18 @@ public static partial class GamePathDetector
 
     [GeneratedRegex("\"path\"\\s+\"([^\"]+)\"")]
     private static partial Regex SteamPathRegex();
+
+    private static IEnumerable<string> GameVersionCandidates(string path, string sqpack)
+    {
+        yield return Path.Combine(path, "game", "ffxivgame.ver");
+        yield return Path.Combine(path, "ffxivgame.ver");
+
+        var gameDir = Directory.GetParent(sqpack)?.FullName;
+        if (!string.IsNullOrWhiteSpace(gameDir))
+        {
+            yield return Path.Combine(gameDir, "ffxivgame.ver");
+        }
+    }
 
     private static IEnumerable<string> SteamCandidates()
     {
