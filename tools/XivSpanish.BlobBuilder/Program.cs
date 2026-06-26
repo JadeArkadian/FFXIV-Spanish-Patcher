@@ -19,6 +19,8 @@ namespace XivSpanish.BlobBuilder;
 /// </summary>
 internal static class Program
 {
+    private const string RecommendedGameVersionPath = "data/recommended-game-version.txt";
+
     // Mirror of PatchPipeline.Packageable's status set (PackageableStatus.Default).
     private static readonly HashSet<string> PackageableStatuses =
         new(StringComparer.OrdinalIgnoreCase) { TranslationEntryStatus.Approved, TranslationEntryStatus.Gold };
@@ -53,7 +55,7 @@ internal static class Program
         Console.Error.WriteLine(
             "usage: blob-builder <command>\n" +
             "  sync   [--upstream DIR] [--build]   copy raw corpus from upstream FFXIV-Spanish\n" +
-            "  build  [--source DIR] [--output FILE]  regenerate data/translations.dat (Brotli)");
+            "  build  [--source DIR] [--output FILE] [--game-version FILE]  regenerate data/translations.dat (Brotli)");
         return 2;
     }
 
@@ -94,7 +96,9 @@ internal static class Program
         }
 
         Console.WriteLine($"Synced {count} .jsonl files from upstream into data/translations/jsonl");
-        return runBuild ? Build([]) : 0;
+        var versionFile = new FileInfo(Path.Combine(upstream.FullName, "data", "snapshots", "GAME_VERSION"));
+        WriteRecommendedGameVersion(repoRoot, ReadRequiredGameVersion(versionFile));
+        return runBuild ? Build(["--game-version", versionFile.FullName]) : 0;
     }
 
     private static int Build(string[] args)
@@ -104,6 +108,7 @@ internal static class Program
             ?? Path.Combine(repoRoot.FullName, "data", "translations", "jsonl"));
         var output = OptionValue(args, "--output")
             ?? Path.Combine(repoRoot.FullName, "data", "translations.dat");
+        var gameVersionFile = ResolveGameVersionFile(args, repoRoot);
 
         if (!source.Exists)
         {
@@ -168,10 +173,17 @@ internal static class Program
 
         // One newline-delimited JSONL stream (UTF-8, no BOM), Brotli-compressed (max ratio) in one shot.
         var payload = Encoding.UTF8.GetBytes(string.Join('\n', lines) + "\n");
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(output))!);
         using (var fs = File.Create(output))
         using (var brotli = new BrotliStream(fs, CompressionLevel.SmallestSize))
         {
             brotli.Write(payload);
+        }
+
+        var recommendedVersion = ReadOptionalGameVersion(gameVersionFile);
+        if (recommendedVersion is not null)
+        {
+            WriteRecommendedGameVersion(repoRoot, recommendedVersion);
         }
 
         var sizeMb = new FileInfo(output).Length / (1024.0 * 1024.0);
@@ -195,6 +207,48 @@ internal static class Program
     {
         var index = Array.IndexOf(args, name);
         return index >= 0 && index + 1 < args.Length ? args[index + 1] : null;
+    }
+
+    private static FileInfo ResolveGameVersionFile(string[] args, DirectoryInfo repoRoot)
+    {
+        var explicitPath = OptionValue(args, "--game-version");
+        return new FileInfo(explicitPath
+            ?? Path.Combine(repoRoot.Parent!.FullName, "FFXIV-Spanish", "data", "snapshots", "GAME_VERSION"));
+    }
+
+    private static string ReadRequiredGameVersion(FileInfo file)
+    {
+        if (!file.Exists)
+        {
+            throw new BlobBuilderError($"Game version file not found: {file.FullName}");
+        }
+
+        var version = File.ReadAllText(file.FullName).Trim();
+        if (version.Length == 0)
+        {
+            throw new BlobBuilderError($"Game version file is empty: {file.FullName}");
+        }
+
+        return version;
+    }
+
+    private static string? ReadOptionalGameVersion(FileInfo file)
+    {
+        if (!file.Exists)
+        {
+            Console.Error.WriteLine($"Game version file not found; keeping existing embedded recommendation if any: {file.FullName}");
+            return null;
+        }
+
+        return ReadRequiredGameVersion(file);
+    }
+
+    private static void WriteRecommendedGameVersion(DirectoryInfo repoRoot, string version)
+    {
+        var output = Path.Combine(repoRoot.FullName, RecommendedGameVersionPath);
+        Directory.CreateDirectory(Path.GetDirectoryName(output)!);
+        File.WriteAllText(output, version + Environment.NewLine, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        Console.WriteLine($"Wrote {RecommendedGameVersionPath}: {version}");
     }
 
     /// <summary>Walks up from the running assembly to the repo root (the dir with the .slnx).</summary>

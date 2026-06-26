@@ -15,6 +15,10 @@
     <SolidColorBrush x:Key="ConsoleBg" Color="#0D1422"/>
     <SolidColorBrush x:Key="Muted" Color="#9AA4B2"/>
     <SolidColorBrush x:Key="Text" Color="#E6EAF2"/>
+    <SolidColorBrush x:Key="ControlBlue" Color="#1E2840"/>
+    <SolidColorBrush x:Key="ControlBlueHover" Color="#253456"/>
+    <SolidColorBrush x:Key="ControlBluePressed" Color="#1D4ED8"/>
+    <SolidColorBrush x:Key="ControlBlueBorder" Color="#34446A"/>
   </Window.Resources>
 
   <Window.Styles>
@@ -30,12 +34,27 @@
       <Setter Property="CornerRadius" Value="10"/>
       <Setter Property="Padding" Value="18"/>
     </Style>
+    <Style Selector="Button">
+      <Setter Property="Background" Value="{StaticResource ControlBlue}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource ControlBlueBorder}"/>
+      <Setter Property="Foreground" Value="{StaticResource Text}"/>
+      <Setter Property="CornerRadius" Value="6"/>
+    </Style>
+    <Style Selector="Button:pointerover">
+      <Setter Property="Background" Value="{StaticResource ControlBlueHover}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
+    </Style>
+    <Style Selector="Button:pressed">
+      <Setter Property="Background" Value="{StaticResource ControlBluePressed}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
+    </Style>
     <Style Selector="Button.primary">
       <Setter Property="Background" Value="{StaticResource Accent}"/>
       <Setter Property="Foreground" Value="White"/>
       <Setter Property="FontWeight" Value="SemiBold"/>
       <Setter Property="Height" Value="48"/>
       <Setter Property="HorizontalContentAlignment" Value="Center"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
       <Setter Property="CornerRadius" Value="8"/>
     </Style>
     <Style Selector="Button.primary:disabled">
@@ -46,6 +65,7 @@
       <Setter Property="Foreground" Value="{StaticResource Text}"/>
       <Setter Property="Height" Value="48"/>
       <Setter Property="HorizontalContentAlignment" Value="Center"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
       <Setter Property="CornerRadius" Value="8"/>
     </Style>
   </Window.Styles>
@@ -84,11 +104,25 @@
             </Grid>
             <TextBlock Foreground="{StaticResource Muted}" FontSize="12"
                        Text="Se intenta detectar automáticamente. Puedes cambiarla manualmente si es necesario."/>
-            <Grid ColumnDefinitions="*,*" Margin="0,6,0,0">
-              <Button Grid.Column="0" Classes="primary" Margin="0,0,8,0"
-                      Content="Generar mod" Command="{Binding GenerateModCommand}"/>
-              <Button Grid.Column="1" Classes="secondary" Margin="8,0,0,0"
-                      Content="Abrir carpeta de salida" Command="{Binding OpenOutputFolderCommand}"/>
+            <Grid ColumnDefinitions="210,*" Margin="0,6,0,0">
+              <Button Grid.Column="0" Classes="primary" Width="210" Margin="0,0,8,0"
+                      Command="{Binding GenerateModCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
+                  <Path Width="18" Height="18" Stretch="Uniform" Stroke="White" StrokeThickness="2"
+                        StrokeLineCap="Round" StrokeJoin="Round"
+                        Data="M12 15.5 A3.5 3.5 0 1 0 12 8.5 A3.5 3.5 0 0 0 12 15.5 Z M19.4 15 A1.65 1.65 0 0 0 19.73 16.82 L19.79 16.92 A2 2 0 0 1 19.06 19.65 L18.94 19.72 A2 2 0 0 1 16.21 18.99 L16.15 18.89 A1.65 1.65 0 0 0 14.55 18 H14.45 A1.65 1.65 0 0 0 12.85 18.89 L12.79 18.99 A2 2 0 0 1 10.06 19.72 L9.94 19.65 A2 2 0 0 1 9.21 16.92 L9.27 16.82 A1.65 1.65 0 0 0 9.6 15 V14.9 A1.65 1.65 0 0 0 8.33 13.29 L8.22 13.24 A2 2 0 0 1 8.22 10.76 L8.33 10.71 A1.65 1.65 0 0 0 9.6 9.1 V9 A1.65 1.65 0 0 0 9.27 7.18 L9.21 7.08 A2 2 0 0 1 9.94 4.35 L10.06 4.28 A2 2 0 0 1 12.79 5.01 L12.85 5.11 A1.65 1.65 0 0 0 14.45 6 H14.55 A1.65 1.65 0 0 0 16.15 5.11 L16.21 5.01 A2 2 0 0 1 18.94 4.28 L19.06 4.35 A2 2 0 0 1 19.79 7.08 L19.73 7.18 A1.65 1.65 0 0 0 19.4 9 V9.1 A1.65 1.65 0 0 0 20.67 10.71 L20.78 10.76 A2 2 0 0 1 20.78 13.24 L20.67 13.29 A1.65 1.65 0 0 0 19.4 14.9 Z"/>
+                  <TextBlock Text="Generar mod" VerticalAlignment="Center"/>
+                </StackPanel>
+              </Button>
+              <Button Grid.Column="1" Classes="secondary" Width="220" Margin="8,0,0,0"
+                      Command="{Binding OpenOutputFolderCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
+                  <Path Width="19" Height="17" Stretch="Uniform" Stroke="White" StrokeThickness="2"
+                        StrokeLineCap="Round" StrokeJoin="Round"
+                        Data="M3 6 H8 L10 8 H21 V19 A2 2 0 0 1 19 21 H5 A2 2 0 0 1 3 19 Z M3 6 V5 A2 2 0 0 1 5 3 H8 L10 5 H19 A2 2 0 0 1 21 7 V8"/>
+                  <TextBlock Text="Abrir carpeta de salida" VerticalAlignment="Center"/>
+                </StackPanel>
+              </Button>
             </Grid>
           </StackPanel>
         </Border>

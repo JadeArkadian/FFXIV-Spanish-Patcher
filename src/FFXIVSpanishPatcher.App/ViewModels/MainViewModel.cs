@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Reflection;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -16,20 +17,36 @@ namespace FFXIVSpanishPatcher.App.ViewModels;
 public partial class MainViewModel : ObservableObject
 {
     private const string ResourceName = "FFXIVSpanishPatcher.App.translations.dat";
+    private const string RecommendedGameVersionResourceName = "FFXIVSpanishPatcher.App.recommended-game-version.txt";
 
     private readonly IShellServices _shell;
     private readonly ITranslationSource _translations;
+    private readonly string? _recommendedGameVersion;
     private IReadOnlyList<TranslationEntry>? _entries;
 
     public MainViewModel(IShellServices shell)
-        : this(shell, EmbeddedTranslationSource.FromAssemblyResource(typeof(MainViewModel).Assembly, ResourceName))
+        : this(
+            shell,
+            EmbeddedTranslationSource.FromAssemblyResource(typeof(MainViewModel).Assembly, ResourceName),
+            LoadRecommendedGameVersion(typeof(MainViewModel).Assembly, RecommendedGameVersionResourceName))
     {
     }
 
     public MainViewModel(IShellServices shell, ITranslationSource translations)
+        : this(
+            shell,
+            translations,
+            LoadRecommendedGameVersion(typeof(MainViewModel).Assembly, RecommendedGameVersionResourceName))
+    {
+    }
+
+    public MainViewModel(IShellServices shell, ITranslationSource translations, string? recommendedGameVersion)
     {
         _shell = shell;
         _translations = translations;
+        _recommendedGameVersion = string.IsNullOrWhiteSpace(recommendedGameVersion)
+            ? null
+            : recommendedGameVersion.Trim();
         OutputFolder = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
             "FFXIVSpanish Patcher", "Output");
@@ -40,6 +57,8 @@ public partial class MainViewModel : ObservableObject
     public ObservableCollection<ConsoleLine> Console { get; } = [];
 
     public string OutputFolder { get; }
+
+    public string? RecommendedGameVersion => _recommendedGameVersion;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(GenerateModCommand))]
@@ -73,6 +92,10 @@ public partial class MainViewModel : ObservableObject
         Console.Add(Info(GamePath is null
             ? "No se detectó la instalación de FFXIV. Indica la ruta manualmente."
             : $"Ruta del juego detectada: {GamePath}"));
+        if (_recommendedGameVersion is not null)
+        {
+            Console.Add(Info($"Versión recomendada del juego: {_recommendedGameVersion}"));
+        }
 
         _ = Task.Run(LoadTranslations);
     }
@@ -106,17 +129,31 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    private bool CanGenerate => !IsBusy && TranslationsReady && GamePathDetector.IsValid(GamePath);
+    private bool CanGenerate => !IsBusy && TranslationsReady;
 
     [RelayCommand(CanExecute = nameof(CanGenerate))]
     private async Task GenerateModAsync()
     {
+        var enabled = Categories.Where(c => c.IsEnabled).ToList();
+        var selected = enabled.Where(c => c.IsSelected).Select(c => c.Domain).ToArray();
+        if (selected.Length == 0)
+        {
+            Reject("Selecciona al menos una categoría antes de generar el parche.");
+            return;
+        }
+
+        if (!GamePathDetector.IsValid(GamePath))
+        {
+            Reject(InvalidGamePathMessage(GamePath));
+            return;
+        }
+
+        WarnIfGameVersionDiffers();
+
         IsBusy = true;
         LastSuccess = null;
         StatusText = "Generando...";
 
-        var enabled = Categories.Where(c => c.IsEnabled).ToList();
-        var selected = enabled.Where(c => c.IsSelected).Select(c => c.Domain).ToArray();
         IReadOnlyCollection<string>? categories = selected.Length == enabled.Count ? null : selected;
 
         Directory.CreateDirectory(OutputFolder);
@@ -162,9 +199,15 @@ public partial class MainViewModel : ObservableObject
         if (!string.IsNullOrWhiteSpace(picked))
         {
             GamePath = picked;
-            Console.Add(GamePathDetector.IsValid(picked)
-                ? Info($"Ruta del juego: {picked}")
-                : Error($"La ruta no contiene datos válidos de FFXIV: {picked}"));
+            if (GamePathDetector.IsValid(picked))
+            {
+                Console.Add(Info($"Ruta del juego: {picked}"));
+            }
+            else
+            {
+                var message = InvalidGamePathMessage(picked);
+                Console.Add(Error(message));
+            }
         }
     }
 
@@ -185,6 +228,55 @@ public partial class MainViewModel : ObservableObject
     private static ConsoleLine Info(string message)
         => new(new PipelineEvent(PipelineComponent.Pipeline, message));
 
+    private static ConsoleLine Warning(string message)
+        => new(new PipelineEvent(PipelineComponent.Pipeline, message, PipelineLevel.Warning));
+
     private static ConsoleLine Error(string message)
         => new(new PipelineEvent(PipelineComponent.Pipeline, message, PipelineLevel.Error));
+
+    private void Reject(string message)
+    {
+        LastSuccess = false;
+        StatusText = "ERROR";
+        Console.Add(Error(message));
+    }
+
+    private void WarnIfGameVersionDiffers()
+    {
+        if (_recommendedGameVersion is null)
+        {
+            return;
+        }
+
+        var installedVersion = GamePathDetector.TryReadGameVersion(GamePath);
+        if (string.IsNullOrWhiteSpace(installedVersion)
+            || string.Equals(installedVersion.Trim(), _recommendedGameVersion, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        var message =
+            $"Esta herramienta se compiló para FFXIV {_recommendedGameVersion}, " +
+            $"pero la instalación seleccionada parece ser {installedVersion.Trim()}. " +
+            "Puedes continuar, pero algunas traducciones podrían no aplicarse hasta que el parcheador se actualice.";
+        Console.Add(Warning(message));
+    }
+
+    private static string InvalidGamePathMessage(string? path)
+        => string.IsNullOrWhiteSpace(path)
+            ? "Selecciona la carpeta de instalación de FFXIV antes de generar el parche."
+            : $"La ruta seleccionada no contiene datos válidos de FFXIV: {path}";
+
+    private static string? LoadRecommendedGameVersion(Assembly assembly, string resourceName)
+    {
+        using var stream = assembly.GetManifestResourceStream(resourceName);
+        if (stream is null)
+        {
+            return null;
+        }
+
+        using var reader = new StreamReader(stream);
+        var version = reader.ReadToEnd().Trim();
+        return version.Length == 0 ? null : version;
+    }
 }
