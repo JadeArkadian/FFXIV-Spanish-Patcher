@@ -5,7 +5,7 @@
         x:DataType="vm:MainViewModel"
         Icon="/Assets/icon.ico"
         Title="FFXIVSpanish Patcher"
-        Width="1180" Height="720" MinWidth="960" MinHeight="600"
+        Width="1180" Height="780" MinWidth="960" MinHeight="600"
         Background="#0B1120">
 
   <Window.Resources>
