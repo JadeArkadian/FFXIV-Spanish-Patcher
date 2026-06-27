@@ -40,6 +40,14 @@ public sealed class PatchPipeline
         void Report(PipelineComponent component, string message, PipelineLevel level = PipelineLevel.Info, int? count = null)
             => progress?.Report(new PipelineEvent(component, message, level, count));
 
+        void Debug(string message, int? count = null)
+        {
+            if (request.DebugLogging)
+            {
+                Report(PipelineComponent.Patcher, message, PipelineLevel.Debug, count);
+            }
+        }
+
         void Conflict(string message) => Report(PipelineComponent.Patcher, message, PipelineLevel.Warning);
 
         Report(PipelineComponent.Pipeline, "Iniciando generación del mod...");
@@ -210,9 +218,8 @@ public sealed class PatchPipeline
 
                 if (broadcasted > 0)
                 {
-                    Report(PipelineComponent.Patcher,
+                    Debug(
                         $"broadcast {exdPath}: +{broadcasted} duplicados ({payloadBroadcasted} payload-safe)",
-                        PipelineLevel.Ok,
                         broadcasted);
                 }
 
@@ -227,9 +234,8 @@ public sealed class PatchPipeline
 
                 if (fieldAliasBroadcasted > 0)
                 {
-                    Report(PipelineComponent.Patcher,
+                    Debug(
                         $"field-alias {exdPath}: +{fieldAliasBroadcasted} alias de campo",
-                        PipelineLevel.Ok,
                         fieldAliasBroadcasted);
                 }
 
@@ -256,7 +262,7 @@ public sealed class PatchPipeline
                 }
 
                 writer.AddPatchedExd(exdPath, result.Bytes);
-                Report(PipelineComponent.Patcher, page.Sheet,
+                Report(PipelineComponent.Patcher, PageResultMessage(page.Sheet, result.Missed),
                     result.Missed.Count == 0 ? PipelineLevel.Ok : PipelineLevel.Warning, result.Applied);
             }
 
@@ -368,6 +374,20 @@ public sealed class PatchPipeline
         }
 
         return columns;
+    }
+
+    private static string PageResultMessage(string sheet, IReadOnlyList<MissedReplacement> missed)
+    {
+        if (missed.Count == 0)
+        {
+            return sheet;
+        }
+
+        var rowIds = string.Join(", ", missed
+            .Select(miss => miss.RowId)
+            .Distinct()
+            .OrderBy(rowId => rowId));
+        return $"{sheet}: {missed.Count} miss(es), rowId(s): {rowIds}";
     }
 
     /// <summary>Replacements grouped for one EXD page, deduped per (field, source).</summary>

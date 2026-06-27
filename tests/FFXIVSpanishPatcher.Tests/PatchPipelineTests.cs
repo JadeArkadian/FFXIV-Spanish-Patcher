@@ -85,11 +85,12 @@ public sealed class PatchPipelineTests : IDisposable
         Approved(262u, "Healing Magic Potency", "Potencia de magia curativa"),
     ];
 
-    private PatchRequest Request(IReadOnlyCollection<string>? categories = null) => new()
+    private PatchRequest Request(IReadOnlyCollection<string>? categories = null, bool debugLogging = false) => new()
     {
         OutputPath = Path.Combine(_temp, "out.pmp"),
         StagingPath = Path.Combine(_temp, "staging"),
         Categories = categories,
+        DebugLogging = debugLogging,
         VerifyIntegrity = true,
     };
 
@@ -125,6 +126,41 @@ public sealed class PatchPipelineTests : IDisposable
 
         // A verifier OK event was emitted (the toggle path ran).
         Assert.Contains(events, e => e.Component == PipelineComponent.Verifier && e.Level == PipelineLevel.Ok);
+        Assert.DoesNotContain(events, e => e.Level == PipelineLevel.Debug);
+    }
+
+    [Fact]
+    public void Run_WithDebugLogging_EmitsBroadcastDiagnostics()
+    {
+        var pipeline = new PatchPipeline(new ListTranslationSource(ApprovedManifest()), new FakePatchBackendFactory(BuildSource()));
+        var events = new List<PipelineEvent>();
+
+        var result = pipeline.Run(Request(debugLogging: true), new SyncProgress<PipelineEvent>(events.Add));
+
+        Assert.True(result.Success);
+        Assert.Contains(events, e =>
+            e.Level == PipelineLevel.Debug
+            && e.Message.Contains("broadcast", StringComparison.OrdinalIgnoreCase)
+            && e.Message.Contains("duplicados", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Run_WhenPageHasMiss_WarningIncludesMissedRowIds()
+    {
+        var entries = ApprovedManifest()
+            .Append(Approved(1u, "Source not in row", "Fuente ausente"))
+            .ToList();
+        var pipeline = new PatchPipeline(new ListTranslationSource(entries), new FakePatchBackendFactory(BuildSource()));
+        var events = new List<PipelineEvent>();
+
+        var result = pipeline.Run(Request(), new SyncProgress<PipelineEvent>(events.Add));
+
+        Assert.True(result.Success);
+        Assert.Equal(PatchOutcome.PackagedWithMisses, result.Outcome);
+        Assert.Contains(events, e =>
+            e.Level == PipelineLevel.Warning
+            && e.Message.Contains("Addon", StringComparison.Ordinal)
+            && e.Message.Contains("rowId(s): 1", StringComparison.Ordinal));
     }
 
     [Fact]

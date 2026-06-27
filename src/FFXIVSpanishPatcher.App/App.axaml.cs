@@ -15,7 +15,7 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var window = new MainWindow();
-            var viewModel = new MainViewModel(window);
+            var viewModel = new MainViewModel(window, debugLogging: HasDebugArgument(desktop.Args));
             window.DataContext = viewModel;
             desktop.MainWindow = window;
             viewModel.Start();
@@ -23,4 +23,7 @@ public partial class App : Application
 
         base.OnFrameworkInitializationCompleted();
     }
+
+    private static bool HasDebugArgument(IReadOnlyList<string>? args)
+        => args?.Any(arg => string.Equals(arg, "--debug", StringComparison.OrdinalIgnoreCase)) == true;
 }

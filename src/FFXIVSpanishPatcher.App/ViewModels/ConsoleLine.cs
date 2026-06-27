@@ -25,6 +25,7 @@ public sealed class ConsoleLine
 
     private static IBrush BrushFor(PipelineLevel level) => level switch
     {
+        PipelineLevel.Debug => new SolidColorBrush(Color.FromRgb(0x7D, 0x86, 0x95)),   // dim gray
         PipelineLevel.Ok => new SolidColorBrush(Color.FromRgb(0x4A, 0xDE, 0x80)),      // green
         PipelineLevel.Warning => new SolidColorBrush(Color.FromRgb(0xFB, 0xBF, 0x24)), // amber
         PipelineLevel.Error => new SolidColorBrush(Color.FromRgb(0xF8, 0x71, 0x71)),   // red

@@ -24,14 +24,16 @@ public partial class MainViewModel : ObservableObject
     private readonly string? _recommendedGameVersion;
     private readonly AppBuildInfo _buildInfo;
     private readonly IUpdateCheckService _updateCheckService;
+    private readonly bool _debugLogging;
     private IReadOnlyList<TranslationEntry>? _entries;
     private bool _updateCheckStarted;
 
-    public MainViewModel(IShellServices shell)
+    public MainViewModel(IShellServices shell, bool debugLogging = false)
         : this(
             shell,
             EmbeddedTranslationSource.FromAssemblyResource(typeof(MainViewModel).Assembly, ResourceName),
-            LoadRecommendedGameVersion(typeof(MainViewModel).Assembly, RecommendedGameVersionResourceName))
+            LoadRecommendedGameVersion(typeof(MainViewModel).Assembly, RecommendedGameVersionResourceName),
+            debugLogging: debugLogging)
     {
     }
 
@@ -52,7 +54,8 @@ public partial class MainViewModel : ObservableObject
         ITranslationSource translations,
         string? recommendedGameVersion,
         IUpdateCheckService? updateCheckService = null,
-        AppBuildInfo? buildInfo = null)
+        AppBuildInfo? buildInfo = null,
+        bool debugLogging = false)
     {
         _shell = shell;
         _translations = translations;
@@ -61,6 +64,7 @@ public partial class MainViewModel : ObservableObject
             : recommendedGameVersion.Trim();
         _buildInfo = buildInfo ?? AppBuildInfo.FromAssembly(typeof(MainViewModel).Assembly);
         _updateCheckService = updateCheckService ?? new GitHubReleaseUpdateCheckService(_buildInfo);
+        _debugLogging = debugLogging;
         OutputFolder = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
             "FFXIVSpanish Patcher", "Output");
@@ -107,6 +111,11 @@ public partial class MainViewModel : ObservableObject
     public void Start()
     {
         Console.Add(Info($"FFXIVSpanish Patcher {AppVersionLabel}"));
+        if (_debugLogging)
+        {
+            Console.Add(Debug("Modo debug activado."));
+        }
+
         GamePath = GamePathDetector.Detect();
         Console.Add(Info(GamePath is null
             ? "No se detectó la instalación de FFXIV. Indica la ruta manualmente."
@@ -190,6 +199,7 @@ public partial class MainViewModel : ObservableObject
             OutputPath = Path.Combine(OutputFolder, outputName),
             StagingPath = Path.Combine(Path.GetTempPath(), "ffxivsp-patcher-staging"),
             VerifyIntegrity = VerifyIntegrity,
+            DebugLogging = _debugLogging,
             Meta = new PackageMeta { Version = _buildInfo.PackageVersion },
         };
 
@@ -272,6 +282,9 @@ public partial class MainViewModel : ObservableObject
 
     private static ConsoleLine Info(string message)
         => new(new PipelineEvent(PipelineComponent.Pipeline, message));
+
+    private static ConsoleLine Debug(string message)
+        => new(new PipelineEvent(PipelineComponent.Pipeline, message, PipelineLevel.Debug));
 
     private static ConsoleLine Warning(string message)
         => new(new PipelineEvent(PipelineComponent.Pipeline, message, PipelineLevel.Warning));
