@@ -14,6 +14,9 @@
     <DebugType>embedded</DebugType>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <RepositorySlug Condition="'$(RepositorySlug)' == ''">JadeArkadian/FFXIV-Spanish-Patcher</RepositorySlug>
+    <LatestReleaseApiUrl Condition="'$(LatestReleaseApiUrl)' == ''">https://api.github.com/repos/$(RepositorySlug)/releases/latest</LatestReleaseApiUrl>
+    <LatestReleasePageUrl Condition="'$(LatestReleasePageUrl)' == ''">https://github.com/$(RepositorySlug)/releases/latest</LatestReleasePageUrl>
   </PropertyGroup>
 
   <ItemGroup>
@@ -28,6 +31,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\FFXIVSpanishPatcher.Pipeline\FFXIVSpanishPatcher.Pipeline.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="RepositorySlug" Value="$(RepositorySlug)" />
+    <AssemblyMetadata Include="LatestReleaseApiUrl" Value="$(LatestReleaseApiUrl)" />
+    <AssemblyMetadata Include="LatestReleasePageUrl" Value="$(LatestReleasePageUrl)" />
   </ItemGroup>
 
   <!-- App assets (window/taskbar icon) bundled as Avalonia resources. -->

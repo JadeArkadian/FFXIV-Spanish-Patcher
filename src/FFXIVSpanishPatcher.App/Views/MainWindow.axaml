@@ -4,8 +4,8 @@
         x:Class="FFXIVSpanishPatcher.App.Views.MainWindow"
         x:DataType="vm:MainViewModel"
         Icon="/Assets/icon.ico"
-        Title="FFXIVSpanish Patcher"
-        Width="1180" Height="780" MinWidth="960" MinHeight="600"
+        Title="{Binding WindowTitle}"
+        Width="1180" Height="780" MinWidth="1010" MinHeight="600"
         Background="#0B1120">
 
   <Window.Resources>
@@ -74,7 +74,7 @@
     <!-- Status bar -->
     <Border DockPanel.Dock="Bottom" Background="#0E1525" BorderBrush="{StaticResource PanelBorder}"
             BorderThickness="0,1,0,0" Padding="18,10">
-      <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+      <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto">
         <TextBlock Grid.Column="0" VerticalAlignment="Center" Foreground="{StaticResource Muted}"
                    Text="{Binding LastOutputName, StringFormat='Salida: {0}', FallbackValue='Salida: —'}"/>
         <Border Grid.Column="1" Margin="12,0,0,0" CornerRadius="6" Padding="10,3" VerticalAlignment="Center"
@@ -85,7 +85,10 @@
         <TextBlock Grid.Column="2" Margin="20,0" VerticalAlignment="Center" Foreground="{StaticResource Muted}"
                    TextTrimming="CharacterEllipsis"
                    Text="{Binding OutputFolder, StringFormat='Carpeta de salida: {0}'}"/>
-        <Button Grid.Column="3" Content="Copiar log" Command="{Binding CopyLogCommand}"/>
+        <TextBlock Grid.Column="3" Margin="0,0,14,0" VerticalAlignment="Center"
+                   Foreground="{StaticResource Muted}"
+                   Text="{Binding AppVersionLabel, StringFormat='Versión: {0}'}"/>
+        <Button Grid.Column="4" Content="Copiar log" Command="{Binding CopyLogCommand}"/>
       </Grid>
     </Border>
 

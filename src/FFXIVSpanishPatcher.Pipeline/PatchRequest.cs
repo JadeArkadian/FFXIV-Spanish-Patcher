@@ -57,5 +57,5 @@ public sealed record PackageMeta
     public string Name { get; init; } = "FFXIVSpanish";
     public string Author { get; init; } = "FFXIVSpanish";
     public string Description { get; init; } = "Traducción al castellano de FFXIV mediante redirección de archivos EXD para Penumbra.";
-    public string Version { get; init; } = "0.1.0";
+    public string Version { get; init; } = "0.0.0";
 }

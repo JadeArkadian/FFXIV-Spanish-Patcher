@@ -88,7 +88,7 @@ internal sealed class PackageWriter
         [JsonPropertyName("Author")] public string Author { get; init; } = string.Empty;
         [JsonPropertyName("Description")] public string Description { get; init; } = string.Empty;
         [JsonPropertyName("Image")] public string Image => string.Empty;
-        [JsonPropertyName("Version")] public string Version { get; init; } = "0.1.0";
+        [JsonPropertyName("Version")] public string Version { get; init; } = "0.0.0";
         [JsonPropertyName("Website")] public string Website => string.Empty;
         [JsonPropertyName("ModTags")] public string[] ModTags => ["translation", "spanish"];
 
