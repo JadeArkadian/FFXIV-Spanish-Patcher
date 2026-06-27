@@ -15,6 +15,7 @@ public enum PipelineComponent
 /// console line accordingly.</summary>
 public enum PipelineLevel
 {
+    Debug,
     Info,
     Ok,
     Warning,

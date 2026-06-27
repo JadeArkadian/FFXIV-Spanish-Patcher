@@ -15,6 +15,7 @@ namespace FFXIVSpanishPatcher.Tests;
 public sealed class PatchPipelineTests : IDisposable
 {
     private const string ExdPath = "exd/addon_0_en.exd";
+    private const string ItemExdPath = "exd/item_9500_en.exd";
     private readonly string _temp;
 
     public PatchPipelineTests()
@@ -46,13 +47,35 @@ public sealed class PatchPipelineTests : IDisposable
             .AddLayout("Addon", new ExdLayout(4, [0], 1));
     }
 
+    private static FakeExdSource BuildItemSource()
+    {
+        var exd = SyntheticExd.BuildExd(
+        [
+            (9553u, ["Shiva's Diamond Bow", "Shiva's Diamond Bows", "Shiva's Diamond Bow"]),
+        ], fixedSize: 12);
+
+        return new FakeExdSource()
+            .AddPage(ItemExdPath, exd)
+            .AddLayout("Item", new ExdLayout(12, [0, 4, 8], 1))
+            .AddFieldNames("Item", "Singular", "Plural", "Name");
+    }
+
     private static TranslationEntry Approved(uint rowId, string source, string target)
+        => Approved("Addon", rowId, string.Empty, ExdPath, source, target);
+
+    private static TranslationEntry Approved(
+        string sheet,
+        uint rowId,
+        string field,
+        string exdPath,
+        string source,
+        string target)
         => new()
         {
             Source = source,
             Target = target,
             Status = TranslationEntryStatus.Approved,
-            SourceKey = new TranslationSourceKey { Sheet = "Addon", RowId = rowId, Field = string.Empty, ExdPath = ExdPath },
+            SourceKey = new TranslationSourceKey { Sheet = sheet, RowId = rowId, Field = field, ExdPath = exdPath },
         };
 
     private static IReadOnlyList<TranslationEntry> ApprovedManifest() =>
@@ -62,11 +85,12 @@ public sealed class PatchPipelineTests : IDisposable
         Approved(262u, "Healing Magic Potency", "Potencia de magia curativa"),
     ];
 
-    private PatchRequest Request(IReadOnlyCollection<string>? categories = null) => new()
+    private PatchRequest Request(IReadOnlyCollection<string>? categories = null, bool debugLogging = false) => new()
     {
         OutputPath = Path.Combine(_temp, "out.pmp"),
         StagingPath = Path.Combine(_temp, "staging"),
         Categories = categories,
+        DebugLogging = debugLogging,
         VerifyIntegrity = true,
     };
 
@@ -102,6 +126,41 @@ public sealed class PatchPipelineTests : IDisposable
 
         // A verifier OK event was emitted (the toggle path ran).
         Assert.Contains(events, e => e.Component == PipelineComponent.Verifier && e.Level == PipelineLevel.Ok);
+        Assert.DoesNotContain(events, e => e.Level == PipelineLevel.Debug);
+    }
+
+    [Fact]
+    public void Run_WithDebugLogging_EmitsBroadcastDiagnostics()
+    {
+        var pipeline = new PatchPipeline(new ListTranslationSource(ApprovedManifest()), new FakePatchBackendFactory(BuildSource()));
+        var events = new List<PipelineEvent>();
+
+        var result = pipeline.Run(Request(debugLogging: true), new SyncProgress<PipelineEvent>(events.Add));
+
+        Assert.True(result.Success);
+        Assert.Contains(events, e =>
+            e.Level == PipelineLevel.Debug
+            && e.Message.Contains("broadcast", StringComparison.OrdinalIgnoreCase)
+            && e.Message.Contains("duplicados", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Run_WhenPageHasMiss_WarningIncludesMissedRowIds()
+    {
+        var entries = ApprovedManifest()
+            .Append(Approved(1u, "Source not in row", "Fuente ausente"))
+            .ToList();
+        var pipeline = new PatchPipeline(new ListTranslationSource(entries), new FakePatchBackendFactory(BuildSource()));
+        var events = new List<PipelineEvent>();
+
+        var result = pipeline.Run(Request(), new SyncProgress<PipelineEvent>(events.Add));
+
+        Assert.True(result.Success);
+        Assert.Equal(PatchOutcome.PackagedWithMisses, result.Outcome);
+        Assert.Contains(events, e =>
+            e.Level == PipelineLevel.Warning
+            && e.Message.Contains("Addon", StringComparison.Ordinal)
+            && e.Message.Contains("rowId(s): 1", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -126,6 +185,35 @@ public sealed class PatchPipelineTests : IDisposable
 
         Assert.True(result.Success);
         Assert.Equal(4, result.Applied);
+    }
+
+    [Fact]
+    public void Run_AddsItemNameAliasFromSingular_WhenVanillaTextMatches()
+    {
+        var entries = new[]
+        {
+            Approved("Item", 9553u, "Singular", ItemExdPath, "Shiva's Diamond Bow", "Arco de diamante de Shiva"),
+        };
+        var pipeline = new PatchPipeline(new ListTranslationSource(entries), new FakePatchBackendFactory(BuildItemSource()));
+
+        var result = pipeline.Run(Request());
+
+        Assert.True(result.Success);
+        Assert.Equal(PatchOutcome.Ok, result.Outcome);
+        Assert.Equal(2, result.Applied);
+
+        using var archive = ZipFile.OpenRead(result.OutputPath!);
+        var patched = ReadEntryBytes(archive, "files/exd/item_9500_en.exd");
+        var fields = new[] { "Singular", "Plural", "Name" };
+        var values = ExdRowReader.ReadRawStrings(patched, 12, [0, 4, 8])
+            .Where(row => row.RowId == 9553)
+            .ToDictionary(
+                row => fields[row.ColumnOrdinal],
+                row => Encoding.UTF8.GetString(row.Raw));
+
+        Assert.Equal("Arco de diamante de Shiva", values["Singular"]);
+        Assert.Equal("Shiva's Diamond Bows", values["Plural"]);
+        Assert.Equal("Arco de diamante de Shiva", values["Name"]);
     }
 
     [Fact]
@@ -161,11 +249,14 @@ public sealed class PatchPipelineTests : IDisposable
     }
 
     private static string ReadEntryText(ZipArchive archive, string entryName)
+        => Encoding.UTF8.GetString(ReadEntryBytes(archive, entryName));
+
+    private static byte[] ReadEntryBytes(ZipArchive archive, string entryName)
     {
         using var stream = archive.GetEntry(entryName)!.Open();
         using var memory = new MemoryStream();
         stream.CopyTo(memory);
-        return Encoding.UTF8.GetString(memory.ToArray());
+        return memory.ToArray();
     }
 
     private sealed class ThrowingBackendFactory : IPatchBackendFactory

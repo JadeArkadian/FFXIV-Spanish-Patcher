@@ -5,13 +5,32 @@ name: Release
 # RIDs build on a macOS runner so the .app bundle can be ad-hoc codesigned.
 on:
   push:
-    tags: [ 'v*' ]
+    tags: [ 'v*.*.*' ]
 
 permissions:
   contents: write
 
 jobs:
+  validate-tag:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Validate tag and derive version
+        id: version
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          if [[ ! "$TAG" =~ ^v(0|[1-9][0-9]{0,2})\.(0|[1-9][0-9]{0,2})\.(0|[1-9][0-9]{0,2})$ ]]; then
+            echo "::error::Release tags must match vX.Y.Z, with each number from 0 to 999."
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
   publish:
+    needs: validate-tag
     # win/linux cross-publish from Linux; osx builds on a macOS runner so the bundle can be ad-hoc
     # codesigned (mandatory for arm64 to run at all, and removes the "damaged" Gatekeeper error).
     runs-on: ${{ matrix.os }}
@@ -31,23 +50,25 @@ jobs:
         with:
           global-json-file: global.json
 
-      - name: Derive version from tag
-        id: ver
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-
       - name: Publish ${{ matrix.rid }}
         run: >
           dotnet publish src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj
           -c Release -r ${{ matrix.rid }} --self-contained
           -p:PublishSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true
-          -p:Version=${{ steps.ver.outputs.version }}
+          -p:Version=${{ needs.validate-tag.outputs.version }}
+          -p:InformationalVersion=${{ needs.validate-tag.outputs.tag }}
+          -p:AssemblyVersion=${{ needs.validate-tag.outputs.version }}.0
+          -p:FileVersion=${{ needs.validate-tag.outputs.version }}.0
+          -p:RepositorySlug=${{ github.repository }}
+          -p:LatestReleaseApiUrl=https://api.github.com/repos/${{ github.repository }}/releases/latest
+          -p:LatestReleasePageUrl=https://github.com/${{ github.repository }}/releases/latest
           -o publish/${{ matrix.rid }}
 
       - name: Package
         run: |
           set -euo pipefail
-          VERSION="${{ steps.ver.outputs.version }}"
+          VERSION="${{ needs.validate-tag.outputs.version }}"
           RID="${{ matrix.rid }}"
           OUT="publish/$RID"
           ASSET="FFXIVSpanishPatcher-$VERSION-$RID.zip"
@@ -76,4 +97,6 @@ jobs:
       - name: Attach to release
         uses: softprops/action-gh-release@v2
         with:
-          files: FFXIVSpanishPatcher-${{ steps.ver.outputs.version }}-${{ matrix.rid }}.zip
+          name: ${{ needs.validate-tag.outputs.tag }}
+          generate_release_notes: true
+          files: FFXIVSpanishPatcher-${{ needs.validate-tag.outputs.version }}-${{ matrix.rid }}.zip

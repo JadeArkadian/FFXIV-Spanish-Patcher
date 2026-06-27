@@ -12,6 +12,7 @@ internal sealed class FakeExdSource : IBaseExdSource
 {
     private readonly Dictionary<string, byte[]> _pages = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, ExdLayout> _layouts = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, IReadOnlyList<string>> _fieldNames = new(StringComparer.OrdinalIgnoreCase);
 
     public FakeExdSource AddPage(string exdPath, byte[] bytes)
     {
@@ -25,11 +26,18 @@ internal sealed class FakeExdSource : IBaseExdSource
         return this;
     }
 
+    public FakeExdSource AddFieldNames(string sheet, params string[] fieldNames)
+    {
+        _fieldNames[sheet] = fieldNames;
+        return this;
+    }
+
     public byte[]? ReadBaseExd(string exdPath) => _pages.GetValueOrDefault(exdPath);
 
     public ExdLayout? ReadStringLayout(string sheet) => _layouts.TryGetValue(sheet, out var layout) ? layout : null;
 
-    public IReadOnlyList<string> ResolveFieldNames(string sheet, int stringColumnCount) => [];
+    public IReadOnlyList<string> ResolveFieldNames(string sheet, int stringColumnCount)
+        => _fieldNames.GetValueOrDefault(sheet) ?? [];
 }
 
 /// <summary>Backend over a <see cref="FakeExdSource"/>; resolves EXD paths straight from the source

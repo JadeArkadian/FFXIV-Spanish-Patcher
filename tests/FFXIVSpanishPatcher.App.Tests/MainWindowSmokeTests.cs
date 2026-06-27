@@ -26,7 +26,10 @@ public class MainWindowSmokeTests
             new() { Status = TranslationEntryStatus.Approved, Target = "y", SourceKey = new TranslationSourceKey { Sheet = "Quest", RowId = 2 } },
         };
 
-        var viewModel = new MainViewModel(new NoopShell(), new ListTranslationSource(entries));
+        var viewModel = new MainViewModel(
+            new NoopShell(),
+            new ListTranslationSource(entries),
+            NullUpdateCheckService.Instance);
         var window = new MainWindow { DataContext = viewModel };
 
         window.Show();

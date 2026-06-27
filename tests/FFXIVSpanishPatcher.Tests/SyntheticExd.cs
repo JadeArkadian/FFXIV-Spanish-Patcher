@@ -34,7 +34,19 @@ internal static class SyntheticExd
     /// <summary>Default-variant EXD page with a single String column at fixed offset 0. An empty
     /// row text leaves that column pointing at an empty slot (the write-at-offset case).</summary>
     public static byte[] BuildExd((uint RowId, string Text)[] rows, int fixedSize = 4)
+        => BuildExd(rows.Select(row => (row.RowId, Texts: new[] { row.Text })).ToArray(), fixedSize);
+
+    /// <summary>Default-variant EXD page with one or more String columns at fixed offsets 0,4,...
+    /// Each column points into that row's string area, matching the layout <see cref="ExdPatcher"/>
+    /// consumes.</summary>
+    public static byte[] BuildExd((uint RowId, string[] Texts)[] rows, int fixedSize)
     {
+        var columnCount = rows.Length == 0 ? 0 : rows.Max(row => row.Texts.Length);
+        if (fixedSize < columnCount * 4)
+        {
+            throw new ArgumentOutOfRangeException(nameof(fixedSize), "Fixed size must hold every string offset.");
+        }
+
         var dataStart = HeaderSize + (rows.Length * 8);
 
         using var body = new MemoryStream();
@@ -42,16 +54,24 @@ internal static class SyntheticExd
         for (var i = 0; i < rows.Length; i++)
         {
             offsets[i] = (uint)(dataStart + body.Length);
-            var stringBytes = Encoding.UTF8.GetBytes(rows[i].Text);
-            var dataSize = fixedSize + stringBytes.Length + 1;
+            var fixedData = new byte[fixedSize];
+            using var stringBlob = new MemoryStream();
+            for (var column = 0; column < rows[i].Texts.Length; column++)
+            {
+                BinaryPrimitives.WriteUInt32BigEndian(fixedData.AsSpan(column * 4, 4), (uint)stringBlob.Length);
+                var stringBytes = Encoding.UTF8.GetBytes(rows[i].Texts[column]);
+                stringBlob.Write(stringBytes);
+                stringBlob.WriteByte(0);
+            }
 
             var header = new byte[6];
+            var stringBytesForRow = stringBlob.ToArray();
+            var dataSize = fixedSize + stringBytesForRow.Length;
             BinaryPrimitives.WriteUInt32BigEndian(header, (uint)dataSize);
             BinaryPrimitives.WriteUInt16BigEndian(header.AsSpan(4), 1);
             body.Write(header);
-            body.Write(new byte[fixedSize]);
-            body.Write(stringBytes);
-            body.WriteByte(0);
+            body.Write(fixedData);
+            body.Write(stringBytesForRow);
 
             var pad = (4 - ((6 + dataSize) % 4)) % 4;
             for (var p = 0; p < pad; p++)

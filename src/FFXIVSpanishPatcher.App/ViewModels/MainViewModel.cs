@@ -22,31 +22,49 @@ public partial class MainViewModel : ObservableObject
     private readonly IShellServices _shell;
     private readonly ITranslationSource _translations;
     private readonly string? _recommendedGameVersion;
+    private readonly AppBuildInfo _buildInfo;
+    private readonly IUpdateCheckService _updateCheckService;
+    private readonly bool _debugLogging;
     private IReadOnlyList<TranslationEntry>? _entries;
+    private bool _updateCheckStarted;
 
-    public MainViewModel(IShellServices shell)
+    public MainViewModel(IShellServices shell, bool debugLogging = false)
         : this(
             shell,
             EmbeddedTranslationSource.FromAssemblyResource(typeof(MainViewModel).Assembly, ResourceName),
-            LoadRecommendedGameVersion(typeof(MainViewModel).Assembly, RecommendedGameVersionResourceName))
+            LoadRecommendedGameVersion(typeof(MainViewModel).Assembly, RecommendedGameVersionResourceName),
+            debugLogging: debugLogging)
     {
     }
 
-    public MainViewModel(IShellServices shell, ITranslationSource translations)
+    public MainViewModel(
+        IShellServices shell,
+        ITranslationSource translations,
+        IUpdateCheckService? updateCheckService = null)
         : this(
             shell,
             translations,
-            LoadRecommendedGameVersion(typeof(MainViewModel).Assembly, RecommendedGameVersionResourceName))
+            LoadRecommendedGameVersion(typeof(MainViewModel).Assembly, RecommendedGameVersionResourceName),
+            updateCheckService)
     {
     }
 
-    public MainViewModel(IShellServices shell, ITranslationSource translations, string? recommendedGameVersion)
+    public MainViewModel(
+        IShellServices shell,
+        ITranslationSource translations,
+        string? recommendedGameVersion,
+        IUpdateCheckService? updateCheckService = null,
+        AppBuildInfo? buildInfo = null,
+        bool debugLogging = false)
     {
         _shell = shell;
         _translations = translations;
         _recommendedGameVersion = string.IsNullOrWhiteSpace(recommendedGameVersion)
             ? null
             : recommendedGameVersion.Trim();
+        _buildInfo = buildInfo ?? AppBuildInfo.FromAssembly(typeof(MainViewModel).Assembly);
+        _updateCheckService = updateCheckService ?? new GitHubReleaseUpdateCheckService(_buildInfo);
+        _debugLogging = debugLogging;
         OutputFolder = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
             "FFXIVSpanish Patcher", "Output");
@@ -59,6 +77,10 @@ public partial class MainViewModel : ObservableObject
     public string OutputFolder { get; }
 
     public string? RecommendedGameVersion => _recommendedGameVersion;
+
+    public string AppVersionLabel => _buildInfo.DisplayVersion;
+
+    public string WindowTitle => _buildInfo.WindowTitle;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(GenerateModCommand))]
@@ -88,6 +110,12 @@ public partial class MainViewModel : ObservableObject
     /// window's DataContext is set.</summary>
     public void Start()
     {
+        Console.Add(Info($"FFXIVSpanish Patcher {AppVersionLabel}"));
+        if (_debugLogging)
+        {
+            Console.Add(Debug("Modo debug activado."));
+        }
+
         GamePath = GamePathDetector.Detect();
         Console.Add(Info(GamePath is null
             ? "No se detectó la instalación de FFXIV. Indica la ruta manualmente."
@@ -95,6 +123,12 @@ public partial class MainViewModel : ObservableObject
         if (_recommendedGameVersion is not null)
         {
             Console.Add(Info($"Versión recomendada del juego: {_recommendedGameVersion}"));
+        }
+
+        if (!_updateCheckStarted)
+        {
+            _updateCheckStarted = true;
+            _ = CheckForUpdatesOnceAsync();
         }
 
         _ = Task.Run(LoadTranslations);
@@ -165,6 +199,8 @@ public partial class MainViewModel : ObservableObject
             OutputPath = Path.Combine(OutputFolder, outputName),
             StagingPath = Path.Combine(Path.GetTempPath(), "ffxivsp-patcher-staging"),
             VerifyIntegrity = VerifyIntegrity,
+            DebugLogging = _debugLogging,
+            Meta = new PackageMeta { Version = _buildInfo.PackageVersion },
         };
 
         // Progress is created on the UI thread, so its callbacks marshal back here automatically.
@@ -225,14 +261,49 @@ public partial class MainViewModel : ObservableObject
     private async Task CopyLogAsync()
         => await _shell.CopyToClipboardAsync(string.Join(Environment.NewLine, Console.Select(l => l.Text)));
 
+    private async Task CheckForUpdatesOnceAsync()
+    {
+        UpdateCheckResult result;
+        try
+        {
+            result = await _updateCheckService.CheckAsync();
+        }
+        catch (Exception exception)
+        {
+            result = UpdateCheckResult.Unavailable(AppVersionLabel, exception.Message);
+        }
+
+        var line = UpdateCheckLine(result);
+        if (line is not null)
+        {
+            Dispatcher.UIThread.Post(() => Console.Add(line));
+        }
+    }
+
     private static ConsoleLine Info(string message)
         => new(new PipelineEvent(PipelineComponent.Pipeline, message));
+
+    private static ConsoleLine Debug(string message)
+        => new(new PipelineEvent(PipelineComponent.Pipeline, message, PipelineLevel.Debug));
 
     private static ConsoleLine Warning(string message)
         => new(new PipelineEvent(PipelineComponent.Pipeline, message, PipelineLevel.Warning));
 
     private static ConsoleLine Error(string message)
         => new(new PipelineEvent(PipelineComponent.Pipeline, message, PipelineLevel.Error));
+
+    private static ConsoleLine? UpdateCheckLine(UpdateCheckResult result)
+        => result.Status switch
+        {
+            UpdateCheckStatus.Disabled => null,
+            UpdateCheckStatus.UpToDate => Info(
+                $"Parcheador al día: {result.CurrentVersion} (última publicada: {result.LatestVersion})."),
+            UpdateCheckStatus.UpdateAvailable => Warning(
+                $"Nueva versión disponible: {result.LatestVersion}. Descarga: {result.ReleaseUrl}"),
+            UpdateCheckStatus.CurrentVersionUnknown => Warning(
+                $"Última versión publicada: {result.LatestVersion}. Esta compilación ({result.CurrentVersion}) no se puede comparar."),
+            _ => Warning("No se pudo comprobar actualizaciones; se continúa sin conexión."),
+        };
 
     private void Reject(string message)
     {

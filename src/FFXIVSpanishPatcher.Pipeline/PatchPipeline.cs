@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using XivSpanish.GameData;
 using XivSpanish.Packager;
 using XivSpanish.Translation;
@@ -6,10 +7,10 @@ namespace FFXIVSpanishPatcher.Pipeline;
 
 /// <summary>
 /// Orchestrates a full run: load translations -> SeString gate -> resolve/group pages -> patch each
-/// page (with duplicate-row broadcast) -> contamination guard -> package -> optional integrity
-/// verification. Progress is reported as <see cref="PipelineEvent"/>s so the GUI can stream a
-/// console. This is the orchestration ported from the upstream Packager's Program.cs Main; the
-/// game-data and packaging primitives it calls stay vendored.
+/// page (with duplicate-row broadcast and safe field aliases) -> contamination guard -> package
+/// -> optional integrity verification. Progress is reported as <see cref="PipelineEvent"/>s so
+/// the GUI can stream a console. This is the orchestration ported from the upstream Packager's
+/// Program.cs Main; the game-data and packaging primitives it calls stay vendored.
 /// </summary>
 public sealed class PatchPipeline
 {
@@ -38,6 +39,14 @@ public sealed class PatchPipeline
     {
         void Report(PipelineComponent component, string message, PipelineLevel level = PipelineLevel.Info, int? count = null)
             => progress?.Report(new PipelineEvent(component, message, level, count));
+
+        void Debug(string message, int? count = null)
+        {
+            if (request.DebugLogging)
+            {
+                Report(PipelineComponent.Patcher, message, PipelineLevel.Debug, count);
+            }
+        }
 
         void Conflict(string message) => Report(PipelineComponent.Patcher, message, PipelineLevel.Warning);
 
@@ -142,7 +151,10 @@ public sealed class PatchPipeline
             }
 
             // 5. Broadcast table: approved target per sheet+field+source (ambiguous source -> null).
-            var broadcast = BuildBroadcast(entries.Where(e => !unsafeSeStringEntries.Contains(e)).ToList(), request.Statuses, selection);
+            var broadcast = BuildBroadcastCatalog(
+                entries.Where(e => !unsafeSeStringEntries.Contains(e)).ToList(),
+                request.Statuses,
+                selection);
 
             // 6. Patch each page into the staging tree.
             var writer = new PackageWriter(request.StagingPath);
@@ -173,33 +185,58 @@ public sealed class PatchPipeline
                 var fieldNames = backend.BaseSource.ResolveFieldNames(page.Sheet, layout.Value.StringColumnOffsets.Count);
 
                 // Broadcast approved targets to duplicate base rows the manifest does not list.
-                if (broadcast.TryGetValue(page.Sheet, out var sheetTargets))
+                // Payload-bearing strings are allowed only when their raw bytes match an explicit
+                // approved row's signature; plain strings keep the legacy any-field fallback.
+                var broadcastColumns = ReadBroadcastColumns(
+                    raw,
+                    layout.Value.FixedDataSize,
+                    layout.Value.StringColumnOffsets,
+                    fieldNames);
+                var payloadSignatures = BroadcastPlanner.BuildPayloadSignatures(
+                    broadcastColumns,
+                    page.ToReplacements());
+
+                var broadcasted = 0;
+                var payloadBroadcasted = 0;
+                foreach (var column in broadcastColumns)
                 {
-                    foreach (var (rowId, column) in ExdRowReader.Read(
-                                 raw, layout.Value.FixedDataSize, layout.Value.StringColumnOffsets))
+                    var decision = BroadcastPlanner.Decide(broadcast, page.Sheet, column, payloadSignatures);
+                    if (decision is null)
                     {
-                        if (column.HasPayload)
-                        {
-                            continue;
-                        }
+                        continue;
+                    }
 
-                        var field = column.ColumnOrdinal < fieldNames.Count ? fieldNames[column.ColumnOrdinal] : string.Empty;
-                        string? target = null;
-                        if (sheetTargets.TryGetValue(field, out var bySource) && bySource.TryGetValue(column.Source, out var byFieldTarget))
+                    if (page.Add(column.RowId, new StringReplacement(column.Source, decision.Target, decision.ReplacementField), Conflict))
+                    {
+                        broadcasted++;
+                        if (decision.Kind == BroadcastKind.Payload)
                         {
-                            target = byFieldTarget;
-                        }
-                        else if (sheetTargets.TryGetValue(string.Empty, out var anyField) && anyField.TryGetValue(column.Source, out var anyTarget))
-                        {
-                            target = anyTarget;
-                            field = string.Empty;
-                        }
-
-                        if (target is not null)
-                        {
-                            page.Add(rowId, new StringReplacement(column.Source, target, field.Length == 0 ? null : field), Conflict);
+                            payloadBroadcasted++;
                         }
                     }
+                }
+
+                if (broadcasted > 0)
+                {
+                    Debug(
+                        $"broadcast {exdPath}: +{broadcasted} duplicados ({payloadBroadcasted} payload-safe)",
+                        broadcasted);
+                }
+
+                var fieldAliasBroadcasted = 0;
+                foreach (var decision in FieldAliasPlanner.Decide(page.Sheet, broadcastColumns, page.ToReplacements()))
+                {
+                    if (page.Add(decision.RowId, new StringReplacement(decision.Source, decision.Target, decision.ReplacementField), Conflict))
+                    {
+                        fieldAliasBroadcasted++;
+                    }
+                }
+
+                if (fieldAliasBroadcasted > 0)
+                {
+                    Debug(
+                        $"field-alias {exdPath}: +{fieldAliasBroadcasted} alias de campo",
+                        fieldAliasBroadcasted);
                 }
 
                 ExdPatchResult result;
@@ -225,7 +262,7 @@ public sealed class PatchPipeline
                 }
 
                 writer.AddPatchedExd(exdPath, result.Bytes);
-                Report(PipelineComponent.Patcher, page.Sheet,
+                Report(PipelineComponent.Patcher, PageResultMessage(page.Sheet, result.Missed),
                     result.Missed.Count == 0 ? PipelineLevel.Ok : PipelineLevel.Warning, result.Applied);
             }
 
@@ -295,10 +332,10 @@ public sealed class PatchPipeline
         return null;
     }
 
-    private static Dictionary<string, Dictionary<string, Dictionary<string, string?>>> BuildBroadcast(
+    private static BroadcastCatalog BuildBroadcastCatalog(
         IReadOnlyList<TranslationEntry> entries, IReadOnlySet<string> statuses, IReadOnlySet<string>? selection)
     {
-        var broadcast = new Dictionary<string, Dictionary<string, Dictionary<string, string?>>>(StringComparer.OrdinalIgnoreCase);
+        var broadcast = new BroadcastCatalog();
         foreach (var entry in entries)
         {
             if (Packageable(entry, statuses) is not null || !TranslationCategories.IsSelected(entry, selection))
@@ -306,31 +343,51 @@ public sealed class PatchPipeline
                 continue;
             }
 
-            var key = entry.SourceKey!;
-            var field = string.IsNullOrWhiteSpace(key.Field) ? string.Empty : key.Field;
-            if (!broadcast.TryGetValue(key.Sheet, out var byField))
-            {
-                byField = new Dictionary<string, Dictionary<string, string?>>(StringComparer.Ordinal);
-                broadcast[key.Sheet] = byField;
-            }
-
-            if (!byField.TryGetValue(field, out var bySource))
-            {
-                bySource = new Dictionary<string, string?>(StringComparer.Ordinal);
-                byField[field] = bySource;
-            }
-
-            if (!bySource.TryGetValue(entry.Source, out var existing))
-            {
-                bySource[entry.Source] = entry.Target;
-            }
-            else if (existing is not null && existing != entry.Target)
-            {
-                bySource[entry.Source] = null; // ambiguous: disable broadcast for this source
-            }
+            broadcast.Add(entry);
         }
 
         return broadcast;
+    }
+
+    private static IReadOnlyList<BroadcastColumn> ReadBroadcastColumns(
+        byte[] raw,
+        int fixedDataSize,
+        IReadOnlyList<int> stringColumnOffsets,
+        IReadOnlyList<string> fieldNames)
+    {
+        var columns = new List<BroadcastColumn>();
+        foreach (var (rowId, ordinal, rawString) in ExdRowReader.ReadRawStrings(raw, fixedDataSize, stringColumnOffsets))
+        {
+            var source = SeStringTokenizer.TokenizeRawText(rawString);
+            if (string.IsNullOrEmpty(source))
+            {
+                continue;
+            }
+
+            var field = ordinal < fieldNames.Count ? fieldNames[ordinal] : string.Empty;
+            columns.Add(new BroadcastColumn(
+                rowId,
+                field,
+                source,
+                SeStringCompatibilityValidator.HasPayloads(source),
+                Convert.ToHexString(SHA256.HashData(rawString))));
+        }
+
+        return columns;
+    }
+
+    private static string PageResultMessage(string sheet, IReadOnlyList<MissedReplacement> missed)
+    {
+        if (missed.Count == 0)
+        {
+            return sheet;
+        }
+
+        var rowIds = string.Join(", ", missed
+            .Select(miss => miss.RowId)
+            .Distinct()
+            .OrderBy(rowId => rowId));
+        return $"{sheet}: {missed.Count} miss(es), rowId(s): {rowIds}";
     }
 
     /// <summary>Replacements grouped for one EXD page, deduped per (field, source).</summary>

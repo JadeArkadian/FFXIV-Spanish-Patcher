@@ -4,5 +4,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <Version Condition="'$(Version)' == ''">0.0.0</Version>
+    <InformationalVersion Condition="'$(InformationalVersion)' == ''">dev</InformationalVersion>
   </PropertyGroup>
 </Project>

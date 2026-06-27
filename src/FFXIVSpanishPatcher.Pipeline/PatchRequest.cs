@@ -43,6 +43,9 @@ public sealed record PatchRequest
     /// <summary>Run the post-build integrity check ("Verificar integridad al finalizar" toggle).</summary>
     public bool VerifyIntegrity { get; init; } = true;
 
+    /// <summary>Emit verbose diagnostic events intended for troubleshooting, hidden by default.</summary>
+    public bool DebugLogging { get; init; }
+
     /// <summary>Penumbra <c>meta.json</c> fields.</summary>
     public PackageMeta Meta { get; init; } = new();
 
@@ -57,5 +60,5 @@ public sealed record PackageMeta
     public string Name { get; init; } = "FFXIVSpanish";
     public string Author { get; init; } = "FFXIVSpanish";
     public string Description { get; init; } = "Traducción al castellano de FFXIV mediante redirección de archivos EXD para Penumbra.";
-    public string Version { get; init; } = "0.1.0";
+    public string Version { get; init; } = "0.0.0";
 }
