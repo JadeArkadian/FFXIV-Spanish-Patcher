@@ -30,6 +30,7 @@ public sealed class TranslationCategoriesTests
     [InlineData("Title", "nombres")]
     [InlineData("NpcYell", "misiones")]
     [InlineData("JournalGenre", "misiones")]
+    [InlineData("InstanceContentTextData", "misiones")]
     [InlineData("Fate", "misiones")]
     [InlineData("Leve", "misiones")]
     [InlineData("TextCommand", "interfaz")]

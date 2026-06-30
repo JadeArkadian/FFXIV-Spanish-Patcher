@@ -114,6 +114,7 @@ public static class TranslationCategories
         ["WKSText"] = "misiones",
         ["RideShootingTextData"] = "misiones",
         ["PartyContentTextData"] = "misiones",
+        ["InstanceContentTextData"] = "misiones",
         ["MJIText"] = "misiones",
         ["LeveString"] = "misiones",
         ["GoldSaucerTextData"] = "misiones",
