@@ -82,7 +82,10 @@ public sealed class DirectoryExdSource(string baseDirectory) : IBaseExdSource
         {
             try
             {
-                var names = JsonSerializer.Deserialize<string[]>(File.ReadAllBytes(sidecar));
+                var names = JsonSerializer.Deserialize(
+                    File.ReadAllBytes(sidecar),
+                    typeof(string[]),
+                    PackageJsonContext.Default) as string[];
                 if (names is not null && names.Length == stringColumnCount && names.All(name => !string.IsNullOrWhiteSpace(name)))
                 {
                     return names;
