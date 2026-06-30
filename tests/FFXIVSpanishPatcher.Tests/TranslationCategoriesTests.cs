@@ -33,6 +33,7 @@ public sealed class TranslationCategoriesTests
     [InlineData("Fate", "misiones")]
     [InlineData("Leve", "misiones")]
     [InlineData("TextCommand", "interfaz")]
+    [InlineData("TextCommandParam", "interfaz")]
     [InlineData("ConfigKey", "interfaz")]
     [InlineData("EventAction", "eventos")]
     [InlineData("MountTransient", "coleccionables")]

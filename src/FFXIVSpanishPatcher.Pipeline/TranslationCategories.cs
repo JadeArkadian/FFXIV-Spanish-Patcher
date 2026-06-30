@@ -31,6 +31,7 @@ public static class TranslationCategories
         ["Completion"] = "interfaz",
         ["Lobby"] = "interfaz",
         ["TextCommand"] = "interfaz",
+        ["TextCommandParam"] = "interfaz",
         ["MainCommand"] = "interfaz",
         ["MainCommandCategory"] = "interfaz",
         ["ExtraCommand"] = "interfaz",
