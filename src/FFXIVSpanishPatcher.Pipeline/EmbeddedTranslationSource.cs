@@ -1,7 +1,6 @@
 using System.IO.Compression;
 using System.Reflection;
 using System.Text;
-using System.Text.Json;
 using XivSpanish.Translation;
 
 namespace FFXIVSpanishPatcher.Pipeline;
@@ -13,7 +12,6 @@ namespace FFXIVSpanishPatcher.Pipeline;
 /// </summary>
 public sealed class EmbeddedTranslationSource(Func<Stream> openCompressedBlob) : ITranslationSource
 {
-    private static readonly JsonSerializerOptions Options = new() { PropertyNameCaseInsensitive = true };
     private readonly Func<Stream> _open = openCompressedBlob;
 
     /// <summary>Wraps a Brotli-JSONL resource embedded in <paramref name="assembly"/>.</summary>
@@ -36,7 +34,7 @@ public sealed class EmbeddedTranslationSource(Func<Stream> openCompressedBlob) :
                 continue;
             }
 
-            var entry = JsonSerializer.Deserialize<TranslationEntry>(line, Options);
+            var entry = JsonlSerialization.Deserialize(line);
             if (entry is not null)
             {
                 entries.Add(entry);

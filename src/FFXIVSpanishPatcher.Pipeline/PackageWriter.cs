@@ -44,8 +44,8 @@ internal sealed class PackageWriter
     /// <summary>Writes the manifests and zips the tree to <paramref name="outputPath"/>.</summary>
     public string Package(PackageMeta meta, string outputPath)
     {
-        WriteJson(Path.Combine(_staging, "default_mod.json"), new DefaultMod(_declared));
-        WriteJson(Path.Combine(_staging, "meta.json"), ModMeta.From(meta));
+        WriteJson(Path.Combine(_staging, "default_mod.json"), new PackageDefaultMod(_declared));
+        WriteJson(Path.Combine(_staging, "meta.json"), PackageModMeta.From(meta));
 
         var directory = Path.GetDirectoryName(outputPath);
         if (!string.IsNullOrWhiteSpace(directory))
@@ -68,36 +68,37 @@ internal sealed class PackageWriter
         return outputPath;
     }
 
-    private static void WriteJson<T>(string path, T value)
-        => File.WriteAllText(path, JsonSerializer.Serialize(value, JsonOptions));
+    private static void WriteJson(string path, PackageDefaultMod value)
+        => File.WriteAllText(path, JsonSerializer.Serialize(value, PipelineJsonContext.Default.PackageDefaultMod));
 
-    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+    private static void WriteJson(string path, PackageModMeta value)
+        => File.WriteAllText(path, JsonSerializer.Serialize(value, PipelineJsonContext.Default.PackageModMeta));
+}
 
-    private sealed class DefaultMod(IReadOnlyDictionary<string, string> files)
+internal sealed class PackageDefaultMod(SortedDictionary<string, string> files)
+{
+    [JsonPropertyName("Version")] public int Version => 0;
+    [JsonPropertyName("Files")] public SortedDictionary<string, string> Files { get; } = files;
+    [JsonPropertyName("FileSwaps")] public Dictionary<string, string> FileSwaps { get; } = new(StringComparer.Ordinal);
+    [JsonPropertyName("Manipulations")] public string[] Manipulations => [];
+}
+
+internal sealed class PackageModMeta
+{
+    [JsonPropertyName("FileVersion")] public int FileVersion => 3;
+    [JsonPropertyName("Name")] public string Name { get; init; } = string.Empty;
+    [JsonPropertyName("Author")] public string Author { get; init; } = string.Empty;
+    [JsonPropertyName("Description")] public string Description { get; init; } = string.Empty;
+    [JsonPropertyName("Image")] public string Image => string.Empty;
+    [JsonPropertyName("Version")] public string Version { get; init; } = "0.0.0";
+    [JsonPropertyName("Website")] public string Website => string.Empty;
+    [JsonPropertyName("ModTags")] public string[] ModTags => ["translation", "spanish"];
+
+    public static PackageModMeta From(PackageMeta meta) => new()
     {
-        [JsonPropertyName("Version")] public int Version => 0;
-        [JsonPropertyName("Files")] public IReadOnlyDictionary<string, string> Files { get; } = files;
-        [JsonPropertyName("FileSwaps")] public IReadOnlyDictionary<string, string> FileSwaps => new Dictionary<string, string>();
-        [JsonPropertyName("Manipulations")] public IReadOnlyList<object> Manipulations => [];
-    }
-
-    private sealed class ModMeta
-    {
-        [JsonPropertyName("FileVersion")] public int FileVersion => 3;
-        [JsonPropertyName("Name")] public string Name { get; init; } = string.Empty;
-        [JsonPropertyName("Author")] public string Author { get; init; } = string.Empty;
-        [JsonPropertyName("Description")] public string Description { get; init; } = string.Empty;
-        [JsonPropertyName("Image")] public string Image => string.Empty;
-        [JsonPropertyName("Version")] public string Version { get; init; } = "0.0.0";
-        [JsonPropertyName("Website")] public string Website => string.Empty;
-        [JsonPropertyName("ModTags")] public string[] ModTags => ["translation", "spanish"];
-
-        public static ModMeta From(PackageMeta meta) => new()
-        {
-            Name = meta.Name,
-            Author = meta.Author,
-            Description = meta.Description,
-            Version = meta.Version,
-        };
-    }
+        Name = meta.Name,
+        Author = meta.Author,
+        Description = meta.Description,
+        Version = meta.Version,
+    };
 }

@@ -4,7 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>FFXIVSpanishPatcher.App</RootNamespace>
     <AssemblyName>FFXIVSpanishPatcher</AssemblyName>
-    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <BuiltInComInteropSupport>false</BuiltInComInteropSupport>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- Windows .exe file icon. -->
@@ -13,6 +13,11 @@
          non-English satellite assemblies, for a smaller single executable. -->
     <DebugType>embedded</DebugType>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>full</TrimMode>
+    <!-- Lumina is rooted below because the pipeline intentionally reflects over generated sheet
+         metadata; suppress the package-level trim warning from Lumina's unannotated internals. -->
+    <NoWarn>$(NoWarn);IL2104</NoWarn>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <RepositorySlug Condition="'$(RepositorySlug)' == ''">JadeArkadian/FFXIV-Spanish-Patcher</RepositorySlug>
     <LatestReleaseApiUrl Condition="'$(LatestReleaseApiUrl)' == ''">https://api.github.com/repos/$(RepositorySlug)/releases/latest</LatestReleaseApiUrl>
@@ -31,6 +36,13 @@
 
   <ItemGroup>
     <ProjectReference Include="..\FFXIVSpanishPatcher.Pipeline\FFXIVSpanishPatcher.Pipeline.csproj" />
+  </ItemGroup>
+
+  <!-- The pipeline reflects over Lumina generated sheet types to map EXH string columns. Root both
+       Lumina assemblies so trimmed self-contained publishes keep that metadata. -->
+  <ItemGroup Condition="'$(PublishTrimmed)' == 'true'">
+    <TrimmerRootAssembly Include="Lumina" />
+    <TrimmerRootAssembly Include="Lumina.Excel" />
   </ItemGroup>
 
   <ItemGroup>

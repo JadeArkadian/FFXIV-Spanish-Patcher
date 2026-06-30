@@ -1,6 +1,5 @@
 using System.Net.Http.Headers;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace FFXIVSpanishPatcher.App.Services;
 
@@ -93,11 +92,12 @@ public sealed class GitHubReleaseUpdateCheckService : IUpdateCheckService
             }
 
             await using var stream = await response.Content.ReadAsStreamAsync(timeout.Token).ConfigureAwait(false);
-            var payload = await JsonSerializer
-                .DeserializeAsync<GitHubLatestRelease>(stream, cancellationToken: timeout.Token)
-                .ConfigureAwait(false);
+            using var payload = await JsonDocument.ParseAsync(stream, cancellationToken: timeout.Token).ConfigureAwait(false);
+            var root = payload.RootElement;
+            var latestTag = root.TryGetProperty("tag_name", out var tagElement)
+                ? tagElement.GetString()?.Trim()
+                : null;
 
-            var latestTag = payload?.TagName?.Trim();
             if (!AppReleaseVersion.TryParse(latestTag, out var latestVersion))
             {
                 return UpdateCheckResult.Unavailable(
@@ -105,9 +105,12 @@ public sealed class GitHubReleaseUpdateCheckService : IUpdateCheckService
                     "La release latest no contiene un tag versionable.");
             }
 
-            var releaseUrl = string.IsNullOrWhiteSpace(payload?.HtmlUrl)
+            var htmlUrl = root.TryGetProperty("html_url", out var urlElement)
+                ? urlElement.GetString()
+                : null;
+            var releaseUrl = string.IsNullOrWhiteSpace(htmlUrl)
                 ? _buildInfo.LatestReleasePageUrl
-                : payload.HtmlUrl.Trim();
+                : htmlUrl.Trim();
 
             if (_buildInfo.ComparableVersion is not { } currentVersion)
             {
@@ -132,12 +135,4 @@ public sealed class GitHubReleaseUpdateCheckService : IUpdateCheckService
         }
     }
 
-    private sealed class GitHubLatestRelease
-    {
-        [JsonPropertyName("tag_name")]
-        public string? TagName { get; init; }
-
-        [JsonPropertyName("html_url")]
-        public string? HtmlUrl { get; init; }
-    }
 }
