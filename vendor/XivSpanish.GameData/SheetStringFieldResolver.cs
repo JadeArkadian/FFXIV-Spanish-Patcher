@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using Lumina.Data.Structs.Excel;
 using Lumina.Excel;
@@ -21,12 +22,18 @@ namespace XivSpanish.GameData;
 /// </summary>
 public static class SheetStringFieldResolver
 {
-    private static readonly Lazy<Type[]> SheetTypes = new(() =>
-        typeof(Lumina.Excel.Sheets.Quest).Assembly
+    private static readonly Lazy<Type[]> SheetTypes = new(LoadSheetTypes);
+
+    [UnconditionalSuppressMessage(
+        "Trimming",
+        "IL2026",
+        Justification = "The app roots Lumina and Lumina.Excel when publishing trimmed; sheet type metadata is intentionally preserved.")]
+    private static Type[] LoadSheetTypes()
+        => typeof(Lumina.Excel.Sheets.Quest).Assembly
             .GetTypes()
             .Where(type => type.IsValueType && type.Namespace == "Lumina.Excel.Sheets")
             .OrderBy(type => type.Name)
-            .ToArray());
+            .ToArray();
 
     /// <summary>
     /// Returns the field name of every string column of <paramref name="sheet"/> in EXH
@@ -71,6 +78,10 @@ public static class SheetStringFieldResolver
     /// falls back to <see cref="Resolve(string,int)"/>), so a partial/uncertain map never ships.
     /// </para>
     /// </summary>
+    [UnconditionalSuppressMessage(
+        "Trimming",
+        "IL2075",
+        Justification = "The app roots Lumina and Lumina.Excel for trimmed publish; reflected typed-sheet members remain available.")]
     public static IReadOnlyList<string>? ResolveByOffset(
         LuminaGameData gameData,
         string sheet,
@@ -204,6 +215,10 @@ public static class SheetStringFieldResolver
         return values;
     }
 
+    [UnconditionalSuppressMessage(
+        "Trimming",
+        "IL2060",
+        Justification = "The app roots Lumina and Lumina.Excel for trimmed publish; reflected generic sheet APIs remain available.")]
     private static IEnumerable? TryGetRawRows(LuminaGameData gameData, string sheet)
     {
         try
@@ -222,6 +237,10 @@ public static class SheetStringFieldResolver
         }
     }
 
+    [UnconditionalSuppressMessage(
+        "Trimming",
+        "IL2060",
+        Justification = "The app roots Lumina and Lumina.Excel for trimmed publish; reflected generated sheet types remain available.")]
     private static object? TryGetTypedSheet(LuminaGameData gameData, Type sheetType)
     {
         try
@@ -243,6 +262,10 @@ public static class SheetStringFieldResolver
     // Public instance members in reflection order: properties first, then fields, excluding the
     // Lumina infrastructure members. Matches the extractor's GetReadableMembers ordering so the
     // resolved field names line up with the manifest the extractor produced.
+    [UnconditionalSuppressMessage(
+        "Trimming",
+        "IL2070",
+        Justification = "The app roots Lumina.Excel for trimmed publish; generated sheet public fields and properties remain available.")]
     private static IEnumerable<(string Name, Type Type)> GetReadableMembers(Type type)
     {
         foreach (var property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
