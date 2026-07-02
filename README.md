@@ -21,7 +21,7 @@ Ve a la página de **Releases** del proyecto y descarga el ZIP de tu sistema:
 
 - `FFXIVSpanishPatcher-...-win-x64.zip` para Windows.
 - `FFXIVSpanishPatcher-...-linux-x64.zip` para Linux.
-- `FFXIVSpanishPatcher-...-osx-x64.zip` o `osx-arm64.zip` para macOS.
+- `FFXIVSpanishPatcher-...-osx-arm64.zip` para macOS (Apple Silicon).
 
 Descomprime el ZIP y ejecuta `FFXIVSpanishPatcher`.
 

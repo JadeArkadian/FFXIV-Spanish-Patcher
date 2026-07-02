@@ -2,7 +2,7 @@ name: Release
 
 # Tag a commit (e.g. v1.2.3) to build self-contained single-file executables for Windows, Linux and
 # macOS and attach them to a GitHub Release. win/linux cross-publish from a Linux runner; the macOS
-# RIDs build on a macOS runner so the .app bundle can be ad-hoc codesigned.
+# RID (Apple Silicon only) builds on a macOS runner so the .app bundle can be ad-hoc codesigned.
 on:
   push:
     tags: [ 'v*.*.*' ]
@@ -31,8 +31,8 @@ jobs:
 
   publish:
     needs: validate-tag
-    # win/linux cross-publish from Linux; osx builds on a macOS runner so the bundle can be ad-hoc
-    # codesigned (mandatory for arm64 to run at all, and removes the "damaged" Gatekeeper error).
+    # win/linux cross-publish from Linux; osx-arm64 builds on a macOS runner so the bundle can be
+    # ad-hoc codesigned (mandatory for arm64 to run at all, and removes the "damaged" Gatekeeper error).
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -40,7 +40,6 @@ jobs:
         include:
           - { rid: win-x64,   os: ubuntu-latest }
           - { rid: linux-x64, os: ubuntu-latest }
-          - { rid: osx-x64,   os: macos-latest }
           - { rid: osx-arm64, os: macos-latest }
     steps:
       - uses: actions/checkout@v4
