@@ -125,7 +125,8 @@ Sin trimming ni NativeAOT: Lumina usa reflexión.
   de la GUI (`FFXIVSpanishPatcher.App.Tests`, valida que MainWindow instancia/bind/tema). Smoke
   contra el juego real es manual (requiere FFXIV instalado + display). Total: 21 tests.
 - **F7** hecho: `.github/workflows/ci.yml` (push/PR → build+test) y `release.yml` (tag `v*` →
-  publica los 4 RID self-contained single-file y los adjunta a un GitHub Release). Se activan al
+  publica los 3 RID self-contained single-file —win-x64, linux-x64, osx-arm64 (solo Apple
+  Silicon)— y los adjunta a un GitHub Release). Se activan al
   crear el repo en GitHub y empujar (no hay remote todavía).
 - **F6** diferida: validación Linux/Mac contra juego real (requiere esas plataformas + el juego).
 - **Plan F0–F7 completo.** Pendiente del usuario: crear el repo GitHub + `git push`; verificación

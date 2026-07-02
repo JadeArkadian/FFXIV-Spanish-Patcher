@@ -109,7 +109,7 @@ dotnet publish src/FFXIVSpanishPatcher.App -c Release -r win-x64 `
 ```
 
 Un `.exe` (~70–90 MB), runtime incluido, cero instalación. Sin trimming ni NativeAOT (Lumina usa
-reflexión). Linux/Mac: mismo comando con `-r linux-x64` / `osx-arm64` / `osx-x64`.
+reflexión). Linux/Mac: mismo comando con `-r linux-x64` / `osx-arm64` (solo Apple Silicon).
 
 ## 8. Tests
 
@@ -140,7 +140,7 @@ reflexión). Linux/Mac: mismo comando con `-r linux-x64` / `osx-arm64` / `osx-x6
 | F4   | `GamePathDetector` (registry + Steam vdf + rutas comunes) + integración SO (abrir carpeta, copiar log). | hecho |
 | F5   | Publish single-file (55.8 MB) + smoke headless de la GUI + pulido. Smoke contra juego real = manual. | hecho |
 | F6   | (diferido) Validación Linux/Mac contra juego real. | pendiente |
-| F7   | Workflows GitHub: CI (build+test) + Release matrix (win-x64/linux-x64/osx-arm64/osx-x64). | hecho |
+| F7   | Workflows GitHub: CI (build+test) + Release matrix (win-x64/linux-x64/osx-arm64). | hecho |
 
 Workflows en `.github/workflows/`: `ci.yml` (push/PR → restore+build+test, incl. smoke headless)
 y `release.yml` (tag `v*` → publica los 4 RID self-contained single-file desde un runner Linux y
