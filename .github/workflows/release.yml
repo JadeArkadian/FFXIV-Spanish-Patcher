@@ -38,9 +38,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { rid: win-x64,   os: ubuntu-latest }
+          # nexus_file_id: "API Info" del fichero en la pestaña Files de nexusmods.com (mod 2513).
+          - { rid: win-x64,   os: ubuntu-latest, nexus_file_id: 7608014 }
           - { rid: linux-x64, os: ubuntu-latest }
-          - { rid: osx-arm64, os: macos-latest }
+          - { rid: osx-arm64, os: macos-latest,  nexus_file_id: 7608017 }
     steps:
       - uses: actions/checkout@v4
 
@@ -99,3 +100,16 @@ jobs:
           name: ${{ needs.validate-tag.outputs.tag }}
           generate_release_notes: true
           files: FFXIVSpanishPatcher-${{ needs.validate-tag.outputs.version }}-${{ matrix.rid }}.zip
+
+      # Sube el zip como nueva versión del fichero existente en Nexus Mods (Upload API v3, beta).
+      # Requiere el secret NEXUSMODS_API_KEY (Site Preferences -> API Keys en nexusmods.com).
+      - name: Upload to Nexus Mods
+        if: matrix.nexus_file_id != ''
+        uses: Nexus-Mods/upload-action@f6e1e2ea683dfe8f88cccf642c6e0e69ab66825e # v1.0.0-beta.8
+        with:
+          api_key: ${{ secrets.NEXUSMODS_API_KEY }}
+          file_id: ${{ matrix.nexus_file_id }}
+          filename: FFXIVSpanishPatcher-${{ needs.validate-tag.outputs.version }}-${{ matrix.rid }}.zip
+          version: ${{ needs.validate-tag.outputs.version }}
+          display_name: FFXIVSpanishPatcher ${{ needs.validate-tag.outputs.version }} (${{ matrix.rid }})
+          archive_existing_version: true
