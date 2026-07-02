@@ -40,8 +40,15 @@ internal static class SyntheticExd
     /// Each column points into that row's string area, matching the layout <see cref="ExdPatcher"/>
     /// consumes.</summary>
     public static byte[] BuildExd((uint RowId, string[] Texts)[] rows, int fixedSize)
+        => BuildExdRaw(
+            rows.Select(row => (row.RowId, RawTexts: row.Texts.Select(Encoding.UTF8.GetBytes).ToArray())).ToArray(),
+            fixedSize);
+
+    /// <summary>Default-variant EXD page whose String columns are already raw SeString bytes
+    /// without NUL terminators. Used when a test needs real payload/run bytes.</summary>
+    public static byte[] BuildExdRaw((uint RowId, byte[][] RawTexts)[] rows, int fixedSize)
     {
-        var columnCount = rows.Length == 0 ? 0 : rows.Max(row => row.Texts.Length);
+        var columnCount = rows.Length == 0 ? 0 : rows.Max(row => row.RawTexts.Length);
         if (fixedSize < columnCount * 4)
         {
             throw new ArgumentOutOfRangeException(nameof(fixedSize), "Fixed size must hold every string offset.");
@@ -56,11 +63,10 @@ internal static class SyntheticExd
             offsets[i] = (uint)(dataStart + body.Length);
             var fixedData = new byte[fixedSize];
             using var stringBlob = new MemoryStream();
-            for (var column = 0; column < rows[i].Texts.Length; column++)
+            for (var column = 0; column < rows[i].RawTexts.Length; column++)
             {
                 BinaryPrimitives.WriteUInt32BigEndian(fixedData.AsSpan(column * 4, 4), (uint)stringBlob.Length);
-                var stringBytes = Encoding.UTF8.GetBytes(rows[i].Texts[column]);
-                stringBlob.Write(stringBytes);
+                stringBlob.Write(rows[i].RawTexts[column]);
                 stringBlob.WriteByte(0);
             }
 

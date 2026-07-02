@@ -31,6 +31,7 @@ public static class TranslationCategories
         ["Completion"] = "interfaz",
         ["Lobby"] = "interfaz",
         ["TextCommand"] = "interfaz",
+        ["TextCommandParam"] = "interfaz",
         ["MainCommand"] = "interfaz",
         ["MainCommandCategory"] = "interfaz",
         ["ExtraCommand"] = "interfaz",
@@ -50,6 +51,7 @@ public static class TranslationCategories
         ["AkatsukiNoteString"] = "interfaz",
         ["CreditListText"] = "interfaz",
         ["RetainerTaskRandom"] = "interfaz",
+        ["ConfigKey"] = "interfaz",
 
         // Nombres: NPC/creatures, places, world flavor and character-creation lore terms.
         ["ENpcResident"] = "nombres",
@@ -112,6 +114,7 @@ public static class TranslationCategories
         ["WKSText"] = "misiones",
         ["RideShootingTextData"] = "misiones",
         ["PartyContentTextData"] = "misiones",
+        ["InstanceContentTextData"] = "misiones",
         ["MJIText"] = "misiones",
         ["LeveString"] = "misiones",
         ["GoldSaucerTextData"] = "misiones",
@@ -142,9 +145,11 @@ public static class TranslationCategories
         // Eventos: key/event items and their help text (distinct from inventory items).
         ["EventItem"] = "eventos",
         ["EventItemHelp"] = "eventos",
+        ["EventAction"] = "eventos",
 
         // Coleccionables: mounts, minions, pets, ornaments, orchestrion and Triple Triad.
         ["Mount"] = "coleccionables",
+        ["MountTransient"] = "coleccionables",
         ["Companion"] = "coleccionables",
         ["Pet"] = "coleccionables",
         ["Ornament"] = "coleccionables",

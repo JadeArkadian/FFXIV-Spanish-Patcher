@@ -356,6 +356,7 @@ public static class ExdPatcher
             {
                 var segments = SeStringParser.Parse(currentRaw);
                 string? appliedSource = null;
+                byte[]? appliedBytes = null;
 
                 foreach (var rep in contentMatched)
                 {
@@ -378,9 +379,16 @@ public static class ExdPatcher
                         appliedSource = rep.Source;
                         break;
                     }
+
+                    if (SeStringTree.TryTranslate(currentRaw, rep.Source, rep.Target, out var runBytes, out _))
+                    {
+                        appliedBytes = runBytes;
+                        appliedSource = rep.Source;
+                        break;
+                    }
                 }
 
-                newBytes = TrimTerminator(SeStringParser.Serialize(segments));
+                newBytes = appliedBytes ?? TrimTerminator(SeStringParser.Serialize(segments));
 
                 if (appliedSource is not null)
                 {

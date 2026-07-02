@@ -11,7 +11,6 @@ namespace XivSpanish.Translation;
 public static class ManifestLoader
 {
     private const string IndexFormat = "xivspanish-translation-index-v1";
-    private static readonly JsonSerializerOptions Options = new() { PropertyNameCaseInsensitive = true };
 
     /// <summary>
     /// Loads every entry from a manifest path. Supports:
@@ -48,7 +47,7 @@ public static class ManifestLoader
         var text = File.ReadAllText(path).TrimStart();
         if (text.StartsWith('['))
         {
-            return JsonSerializer.Deserialize<List<TranslationEntry>>(text, Options) ?? [];
+            return JsonlSerialization.DeserializeList(text) ?? [];
         }
 
         var entries = new List<TranslationEntry>();
@@ -59,7 +58,7 @@ public static class ManifestLoader
                 continue;
             }
 
-            var entry = JsonSerializer.Deserialize<TranslationEntry>(line, Options);
+            var entry = JsonlSerialization.Deserialize(line);
             if (entry is not null)
             {
                 entries.Add(entry);
@@ -154,7 +153,7 @@ public static class ManifestLoader
         var text = File.ReadAllText(path).TrimStart();
         if (text.StartsWith('['))
         {
-            return JsonSerializer.Deserialize<List<TranslationEntry>>(text, Options) ?? [];
+            return JsonlSerialization.DeserializeList(text) ?? [];
         }
 
         var entries = new List<TranslationEntry>();
@@ -165,7 +164,7 @@ public static class ManifestLoader
                 continue;
             }
 
-            var entry = JsonSerializer.Deserialize<TranslationEntry>(line, Options);
+            var entry = JsonlSerialization.Deserialize(line);
             if (entry is not null)
             {
                 entries.Add(entry);

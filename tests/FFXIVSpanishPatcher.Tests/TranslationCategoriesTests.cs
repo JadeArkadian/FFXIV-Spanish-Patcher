@@ -30,9 +30,14 @@ public sealed class TranslationCategoriesTests
     [InlineData("Title", "nombres")]
     [InlineData("NpcYell", "misiones")]
     [InlineData("JournalGenre", "misiones")]
+    [InlineData("InstanceContentTextData", "misiones")]
     [InlineData("Fate", "misiones")]
     [InlineData("Leve", "misiones")]
     [InlineData("TextCommand", "interfaz")]
+    [InlineData("TextCommandParam", "interfaz")]
+    [InlineData("ConfigKey", "interfaz")]
+    [InlineData("EventAction", "eventos")]
+    [InlineData("MountTransient", "coleccionables")]
     public void DomainOf_MapsCuratedSheets(string sheet, string expectedDomain)
         => Assert.Equal(expectedDomain, TranslationCategories.DomainOf(ForSheet(sheet)));
 

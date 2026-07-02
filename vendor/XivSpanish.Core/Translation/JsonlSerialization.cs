@@ -1,6 +1,4 @@
-using System.Text.Encodings.Web;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace XivSpanish.Translation;
 
@@ -13,14 +11,13 @@ namespace XivSpanish.Translation;
 /// </summary>
 public static class JsonlSerialization
 {
-    /// <summary>Canonical write options for a single JSONL line.</summary>
-    public static readonly JsonSerializerOptions WriteOptions = new()
-    {
-        WriteIndented = false,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-    };
-
     /// <summary>Serialize one entry to its canonical single-line JSON form (no trailing newline).</summary>
-    public static string Serialize(TranslationEntry entry) => JsonSerializer.Serialize(entry, WriteOptions);
+    public static string Serialize(TranslationEntry entry)
+        => JsonSerializer.Serialize(entry, TranslationJsonContext.JsonlWrite.TranslationEntry);
+
+    public static TranslationEntry? Deserialize(string json)
+        => JsonSerializer.Deserialize(json, TranslationJsonContext.Read.TranslationEntry);
+
+    public static List<TranslationEntry>? DeserializeList(string json)
+        => JsonSerializer.Deserialize(json, TranslationJsonContext.Read.ListTranslationEntry);
 }
