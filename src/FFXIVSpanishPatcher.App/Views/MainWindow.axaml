@@ -99,14 +99,13 @@
           </StackPanel>
           <Button.Flyout>
             <Flyout Placement="TopEdgeAlignedRight">
-              <StackPanel Spacing="10" Margin="6,26,6,26">
+              <StackPanel Spacing="10" Margin="6,26,6,26" Width="440"
+                          ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                 <TextBlock Text="Aviso legal" FontWeight="SemiBold" FontSize="14"
                            Foreground="{StaticResource Text}"/>
-                <Grid Width="440" HorizontalAlignment="Left">
-                  <SelectableTextBlock Text="{Binding LegalNoticeText}" TextWrapping="Wrap"
-                                       FontSize="12.5" Foreground="{StaticResource Muted}"
-                                       SelectionBrush="{StaticResource Accent}"/>
-                </Grid>
+                <SelectableTextBlock Text="{Binding LegalNoticeText}" TextWrapping="Wrap"
+                                     FontSize="12.5" Foreground="{StaticResource Muted}"
+                                     SelectionBrush="{StaticResource Accent}"/>
               </StackPanel>
             </Flyout>
           </Button.Flyout>
