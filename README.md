@@ -34,6 +34,10 @@ autónomo.
 - Penumbra instalado y funcionando en Dalamud.
 - Una versión del juego compatible con la release descargada.
 
+Cada release del parcheador se construye para una versión concreta de FFXIV. La aplicación muestra
+esa versión recomendada al arrancar y la compara con la versión de tu instalación; si no coinciden,
+puede generar textos rotos o cierres del juego aunque el mod llegue a crearse.
+
 Si el juego acaba de actualizarse, lo recomendable es quitar el mod de Penumbra y esperar una release
 nueva del parcheador, o en su defecto, recrear el mod a partir de los nuevos ficheros postparche. 
 FFXIV cambia archivos internos en cada parche y un paquete generado para una versión antigua puede provocar 
@@ -123,6 +127,10 @@ Lo más útil es incluir:
 - El proyecto no está afiliado a Square Enix.
 - Usar mods en FFXIV depende de herramientas externas y queda bajo tu responsabilidad.
 
+Lee también `NOTICE.md` para los avisos legales completos. Si quieres contribuir código,
+documentación o traducciones, revisa `CONTRIBUTING.md`; las contribuciones asistidas por IA se rigen
+además por `AI_USAGE.md`.
+
 ## Compilar desde código
 
 Para desarrollo necesitas el SDK indicado en `global.json`.
@@ -135,7 +143,7 @@ dotnet test
 Para publicar un ejecutable autónomo de Windows:
 
 ```powershell
-dotnet publish src/FFXIVSpanishPatcher.App -c Release -r win-x64 `
+dotnet publish src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj -c Release -r win-x64 `
   --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
 ```
 
