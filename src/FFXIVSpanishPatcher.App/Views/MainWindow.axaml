@@ -141,9 +141,10 @@
                 <ItemsControl ItemsSource="{Binding Console}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:ConsoleLine">
-                      <TextBlock Text="{Binding Text}" Foreground="{Binding Foreground}"
-                                 FontFamily="Cascadia Mono,Consolas,monospace" FontSize="12.5"
-                                 TextWrapping="Wrap" Margin="0,1"/>
+                      <SelectableTextBlock Text="{Binding Text}" Foreground="{Binding Foreground}"
+                                           SelectionBrush="{StaticResource Accent}"
+                                           FontFamily="Cascadia Mono,Consolas,monospace" FontSize="12.5"
+                                           TextWrapping="Wrap" Margin="0,1"/>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>

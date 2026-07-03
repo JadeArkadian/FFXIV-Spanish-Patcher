@@ -18,6 +18,7 @@ public partial class MainViewModel : ObservableObject
 {
     private const string ResourceName = "FFXIVSpanishPatcher.App.translations.dat";
     private const string RecommendedGameVersionResourceName = "FFXIVSpanishPatcher.App.recommended-game-version.txt";
+    private const string LandingPageUrl = "https://ffxivspanish.carrd.co/";
 
     private readonly IShellServices _shell;
     private readonly ITranslationSource _translations;
@@ -238,14 +239,14 @@ public partial class MainViewModel : ObservableObject
         var version = $"v{_buildInfo.PackageVersion}"
             + (string.IsNullOrEmpty(installedVersion) ? "" : $"-{installedVersion}");
 
-        var domains = string.Join(", ", enabled.Where(c => c.IsSelected).Select(c => c.Label));
-        var description = new PackageMeta().Description + $"\n\nCategorías incluidas: {domains}.";
+        var domains = string.Join("\n", enabled.Where(c => c.IsSelected).Select(c => $"* {c.Label}"));
+        var description = new PackageMeta().Description + $"\n\nCategorías incluidas:\n{domains}";
 
         return new PackageMeta
         {
             Version = version,
             Description = description,
-            Website = $"https://github.com/{_buildInfo.RepositorySlug}",
+            Website = LandingPageUrl,
         };
     }
 

@@ -8,6 +8,9 @@ los `.md` de documentación pueden ir en español.
 **FFXIVSpanish Patcher** es una app de escritorio para generar un mod `.pmp` de Penumbra con la
 traduccion al castellano de Final Fantasy XIV.
 
+Landing page publica del proyecto: <https://ffxivspanish.carrd.co/>. Se usa como `Website` en el
+`meta.json` del `.pmp` generado.
+
 La app:
 
 1. Detecta o pide la ruta de una instalacion local de FFXIV.
