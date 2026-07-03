@@ -18,6 +18,7 @@ public partial class MainViewModel : ObservableObject
 {
     private const string ResourceName = "FFXIVSpanishPatcher.App.translations.dat";
     private const string RecommendedGameVersionResourceName = "FFXIVSpanishPatcher.App.recommended-game-version.txt";
+    private const string LandingPageUrl = "https://ffxivspanish.carrd.co/";
 
     private readonly IShellServices _shell;
     private readonly ITranslationSource _translations;
@@ -81,6 +82,22 @@ public partial class MainViewModel : ObservableObject
     public string AppVersionLabel => _buildInfo.DisplayVersion;
 
     public string WindowTitle => _buildInfo.WindowTitle;
+
+    /// <summary>Condensed Spanish version of NOTICE.md, shown from the status-bar legal button.</summary>
+    public string LegalNoticeText =>
+        "Proyecto no oficial hecho por fans. No está afiliado, patrocinado ni aprobado por Square Enix.\n\n" +
+        "FINAL FANTASY XIV, FFXIV, SQUARE ENIX y todos los nombres, marcas, logotipos, textos y demás " +
+        "propiedad intelectual relacionados pertenecen a sus respectivos propietarios.\n\n" +
+        "Esta aplicación no incluye ni redistribuye archivos del juego: trabaja únicamente sobre los " +
+        "archivos de tu propia instalación local de FFXIV y no modifica la instalación original; genera " +
+        "un paquete de mod aparte para herramientas compatibles (Penumbra).\n\n" +
+        "No elude la propiedad del juego, suscripciones, autenticación ni restricciones de licencia. " +
+        "Eres responsable de cumplir los términos y políticas aplicables a tu uso de FFXIV y de las " +
+        "herramientas de modding de terceros.\n\n" +
+        "Las traducciones y demás material lingüístico creado para este proyecto pertenecen a sus autores. " +
+        "La licencia MIT del repositorio aplica solo al código fuente.\n\n" +
+        "Este software se proporciona sin garantía de ningún tipo; su uso es bajo tu propio riesgo. " +
+        "Aviso completo: NOTICE.md en el repositorio del proyecto.";
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(GenerateModCommand))]
@@ -200,7 +217,7 @@ public partial class MainViewModel : ObservableObject
             StagingPath = Path.Combine(Path.GetTempPath(), "ffxivsp-patcher-staging"),
             VerifyIntegrity = VerifyIntegrity,
             DebugLogging = _debugLogging,
-            Meta = new PackageMeta { Version = _buildInfo.PackageVersion },
+            Meta = BuildPackageMeta(enabled),
         };
 
         // Progress is created on the UI thread, so its callbacks marshal back here automatically.
@@ -226,6 +243,30 @@ public partial class MainViewModel : ObservableObject
         }
 
         IsBusy = false;
+    }
+
+    /// <summary>Penumbra meta.json fields shown in the mod browser. Version combines the patcher
+    /// version with the FFXIV version installed on the user's machine — the one the .pmp was
+    /// generated against (e.g. v0.1.0-2026.06.18.0000.0000) — and the description lists the
+    /// domains selected for this build.</summary>
+    private PackageMeta BuildPackageMeta(IReadOnlyList<CategoryViewModel> enabled)
+    {
+        var installedVersion = GamePathDetector.TryReadGameVersion(GamePath)?.Trim();
+        var version = $"v{_buildInfo.PackageVersion}"
+            + (string.IsNullOrEmpty(installedVersion) ? "" : $"-{installedVersion}");
+
+        var domains = string.Join("\n", enabled.Where(c => c.IsSelected).Select(c => $"* {c.Label}"));
+        var description = new PackageMeta().Description
+            + $"\n\nVersión del patcher: v{_buildInfo.PackageVersion}"
+            + $"\nVersión de FFXIV: {(string.IsNullOrEmpty(installedVersion) ? "desconocida" : installedVersion)}"
+            + $"\n\nCategorías incluidas:\n{domains}";
+
+        return new PackageMeta
+        {
+            Version = version,
+            Description = description,
+            Website = LandingPageUrl,
+        };
     }
 
     [RelayCommand]

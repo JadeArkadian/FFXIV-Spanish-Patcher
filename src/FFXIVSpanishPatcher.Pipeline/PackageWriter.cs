@@ -91,8 +91,8 @@ internal sealed class PackageModMeta
     [JsonPropertyName("Description")] public string Description { get; init; } = string.Empty;
     [JsonPropertyName("Image")] public string Image => string.Empty;
     [JsonPropertyName("Version")] public string Version { get; init; } = "0.0.0";
-    [JsonPropertyName("Website")] public string Website => string.Empty;
-    [JsonPropertyName("ModTags")] public string[] ModTags => ["translation", "spanish"];
+    [JsonPropertyName("Website")] public string Website { get; init; } = string.Empty;
+    [JsonPropertyName("ModTags")] public string[] ModTags => ["translation", "spanish", "castellano", "español", "text", "UI"];
 
     public static PackageModMeta From(PackageMeta meta) => new()
     {
@@ -100,5 +100,6 @@ internal sealed class PackageModMeta
         Author = meta.Author,
         Description = meta.Description,
         Version = meta.Version,
+        Website = meta.Website,
     };
 }

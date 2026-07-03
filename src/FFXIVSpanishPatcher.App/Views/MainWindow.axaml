@@ -68,13 +68,20 @@
       <Setter Property="VerticalContentAlignment" Value="Center"/>
       <Setter Property="CornerRadius" Value="8"/>
     </Style>
+    <!-- FlyoutPresenter's own control theme sets ScrollViewer.HorizontalScrollBarVisibility=Auto
+         via TemplateBinding; content-side settings can't override it, only a style targeting the
+         presenter itself can. -->
+    <Style Selector="FlyoutPresenter">
+      <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+      <Setter Property="Padding" Value="18,26"/>
+    </Style>
   </Window.Styles>
 
   <DockPanel>
     <!-- Status bar -->
     <Border DockPanel.Dock="Bottom" Background="#0E1525" BorderBrush="{StaticResource PanelBorder}"
             BorderThickness="0,1,0,0" Padding="18,10">
-      <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto">
+      <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto">
         <TextBlock Grid.Column="0" VerticalAlignment="Center" Foreground="{StaticResource Muted}"
                    Text="{Binding LastOutputName, StringFormat='Salida: {0}', FallbackValue='Salida: —'}"/>
         <Border Grid.Column="1" Margin="12,0,0,0" CornerRadius="6" Padding="10,3" VerticalAlignment="Center"
@@ -88,7 +95,35 @@
         <TextBlock Grid.Column="3" Margin="0,0,14,0" VerticalAlignment="Center"
                    Foreground="{StaticResource Muted}"
                    Text="{Binding AppVersionLabel, StringFormat='Versión: {0}'}"/>
-        <Button Grid.Column="4" Content="Copiar log" Command="{Binding CopyLogCommand}"/>
+        <Button Grid.Column="4" Margin="0,0,10,0" VerticalAlignment="Center" Padding="6,4"
+                Background="Transparent" BorderThickness="0"
+                Foreground="{StaticResource Muted}" FontSize="12" Cursor="Hand">
+          <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <Path Width="13" Height="13" Stretch="Uniform" Stroke="{StaticResource Muted}" StrokeThickness="2"
+                  StrokeLineCap="Round" StrokeJoin="Round"
+                  Data="M14 2 H6 A2 2 0 0 0 4 4 V20 A2 2 0 0 0 6 22 H18 A2 2 0 0 0 20 20 V8 Z M14 2 V8 H20 M16 13 H8 M16 17 H8"/>
+            <TextBlock Text="Aviso legal" VerticalAlignment="Center"/>
+          </StackPanel>
+          <Button.Flyout>
+            <Flyout Placement="TopEdgeAlignedRight">
+              <StackPanel Spacing="10" Width="440">
+                <TextBlock Text="Aviso legal" FontWeight="SemiBold" FontSize="14"
+                           Foreground="{StaticResource Text}"/>
+                <SelectableTextBlock Text="{Binding LegalNoticeText}" TextWrapping="Wrap"
+                                     FontSize="12.5" Foreground="{StaticResource Muted}"
+                                     SelectionBrush="{StaticResource Accent}"/>
+              </StackPanel>
+            </Flyout>
+          </Button.Flyout>
+        </Button>
+        <Button Grid.Column="5" Command="{Binding CopyLogCommand}">
+          <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+            <Path Width="13" Height="15" Stretch="Uniform" Stroke="{StaticResource Text}" StrokeThickness="2"
+                  StrokeLineCap="Round" StrokeJoin="Round"
+                  Data="M9 2 H15 A1 1 0 0 1 16 3 V5 A1 1 0 0 1 15 6 H9 A1 1 0 0 1 8 5 V3 A1 1 0 0 1 9 2 Z M16 4 H18 A2 2 0 0 1 20 6 V20 A2 2 0 0 1 18 22 H6 A2 2 0 0 1 4 20 V6 A2 2 0 0 1 6 4 H8"/>
+            <TextBlock Text="Copiar log" VerticalAlignment="Center"/>
+          </StackPanel>
+        </Button>
       </Grid>
     </Border>
 
@@ -141,9 +176,12 @@
                 <ItemsControl ItemsSource="{Binding Console}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:ConsoleLine">
-                      <TextBlock Text="{Binding Text}" Foreground="{Binding Foreground}"
-                                 FontFamily="Cascadia Mono,Consolas,monospace" FontSize="12.5"
-                                 TextWrapping="Wrap" Margin="0,1"/>
+                      <Grid>
+                        <SelectableTextBlock Text="{Binding Text}" Foreground="{Binding Foreground}"
+                                             SelectionBrush="{StaticResource Accent}"
+                                             FontFamily="Cascadia Mono,Consolas,monospace" FontSize="12.5"
+                                             TextWrapping="Wrap" Margin="0,1"/>
+                      </Grid>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>

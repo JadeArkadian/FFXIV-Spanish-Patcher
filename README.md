@@ -6,6 +6,8 @@
 
 Parcheador de español para **Final Fantasy XIV**.
 
+Web del proyecto: <https://ffxivspanish.carrd.co/>
+
 Esta aplicación genera un mod `.pmp` para Penumbra usando los archivos de tu propia instalación del
 juego. No modifica los archivos originales de FFXIV y no incluye archivos del juego: extrae solo los
 datos necesarios, aplica las traducciones incluidas en el programa y crea un paquete listo para
@@ -21,7 +23,7 @@ Ve a la página de **Releases** del proyecto y descarga el ZIP de tu sistema:
 
 - `FFXIVSpanishPatcher-...-win-x64.zip` para Windows.
 - `FFXIVSpanishPatcher-...-linux-x64.zip` para Linux.
-- `FFXIVSpanishPatcher-...-osx-x64.zip` o `osx-arm64.zip` para macOS.
+- `FFXIVSpanishPatcher-...-osx-arm64.zip` para macOS (Apple Silicon).
 
 Descomprime el ZIP y ejecuta `FFXIVSpanishPatcher`.
 
