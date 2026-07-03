@@ -46,11 +46,14 @@ public static class SheetStringFieldResolver
         var sheetType = SheetTypes.Value.FirstOrDefault(type =>
             string.Equals(type.Name, sheet, StringComparison.Ordinal));
 
+        // Includes collection members (Collection<ReadOnlySeString>, e.g. GuildleveAssignmentTalk's
+        // Talk) so they expand to the Name[index] paths the extractor's typed scan emits; the shared
+        // resolver infers the collection size from the EXH string-column count.
         var stringMembers = sheetType is null
             ? null
             : GetReadableMembers(sheetType)
-                .Where(member => IsTextLike(member.Type))
-                .Select(member => member.Name)
+                .Where(member => IsTextLike(member.Type) || StringColumnFieldNames.IsTextLikeCollection(member.Type))
+                .Select(member => new StringColumnMember(member.Name, StringColumnFieldNames.IsTextLikeCollection(member.Type)))
                 .ToArray();
 
         return StringColumnFieldNames.Resolve(stringMembers, stringColumnCount);
@@ -94,7 +97,17 @@ public static class SheetStringFieldResolver
             return null;
         }
 
-        var stringMembers = GetReadableMembers(sheetType)
+        var members = GetReadableMembers(sheetType).ToArray();
+
+        // Collection members (Collection<ReadOnlySeString>) cannot be compared member-by-member
+        // against physical columns here: return null so the caller falls back to the reflection-only
+        // Resolve, which expands them to Name[index] paths in declaration order.
+        if (members.Any(member => StringColumnFieldNames.IsTextLikeCollection(member.Type)))
+        {
+            return null;
+        }
+
+        var stringMembers = members
             .Where(member => IsTextLike(member.Type))
             .Select(member => member.Name)
             .ToArray();
