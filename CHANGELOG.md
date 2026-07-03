@@ -1,13 +1,14 @@
 # Changelog
 
-Resument de todos los cambios relevantes del proyecto se documentan en este fichero.
+Resumen de todos los cambios relevantes del proyecto.
 
-## v0.0.14
+## v0.1.0
 
 - Añadido CHANGELOG.md
 - Deprecado soporte para Macs antiguos
 - Añadida automatizacion de publicación de release en Nexus Mods
 - Añadidas nuevas sheets traducidas al listado de categorías del patcher para que aparezcan bajo los toggles existentes del panel avanzado.
+- 8271 lineas nuevas traducidas
 - Nuevas sheets de `misiones`:
   - `AirshipExplorationLog`
   - `AnimaWeaponFUITalkParam`
@@ -17,11 +18,37 @@ Resument de todos los cambios relevantes del proyecto se documentan en este fich
   - `InstanceContentTextData`
 - Nuevas sheets de `interfaz`:
   - `ContentsTutorialPage`
+  - `EmjAddon`
+  - `EventTutorial`
+  - `EventTutorialPage`
+  - `FGSAddon`
   - `FieldMarker`
+  - `FurnitureCatalogCategory`
+  - `GuideTitle`
+  - `GuildleveAssignment`
+  - `GuildleveAssignmentTalk`
+  - `GuildOrder`
+  - `HWDDevLevelWebText`
   - `Marker`
+  - `McGuffinUIData`
+  - `MJIDisposalShopUICategory`
+  - `MJIHudMode`
+  - `MYCTemporaryItemUICategory`
   - `OmikujiGuidance`
+  - `PerformGuideScore`
   - `Platform`
+  - `QuestRedoChapterUI`
+  - `QuestRedoChapterUICategory`
+  - `QuestRedoChapterUITab`
+  - `QuickChatTransient`
+  - `SpearfishingEcology`
+  - `SubmarineExplorationLog`
   - `TextCommandParam`
+  - `WarpLogic`
+  - `WebGuidance`
+  - `WKSNextPlanetGuidance`
+  - `WKSPraiseUI`
+  - `YardCatalogCategory`
 - Nueva sheet de `clases`:
   - `ClassJobActionUICategory`
 - Nuevas sheets de `items`:
