@@ -240,7 +240,10 @@ public partial class MainViewModel : ObservableObject
             + (string.IsNullOrEmpty(installedVersion) ? "" : $"-{installedVersion}");
 
         var domains = string.Join("\n", enabled.Where(c => c.IsSelected).Select(c => $"* {c.Label}"));
-        var description = new PackageMeta().Description + $"\n\nCategorías incluidas:\n{domains}";
+        var description = new PackageMeta().Description
+            + $"\n\nVersión del patcher: v{_buildInfo.PackageVersion}"
+            + $"\nVersión de FFXIV: {(string.IsNullOrEmpty(installedVersion) ? "desconocida" : installedVersion)}"
+            + $"\n\nCategorías incluidas:\n{domains}";
 
         return new PackageMeta
         {
