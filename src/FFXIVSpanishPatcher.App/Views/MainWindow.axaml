@@ -99,13 +99,14 @@
           </StackPanel>
           <Button.Flyout>
             <Flyout Placement="TopEdgeAlignedRight">
-              <StackPanel Spacing="10" Margin="6,26,6,26" Width="460">
+              <StackPanel Spacing="10" Margin="6,26,6,26">
                 <TextBlock Text="Aviso legal" FontWeight="SemiBold" FontSize="14"
                            Foreground="{StaticResource Text}"/>
-                <SelectableTextBlock Text="{Binding LegalNoticeText}" TextWrapping="Wrap"
-                                     FontSize="12.5" Foreground="{StaticResource Muted}"
-                                     SelectionBrush="{StaticResource Accent}" Width="440"
-                                     HorizontalAlignment="Left"/>
+                <Grid Width="440" HorizontalAlignment="Left">
+                  <SelectableTextBlock Text="{Binding LegalNoticeText}" TextWrapping="Wrap"
+                                       FontSize="12.5" Foreground="{StaticResource Muted}"
+                                       SelectionBrush="{StaticResource Accent}"/>
+                </Grid>
               </StackPanel>
             </Flyout>
           </Button.Flyout>
@@ -170,10 +171,12 @@
                 <ItemsControl ItemsSource="{Binding Console}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:ConsoleLine">
-                      <SelectableTextBlock Text="{Binding Text}" Foreground="{Binding Foreground}"
-                                           SelectionBrush="{StaticResource Accent}"
-                                           FontFamily="Cascadia Mono,Consolas,monospace" FontSize="12.5"
-                                           TextWrapping="Wrap" Margin="0,1"/>
+                      <Grid>
+                        <SelectableTextBlock Text="{Binding Text}" Foreground="{Binding Foreground}"
+                                             SelectionBrush="{StaticResource Accent}"
+                                             FontFamily="Cascadia Mono,Consolas,monospace" FontSize="12.5"
+                                             TextWrapping="Wrap" Margin="0,1"/>
+                      </Grid>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
