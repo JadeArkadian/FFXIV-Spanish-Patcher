@@ -7,6 +7,9 @@ Resumen de todos los cambios relevantes del proyecto.
 - Añadido CHANGELOG.md
 - Deprecado soporte para Macs antiguos
 - Añadida automatizacion de publicación de release en Nexus Mods
+- Metadatos enriquecidos del mod (`meta.json` del `.pmp`):
+- La consola de la aplicación ahora permite seleccionar texto con el ratón y copiarlo con Ctrl+C.
+- Correcciones de parcheo (vendor): alias posicionales `Column{i}` en `ExdPatcher` y resolución de campos SeString en miembros de colección.
 - Añadidas nuevas sheets traducidas al listado de categorías del patcher para que aparezcan bajo los toggles existentes del panel avanzado.
 - 8271 lineas nuevas traducidas
 - Nuevas sheets de `misiones`:
