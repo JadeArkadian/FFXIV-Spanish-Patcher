@@ -229,12 +229,14 @@ public partial class MainViewModel : ObservableObject
     }
 
     /// <summary>Penumbra meta.json fields shown in the mod browser. Version combines the patcher
-    /// version with the FFXIV version the embedded blob targets (e.g. v0.1.0-2026.06.18.0000.0000)
-    /// and the description lists the domains selected for this build.</summary>
+    /// version with the FFXIV version installed on the user's machine — the one the .pmp was
+    /// generated against (e.g. v0.1.0-2026.06.18.0000.0000) — and the description lists the
+    /// domains selected for this build.</summary>
     private PackageMeta BuildPackageMeta(IReadOnlyList<CategoryViewModel> enabled)
     {
+        var installedVersion = GamePathDetector.TryReadGameVersion(GamePath)?.Trim();
         var version = $"v{_buildInfo.PackageVersion}"
-            + (_recommendedGameVersion is null ? "" : $"-{_recommendedGameVersion}");
+            + (string.IsNullOrEmpty(installedVersion) ? "" : $"-{installedVersion}");
 
         var domains = string.Join(", ", enabled.Where(c => c.IsSelected).Select(c => c.Label));
         var description = new PackageMeta().Description + $"\n\nCategorías incluidas: {domains}.";
