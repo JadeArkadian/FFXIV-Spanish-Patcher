@@ -68,6 +68,12 @@
       <Setter Property="VerticalContentAlignment" Value="Center"/>
       <Setter Property="CornerRadius" Value="8"/>
     </Style>
+    <!-- FlyoutPresenter's own control theme sets ScrollViewer.HorizontalScrollBarVisibility=Auto
+         via TemplateBinding; content-side settings can't override it, only a style targeting the
+         presenter itself can. -->
+    <Style Selector="FlyoutPresenter">
+      <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+    </Style>
   </Window.Styles>
 
   <DockPanel>
@@ -99,8 +105,7 @@
           </StackPanel>
           <Button.Flyout>
             <Flyout Placement="TopEdgeAlignedRight">
-              <StackPanel Spacing="10" Margin="6,26,6,26" Width="440"
-                          ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+              <StackPanel Spacing="10" Margin="6,26,6,26" Width="440">
                 <TextBlock Text="Aviso legal" FontWeight="SemiBold" FontSize="14"
                            Foreground="{StaticResource Text}"/>
                 <SelectableTextBlock Text="{Binding LegalNoticeText}" TextWrapping="Wrap"
