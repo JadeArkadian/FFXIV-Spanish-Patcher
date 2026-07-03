@@ -74,7 +74,7 @@
     <!-- Status bar -->
     <Border DockPanel.Dock="Bottom" Background="#0E1525" BorderBrush="{StaticResource PanelBorder}"
             BorderThickness="0,1,0,0" Padding="18,10">
-      <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto">
+      <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto">
         <TextBlock Grid.Column="0" VerticalAlignment="Center" Foreground="{StaticResource Muted}"
                    Text="{Binding LastOutputName, StringFormat='Salida: {0}', FallbackValue='Salida: —'}"/>
         <Border Grid.Column="1" Margin="12,0,0,0" CornerRadius="6" Padding="10,3" VerticalAlignment="Center"
@@ -85,10 +85,28 @@
         <TextBlock Grid.Column="2" Margin="20,0" VerticalAlignment="Center" Foreground="{StaticResource Muted}"
                    TextTrimming="CharacterEllipsis"
                    Text="{Binding OutputFolder, StringFormat='Carpeta de salida: {0}'}"/>
-        <TextBlock Grid.Column="3" Margin="0,0,14,0" VerticalAlignment="Center"
+        <Button Grid.Column="3" Margin="0,0,14,0" VerticalAlignment="Center" Padding="4,2"
+                Background="Transparent" BorderThickness="0"
+                Foreground="{StaticResource Muted}" FontSize="12" Cursor="Hand"
+                Content="Aviso legal">
+          <Button.Flyout>
+            <Flyout Placement="TopEdgeAlignedRight">
+              <ScrollViewer MaxHeight="320" MaxWidth="460">
+                <StackPanel Spacing="8" Margin="4">
+                  <TextBlock Text="Aviso legal" FontWeight="SemiBold" FontSize="14"
+                             Foreground="{StaticResource Text}"/>
+                  <SelectableTextBlock Text="{Binding LegalNoticeText}" TextWrapping="Wrap"
+                                       FontSize="12" Foreground="{StaticResource Muted}"
+                                       SelectionBrush="{StaticResource Accent}" MaxWidth="430"/>
+                </StackPanel>
+              </ScrollViewer>
+            </Flyout>
+          </Button.Flyout>
+        </Button>
+        <TextBlock Grid.Column="4" Margin="0,0,14,0" VerticalAlignment="Center"
                    Foreground="{StaticResource Muted}"
                    Text="{Binding AppVersionLabel, StringFormat='Versión: {0}'}"/>
-        <Button Grid.Column="4" Content="Copiar log" Command="{Binding CopyLogCommand}"/>
+        <Button Grid.Column="5" Content="Copiar log" Command="{Binding CopyLogCommand}"/>
       </Grid>
     </Border>
 

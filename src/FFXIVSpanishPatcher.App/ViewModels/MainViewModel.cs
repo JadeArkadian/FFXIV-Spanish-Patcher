@@ -83,6 +83,22 @@ public partial class MainViewModel : ObservableObject
 
     public string WindowTitle => _buildInfo.WindowTitle;
 
+    /// <summary>Condensed Spanish version of NOTICE.md, shown from the status-bar legal button.</summary>
+    public string LegalNoticeText =>
+        "Proyecto no oficial hecho por fans. No está afiliado, patrocinado ni aprobado por Square Enix.\n\n" +
+        "FINAL FANTASY XIV, FFXIV, SQUARE ENIX y todos los nombres, marcas, logotipos, textos y demás " +
+        "propiedad intelectual relacionados pertenecen a sus respectivos propietarios.\n\n" +
+        "Esta aplicación no incluye ni redistribuye archivos del juego: trabaja únicamente sobre los " +
+        "archivos de tu propia instalación local de FFXIV y no modifica la instalación original; genera " +
+        "un paquete de mod aparte para herramientas compatibles (Penumbra).\n\n" +
+        "No elude la propiedad del juego, suscripciones, autenticación ni restricciones de licencia. " +
+        "Eres responsable de cumplir los términos y políticas aplicables a tu uso de FFXIV y de las " +
+        "herramientas de modding de terceros.\n\n" +
+        "Las traducciones y demás material lingüístico creado para este proyecto pertenecen a sus autores. " +
+        "La licencia MIT del repositorio aplica solo al código fuente.\n\n" +
+        "Este software se proporciona sin garantía de ningún tipo; su uso es bajo tu propio riesgo. " +
+        "Aviso completo: NOTICE.md en el repositorio del proyecto.";
+
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(GenerateModCommand))]
     private string? gamePath;
