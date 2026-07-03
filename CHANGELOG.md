@@ -5,6 +5,7 @@ Resumen de todos los cambios relevantes del proyecto.
 ## v0.1.0
 
 - Añadido CHANGELOG.md
+- Añadido Aviso Legal
 - Deprecado soporte para Macs antiguos
 - Añadida automatizacion de publicación de release en Nexus Mods
 - Metadatos enriquecidos del mod (`meta.json` del `.pmp`):

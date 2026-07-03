@@ -73,6 +73,7 @@
          presenter itself can. -->
     <Style Selector="FlyoutPresenter">
       <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+      <Setter Property="Padding" Value="18,26"/>
     </Style>
   </Window.Styles>
 
@@ -105,7 +106,7 @@
           </StackPanel>
           <Button.Flyout>
             <Flyout Placement="TopEdgeAlignedRight">
-              <StackPanel Spacing="10" Margin="12,26,12,26" Width="440">
+              <StackPanel Spacing="10" Width="440">
                 <TextBlock Text="Aviso legal" FontWeight="SemiBold" FontSize="14"
                            Foreground="{StaticResource Text}"/>
                 <SelectableTextBlock Text="{Binding LegalNoticeText}" TextWrapping="Wrap"
