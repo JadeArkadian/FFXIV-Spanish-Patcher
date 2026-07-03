@@ -40,6 +40,7 @@ public static class TranslationCategories
         ["HowToCategory"] = "interfaz",
         ["GuidePageString"] = "interfaz",
         ["ContentsTutorial"] = "interfaz",
+        ["ContentsTutorialPage"] = "interfaz",
         ["BannerDecoration"] = "interfaz",
         ["CharaCardBase"] = "interfaz",
         ["CharaCardPlayStyle"] = "interfaz",
@@ -52,6 +53,10 @@ public static class TranslationCategories
         ["CreditListText"] = "interfaz",
         ["RetainerTaskRandom"] = "interfaz",
         ["ConfigKey"] = "interfaz",
+        ["FieldMarker"] = "interfaz",
+        ["Marker"] = "interfaz",
+        ["OmikujiGuidance"] = "interfaz",
+        ["Platform"] = "interfaz",
 
         // Nombres: NPC/creatures, places, world flavor and character-creation lore terms.
         ["ENpcResident"] = "nombres",
@@ -71,11 +76,13 @@ public static class TranslationCategories
         ["MonsterNote"] = "nombres",
         ["Emote"] = "nombres",
         ["EmoteCategory"] = "nombres",
+        ["DawnMemberUIParam"] = "nombres",
 
         // Clases / trabajos: nombres de clases y trabajos y sus categorías (toggle propio para que
         // el usuario pueda dejarlos en inglés sin afectar al resto de nombres).
         ["ClassJob"] = "clases",
         ["ClassJobCategory"] = "clases",
+        ["ClassJobActionUICategory"] = "clases",
 
         // Items: inventory, gear/UI categories, gathering/fishing and deep-dungeon items.
         ["Item"] = "items",
@@ -85,11 +92,14 @@ public static class TranslationCategories
         ["ItemSpecialBonus"] = "items",
         ["DeepDungeonItem"] = "items",
         ["DeepDungeonMagicStone"] = "items",
+        ["DeepDungeonEquipment"] = "items",
         ["SpearfishingItem"] = "items",
         ["FishParameter"] = "items",
         ["GatheringPointName"] = "items",
         ["GatheringPointBonusType"] = "items",
         ["SecretRecipeBook"] = "items",
+        ["BuddyEquip"] = "items",
+        ["Glasses"] = "items",
 
         // Acciones / habilidades: combat and crafting actions, traits, statuses.
         ["Action"] = "acciones",
@@ -111,6 +121,8 @@ public static class TranslationCategories
         ["CustomTalk"] = "misiones",
         ["NpcYell"] = "misiones",
         ["PublicContentTextData"] = "misiones",
+        ["AirshipExplorationLog"] = "misiones",
+        ["AnimaWeaponFUITalkParam"] = "misiones",
         ["WKSText"] = "misiones",
         ["RideShootingTextData"] = "misiones",
         ["PartyContentTextData"] = "misiones",
@@ -121,13 +133,16 @@ public static class TranslationCategories
         ["WKSMissionText"] = "misiones",
         ["GoldSaucerTalk"] = "misiones",
         ["MassivePcContentTextData"] = "misiones",
+        ["CompleteJournal"] = "misiones",
         ["JournalGenre"] = "misiones",
         ["JournalCategory"] = "misiones",
         ["JournalSection"] = "misiones",
         ["ContentFinderCondition"] = "misiones",
         ["ContentType"] = "misiones",
         ["ContentRoulette"] = "misiones",
+        ["ContentUICategory"] = "misiones",
         ["ContentTalk"] = "misiones",
+        ["DescriptionString"] = "misiones",
         ["GimmickTalk"] = "misiones",
         ["WeeklyBingoText"] = "misiones",
         ["Fate"] = "misiones",
@@ -151,6 +166,7 @@ public static class TranslationCategories
         ["Mount"] = "coleccionables",
         ["MountTransient"] = "coleccionables",
         ["Companion"] = "coleccionables",
+        ["CompanionTransient"] = "coleccionables",
         ["Pet"] = "coleccionables",
         ["Ornament"] = "coleccionables",
         ["Orchestrion"] = "coleccionables",
