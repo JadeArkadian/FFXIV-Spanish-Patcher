@@ -57,8 +57,9 @@ public sealed record PatchRequest
 /// <summary>Penumbra mod metadata written to <c>meta.json</c>.</summary>
 public sealed record PackageMeta
 {
-    public string Name { get; init; } = "FFXIVSpanish";
-    public string Author { get; init; } = "FFXIVSpanish";
+    public string Name { get; init; } = "FFXIV en Español";
+    public string Author { get; init; } = "Jade Arkadian";
     public string Description { get; init; } = "Traducción al castellano de FFXIV mediante redirección de archivos EXD para Penumbra.";
     public string Version { get; init; } = "0.0.0";
+    public string Website { get; init; } = string.Empty;
 }

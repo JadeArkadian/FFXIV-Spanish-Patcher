@@ -200,7 +200,7 @@ public partial class MainViewModel : ObservableObject
             StagingPath = Path.Combine(Path.GetTempPath(), "ffxivsp-patcher-staging"),
             VerifyIntegrity = VerifyIntegrity,
             DebugLogging = _debugLogging,
-            Meta = new PackageMeta { Version = _buildInfo.PackageVersion },
+            Meta = BuildPackageMeta(enabled),
         };
 
         // Progress is created on the UI thread, so its callbacks marshal back here automatically.
@@ -226,6 +226,25 @@ public partial class MainViewModel : ObservableObject
         }
 
         IsBusy = false;
+    }
+
+    /// <summary>Penumbra meta.json fields shown in the mod browser. Version combines the patcher
+    /// version with the FFXIV version the embedded blob targets (e.g. v0.1.0-2026.06.18.0000.0000)
+    /// and the description lists the domains selected for this build.</summary>
+    private PackageMeta BuildPackageMeta(IReadOnlyList<CategoryViewModel> enabled)
+    {
+        var version = $"v{_buildInfo.PackageVersion}"
+            + (_recommendedGameVersion is null ? "" : $"-{_recommendedGameVersion}");
+
+        var domains = string.Join(", ", enabled.Where(c => c.IsSelected).Select(c => c.Label));
+        var description = new PackageMeta().Description + $"\n\nCategorías incluidas: {domains}.";
+
+        return new PackageMeta
+        {
+            Version = version,
+            Description = description,
+            Website = $"https://github.com/{_buildInfo.RepositorySlug}",
+        };
     }
 
     [RelayCommand]
