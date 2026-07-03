@@ -99,12 +99,12 @@
           </StackPanel>
           <Button.Flyout>
             <Flyout Placement="TopEdgeAlignedRight">
-              <StackPanel Spacing="10" Margin="6" MaxWidth="640">
+              <StackPanel Spacing="10" Margin="6,26,6,26" MaxWidth="460">
                 <TextBlock Text="Aviso legal" FontWeight="SemiBold" FontSize="14"
                            Foreground="{StaticResource Text}"/>
                 <SelectableTextBlock Text="{Binding LegalNoticeText}" TextWrapping="Wrap"
                                      FontSize="12.5" Foreground="{StaticResource Muted}"
-                                     SelectionBrush="{StaticResource Accent}" MaxWidth="620"/>
+                                     SelectionBrush="{StaticResource Accent}" MaxWidth="440"/>
               </StackPanel>
             </Flyout>
           </Button.Flyout>
