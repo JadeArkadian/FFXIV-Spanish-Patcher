@@ -220,6 +220,16 @@ public static class ExdPatcher
                 // extractor emits distinct names per string column in practice.
                 fieldToOrdinal.TryAdd(stringColumnFieldNames[ordinal], ordinal);
             }
+
+            // Positional alias: Column{i} always targets ordinal i. Corpora extracted while the
+            // resolver fell back to Column{i} labels (e.g. Fate before collection expansion) must
+            // stay field-targeted when the resolver later learns the real member names; Column{i}
+            // is positional by definition of the extractor fallback, so the alias is correct on
+            // any sheet. TryAdd keeps a real member name that happens to spell Column{i} authoritative.
+            for (var ordinal = 0; ordinal < stringColumnOffsets.Count; ordinal++)
+            {
+                fieldToOrdinal.TryAdd($"Column{ordinal}", ordinal);
+            }
         }
 
         // Partition replacements:
