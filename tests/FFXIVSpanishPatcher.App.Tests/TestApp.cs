@@ -3,8 +3,14 @@ using Avalonia.Headless;
 using Avalonia.Styling;
 using Avalonia.Themes.Fluent;
 using FFXIVSpanishPatcher.App.Tests;
+using Xunit;
 
 [assembly: AvaloniaTestApplication(typeof(TestAppBuilder))]
+// Avalonia's headless render interface is process-wide, not per-test-thread: running
+// [AvaloniaFact] tests in parallel xUnit workers races window/control-template construction
+// (e.g. Path/StreamGeometry icon parsing) against "Unable to locate IPlatformRenderInterface".
+// Forcing sequential execution eliminates the flake.
+[assembly: CollectionBehavior(DisableTestParallelization = true)]
 
 namespace FFXIVSpanishPatcher.App.Tests;
 
