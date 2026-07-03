@@ -85,28 +85,38 @@
         <TextBlock Grid.Column="2" Margin="20,0" VerticalAlignment="Center" Foreground="{StaticResource Muted}"
                    TextTrimming="CharacterEllipsis"
                    Text="{Binding OutputFolder, StringFormat='Carpeta de salida: {0}'}"/>
-        <Button Grid.Column="3" Margin="0,0,14,0" VerticalAlignment="Center" Padding="4,2"
+        <TextBlock Grid.Column="3" Margin="0,0,14,0" VerticalAlignment="Center"
+                   Foreground="{StaticResource Muted}"
+                   Text="{Binding AppVersionLabel, StringFormat='Versión: {0}'}"/>
+        <Button Grid.Column="4" Margin="0,0,10,0" VerticalAlignment="Center" Padding="6,4"
                 Background="Transparent" BorderThickness="0"
-                Foreground="{StaticResource Muted}" FontSize="12" Cursor="Hand"
-                Content="Aviso legal">
+                Foreground="{StaticResource Muted}" FontSize="12" Cursor="Hand">
+          <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <Path Width="13" Height="13" Stretch="Uniform" Stroke="{StaticResource Muted}" StrokeThickness="2"
+                  StrokeLineCap="Round" StrokeJoin="Round"
+                  Data="M14 2 H6 A2 2 0 0 0 4 4 V20 A2 2 0 0 0 6 22 H18 A2 2 0 0 0 20 20 V8 Z M14 2 V8 H20 M16 13 H8 M16 17 H8"/>
+            <TextBlock Text="Aviso legal" VerticalAlignment="Center"/>
+          </StackPanel>
           <Button.Flyout>
             <Flyout Placement="TopEdgeAlignedRight">
-              <ScrollViewer MaxHeight="320" MaxWidth="460">
-                <StackPanel Spacing="8" Margin="4">
-                  <TextBlock Text="Aviso legal" FontWeight="SemiBold" FontSize="14"
-                             Foreground="{StaticResource Text}"/>
-                  <SelectableTextBlock Text="{Binding LegalNoticeText}" TextWrapping="Wrap"
-                                       FontSize="12" Foreground="{StaticResource Muted}"
-                                       SelectionBrush="{StaticResource Accent}" MaxWidth="430"/>
-                </StackPanel>
-              </ScrollViewer>
+              <StackPanel Spacing="10" Margin="6" MaxWidth="640">
+                <TextBlock Text="Aviso legal" FontWeight="SemiBold" FontSize="14"
+                           Foreground="{StaticResource Text}"/>
+                <SelectableTextBlock Text="{Binding LegalNoticeText}" TextWrapping="Wrap"
+                                     FontSize="12.5" Foreground="{StaticResource Muted}"
+                                     SelectionBrush="{StaticResource Accent}" MaxWidth="620"/>
+              </StackPanel>
             </Flyout>
           </Button.Flyout>
         </Button>
-        <TextBlock Grid.Column="4" Margin="0,0,14,0" VerticalAlignment="Center"
-                   Foreground="{StaticResource Muted}"
-                   Text="{Binding AppVersionLabel, StringFormat='Versión: {0}'}"/>
-        <Button Grid.Column="5" Content="Copiar log" Command="{Binding CopyLogCommand}"/>
+        <Button Grid.Column="5" Command="{Binding CopyLogCommand}">
+          <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+            <Path Width="13" Height="15" Stretch="Uniform" Stroke="{StaticResource Text}" StrokeThickness="2"
+                  StrokeLineCap="Round" StrokeJoin="Round"
+                  Data="M9 2 H15 A1 1 0 0 1 16 3 V5 A1 1 0 0 1 15 6 H9 A1 1 0 0 1 8 5 V3 A1 1 0 0 1 9 2 Z M16 4 H18 A2 2 0 0 1 20 6 V20 A2 2 0 0 1 18 22 H6 A2 2 0 0 1 4 20 V6 A2 2 0 0 1 6 4 H8"/>
+            <TextBlock Text="Copiar log" VerticalAlignment="Center"/>
+          </StackPanel>
+        </Button>
       </Grid>
     </Border>
 
