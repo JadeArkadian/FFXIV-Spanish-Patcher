@@ -41,12 +41,14 @@ jobs:
           # nexus_file_id: "API Info" del fichero en la pestaña Files de nexusmods.com (mod 2513).
           - { rid: win-x64,   os: ubuntu-latest, nexus_file_id: 7608014 }
           - { rid: linux-x64, os: ubuntu-latest }
-          - { rid: osx-arm64, os: macos-latest,  nexus_file_id: 7608017 }
+          # macos-latest pinned to macos-15: the "latest" label migrates to macOS 26 (beta) from
+          # 2026-06-15, before it is a stable target for the ad-hoc codesign/publish steps below.
+          - { rid: osx-arm64, os: macos-15,  nexus_file_id: 7608017 }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           global-json-file: global.json
 
@@ -95,7 +97,7 @@ jobs:
           fi
 
       - name: Attach to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           name: ${{ needs.validate-tag.outputs.tag }}
           generate_release_notes: true
