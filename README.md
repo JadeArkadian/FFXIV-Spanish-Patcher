@@ -90,6 +90,46 @@ Cuando salga una release nueva:
 Después de un parche oficial de FFXIV, desactiva el mod antiguo hasta que haya una versión nueva de
 este proyecto.
 
+## Solución de problemas (Troubleshooting)
+
+### El juego se cierra en ciertos momentos
+
+Asegúrate de haber creado el mod con la última versión disponible del parcheador y con una versión
+compatible de Final Fantasy XIV. Si ya tenías un paquete anterior instalado, quítalo de Penumbra,
+genera un `.pmp` nuevo e instala ese paquete nuevo.
+
+Si sigue pasando, desinstala o desactiva el mod y envía una incidencia desde este formulario:
+
+https://tally.so/r/1ARKzp
+
+Incluye, si puedes, cuándo ocurre el cierre, qué estabas haciendo, la versión del juego, la versión
+del parcheador y si el problema desaparece al desactivar el mod.
+
+### Hay errores de traducción, textos solapados o partes en inglés
+
+La traducción sigue en progreso y puede haber textos con errores, mala colocación, mezcla de español
+e inglés o calidad irregular. Puedes ayudar enviando feedback desde este formulario:
+
+https://tally.so/r/1ARKzp
+
+Una captura y el lugar exacto donde aparece el texto ayudan mucho.
+
+### He cargado el mod en Penumbra pero no veo cambios
+
+En los ajustes de Dalamud, marca **Wait for plugins before game loads** y reinicia el juego. En
+Penumbra, comprueba también que el paquete esté instalado, activo y habilitado para el personaje o
+colección que estás usando.
+
+Si no se hacen estos pasos, Penumbra puede cargar tarde y los textos no se aplicarán.
+
+### Mis macros han dejado de funcionar
+
+Es un fallo conocido. Suele pasar cuando una macro invoca acciones por su nombre en inglés. Al
+aplicar la traducción, los nombres de esas acciones pasan a estar en español.
+
+Puedes traducir los nombres de las acciones dentro de tus macros o generar el mod sin aplicar la
+categoría de acciones, habilidades, rasgos y estados.
+
 ## Qué se traduce
 
 La aplicación permite activar o desactivar bloques de traducción:

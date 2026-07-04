@@ -2,6 +2,10 @@
 
 Resumen de todos los cambios relevantes del proyecto.
 
+## v0.1.1
+
+- Añadida sección de resolución de problemas frecuentes en README.md
+
 ## v0.1.0
 
 - Añadido CHANGELOG.md
