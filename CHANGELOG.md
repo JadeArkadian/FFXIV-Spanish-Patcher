@@ -2,6 +2,66 @@
 
 Resumen de todos los cambios relevantes del proyecto.
 
+## v0.1.2
+
+- Añadidas nuevas sheets traducidas al listado de categorías del patcher.
+- Nuevas sheets de `misiones`:
+  - `custom/000/RegFstAdvGuild_00005`
+  - `custom/000/RegFstAetheryteGuid_00032`
+  - `custom/000/RegFstArcGuild_00008`
+  - `custom/000/RegFstCnjGuild_00023`
+  - `custom/000/RegFstCnjPreach_00024`
+  - `custom/000/RegFstEternalCeremonyGuideHall_00017`
+  - `custom/000/RegFstEternalCeremonyGuideRoom_00016`
+  - `custom/000/RegFstHrvGuild_00033`
+  - `custom/000/RegFstInnInfo_00022`
+  - `custom/000/RegFstLncGuild_00007`
+  - `custom/000/RegFstMagicItemTips_00045`
+  - `custom/000/RegFstTanGuild_00030`
+  - `custom/000/RegFstWdkGuild_00029`
+  - `custom/000/RegSeaAcnGuild_00089`
+  - `custom/000/RegSeaAdvGuild_00050`
+  - `custom/000/RegSeaAetheGuid_00051`
+  - `custom/000/RegSeaArmGuild_00056`
+- Nuevas sheets de `interfaz`:
+  - `ChatBubbleType`
+  - `CircleActivity`
+  - `TopicSelect`
+- Nuevas sheets de `items`:
+  - `AquariumWater`
+  - `BankaCraftWorks`
+  - `CabinetSubCategory`
+  - `ChocoboRaceItem`
+  - `CollectablesShop`
+  - `CollectablesShopItemGroup`
+  - `CompanyCraftDraft`
+  - `CompanyCraftDraftCategory`
+  - `CompanyCraftManufactoryState`
+  - `CraftLeveTalk`
+  - `CraftType`
+  - `DisposalShop`
+  - `DisposalShopFilterType`
+  - `EurekaAetherItem`
+  - `EurekaMagiciteItemType`
+  - `FccShop`
+  - `FittingShopCategory`
+  - `FittingShopItemSet`
+  - `TofuBg`
+  - `TofuEditParam`
+  - `TofuObject`
+  - `TofuObjectCategory`
+  - `TofuPreset`
+  - `TofuPresetCategory`
+  - `Treasure`
+  - `Warp`
+  - `YKW`
+- Nueva sheet de `nombres`:
+  - `BeastReputationRank`
+- Nueva sheet de `eventos`:
+  - `EventItemCategory`
+- Nueva sheet de `coleccionables`:
+  - `OrchestrionCategory`
+
 ## v0.1.1
 
 - Añadida sección de resolución de problemas frecuentes en README.md
