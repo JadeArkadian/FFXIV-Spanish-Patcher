@@ -155,4 +155,5 @@ jobs:
           filename: FFXIVSpanishPatcher-${{ needs.validate-tag.outputs.version }}-${{ matrix.rid }}.zip
           version: ${{ needs.validate-tag.outputs.version }}
           display_name: FFXIVSpanishPatcher ${{ needs.validate-tag.outputs.version }} (${{ matrix.rid }})
+          description: ${{ matrix.rid == 'win-x64' && format('Versión {0} para Windows 11', needs.validate-tag.outputs.version) || format('Versión {0} para Mac OS Silicon Graphics', needs.validate-tag.outputs.version) }}
           archive_existing_version: true
