@@ -103,6 +103,47 @@ jobs:
           generate_release_notes: true
           files: FFXIVSpanishPatcher-${{ needs.validate-tag.outputs.version }}-${{ matrix.rid }}.zip
 
+      # Nexus/Windows false-positive mitigation: keep the GitHub asset as single-file, but replace
+      # the local zip before the Nexus upload with a portable folder publish. This avoids the .NET
+      # single-file self-extraction pattern that VirusTotal/Zenbox flagged as suspicious.
+      - name: Build Nexus Mods portable package (Windows)
+        if: matrix.rid == 'win-x64' && matrix.nexus_file_id != ''
+        run: |
+          set -euo pipefail
+          VERSION="${{ needs.validate-tag.outputs.version }}"
+          RID="${{ matrix.rid }}"
+          OUT="publish/$RID-nexus"
+          ROOT="nexus/$RID/FFXIVSpanishPatcher"
+          ASSET="FFXIVSpanishPatcher-$VERSION-$RID.zip"
+          rm -rf "$OUT" "nexus/$RID" "$ASSET"
+          dotnet publish src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj \
+            -c Release -r "$RID" --self-contained \
+            -p:PublishSingleFile=false \
+            -p:IncludeNativeLibrariesForSelfExtract=false \
+            -p:DebuggerSupport=false \
+            -p:EventSourceSupport=false \
+            -p:DebugType=none \
+            -p:DebugSymbols=false \
+            -p:Version="$VERSION" \
+            -p:InformationalVersion="${{ needs.validate-tag.outputs.tag }}" \
+            -p:AssemblyVersion="$VERSION.0" \
+            -p:FileVersion="$VERSION.0" \
+            -p:RepositorySlug="${{ github.repository }}" \
+            -p:LatestReleaseApiUrl="https://api.github.com/repos/${{ github.repository }}/releases/latest" \
+            -p:LatestReleasePageUrl="https://github.com/${{ github.repository }}/releases/latest" \
+            -o "$OUT"
+          mkdir -p "$ROOT"
+          cp -a "$OUT"/. "$ROOT"/
+          rm -f "$ROOT"/*.pdb
+          cp README.md "$ROOT/README.md"
+          (
+            cd "$ROOT"
+            find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -printf '%P\0' \
+              | sort -z \
+              | xargs -0 sha256sum > SHA256SUMS.txt
+          )
+          ( cd "nexus/$RID" && zip -r "../../$ASSET" "FFXIVSpanishPatcher" )
+
       # Sube el zip como nueva versión del fichero existente en Nexus Mods (Upload API v3, beta).
       # Requiere el secret NEXUSMODS_API_KEY (Site Preferences -> API Keys en nexusmods.com).
       - name: Upload to Nexus Mods
