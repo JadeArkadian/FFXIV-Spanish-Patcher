@@ -2,7 +2,10 @@
 
 Resumen de todos los cambios relevantes del proyecto.
 
-## v0.1.2
+
+## v0.2.0
+
+## v0.1.3
 
 - Añadidas nuevas sheets traducidas al listado de categorías del patcher.
 - Revisado lote de traducción de la v0.1.0
