@@ -7,7 +7,7 @@ Resumen de todos los cambios relevantes del proyecto.
 - Añadidas nuevas sheets traducidas al listado de categorías del patcher.
 - Revisado lote de traducción de la v0.1.0
 - Arreglada gramática chunga de la traducción de la mayoria de los emotes. (aun se puede mejorar)
-- 4984 lineas nuevas traducidas
+- 9987 lineas nuevas traducidas
 - Nuevas sheets de `misiones`:
   - `custom/000/ComDefFreeCompany_00076`
   - `custom/000/ComDefGCSupplyDuty_00075`
@@ -49,6 +49,24 @@ Resumen de todos los cambios relevantes del proyecto.
   - `cut_scene/024/VoiceMan_02400`
   - `cut_scene/024/VoiceMan_02401`
   - `cut_scene/025/VoiceMan_02500`
+  - `opening/OpeningGridania`
+  - `opening/OpeningLimsaLominsa`
+  - `opening/OpeningUldah`
+  - `quest/000/GaiUsd020_00090`
+  - `quest/000/GaiUsd501_00043`
+  - `quest/000/GaiUsd502_00044`
+  - `quest/000/GaiUse401_00052`
+  - `quest/000/GaiUse402_00053`
+  - `quest/000/GaiUse415_00084`
+  - `quest/000/ManFst000_00083`
+  - `quest/004/ManFst005_00445`
+  - `quest/005/ManFst306_00514`
+  - `quest/005/ManFst405_00520`
+  - `quest/005/ManFst503_00524`
+  - `quest/005/ManSea000_00541`
+  - `quest/005/ManSea005_00543`
+  - `quest/005/ManWil000_00548`
+  - `quest/005/ManWil005_00550`
 - Nuevas sheets de `interfaz`:
   - `ChatBubbleType`
   - `CircleActivity`
@@ -89,6 +107,14 @@ Resumen de todos los cambios relevantes del proyecto.
   - `InclusionShop`
   - `InclusionShopCategory`
   - `InclusionShopWelcomText`
+  - `LotteryExchangeShop`
+  - `MJICraftworksObjectTheme`
+  - `MJIItemCategory`
+  - `RecipeSubCategory`
+  - `SharlayanCraftWorks`
+  - `SpecialShop`
+  - `Stain`
+  - `TomestoneConvert`
   - `TofuBg`
   - `TofuEditParam`
   - `TofuObject`
@@ -96,8 +122,18 @@ Resumen de todos los cambios relevantes del proyecto.
   - `TofuPreset`
   - `TofuPresetCategory`
   - `Treasure`
+  - `ValentionSweetsMaterial`
+  - `ValentionSweetsRecipe`
   - `Warp`
+  - `WKSItemSubCategory`
   - `YKW`
+- Nuevas sheets de `logros`:
+  - `AchievementKind`
+  - `ContentsNote`
+  - `ContentsNoteCategory`
+  - `Description`
+  - `DescriptionStandAloneTransient`
+  - `VVDVoteRouteLabel`
 - Nueva sheet de `nombres`:
   - `BeastReputationRank`
 - Nueva sheet de `eventos`:
