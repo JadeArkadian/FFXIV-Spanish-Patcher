@@ -2,6 +2,145 @@
 
 Resumen de todos los cambios relevantes del proyecto.
 
+## v0.1.2
+
+- Añadidas nuevas sheets traducidas al listado de categorías del patcher.
+- Revisado lote de traducción de la v0.1.0
+- Arreglada gramática chunga de la traducción de la mayoria de los emotes. (aun se puede mejorar)
+- 9987 lineas nuevas traducidas
+- Nuevas sheets de `misiones`:
+  - `custom/000/ComDefFreeCompany_00076`
+  - `custom/000/ComDefGCSupplyDuty_00075`
+  - `custom/000/ComDefGrandCompany_00046`
+  - `custom/000/ComDefGrandCompanyOfficer_00073`
+  - `custom/000/ComDefSanction_00086`
+  - `custom/000/RegFstAdvGuild_00005`
+  - `custom/000/RegFstAetheryteGuid_00032`
+  - `custom/000/RegFstArcGuild_00008`
+  - `custom/000/RegFstCnjGuild_00023`
+  - `custom/000/RegFstCnjPreach_00024`
+  - `custom/000/RegFstEternalCeremonyGuideHall_00017`
+  - `custom/000/RegFstEternalCeremonyGuideRoom_00016`
+  - `custom/000/RegFstHrvGuild_00033`
+  - `custom/000/RegFstInnInfo_00022`
+  - `custom/000/RegFstLncGuild_00007`
+  - `custom/000/RegFstMagicItemTips_00045`
+  - `custom/000/RegFstTanGuild_00030`
+  - `custom/000/RegFstWdkGuild_00029`
+  - `custom/000/RegSeaAcnGuild_00089`
+  - `custom/000/RegSeaAdvGuild_00050`
+  - `custom/000/RegSeaAetheGuid_00051`
+  - `custom/000/RegSeaArmGuild_00056`
+  - `custom/000/TstPlnCmpFCCounter_00035`
+  - `custom/000/TstPrgTest_00001`
+  - `custom/001/ComDefFreeCompanyCrest_00101`
+  - `custom/001/ComDefFreeCompanyReward_00100`
+  - `custom/001/ComDefFrontLine_00182`
+  - `custom/001/ComDefHousingOfficer_00136`
+  - `custom/001/ComDefMobOfficer_00180`
+  - `custom/001/ComDefSuspendedMateria_00103`
+  - `custom/002/ComDefMobHuntBoard_00202`
+  - `custom/003/ComArmGcArmyEnterLobby_00325`
+  - `custom/003/ComArmGcArmyInterview_00345`
+  - `custom/003/ComArmGcArmyOfficer_00342`
+  - `custom/003/ComArmGcArmyTraining_00344`
+  - `cut_scene/022/VoiceMan_02200`
+  - `cut_scene/023/VoiceMan_02300`
+  - `cut_scene/024/VoiceMan_02400`
+  - `cut_scene/024/VoiceMan_02401`
+  - `cut_scene/025/VoiceMan_02500`
+  - `opening/OpeningGridania`
+  - `opening/OpeningLimsaLominsa`
+  - `opening/OpeningUldah`
+  - `quest/000/GaiUsd020_00090`
+  - `quest/000/GaiUsd501_00043`
+  - `quest/000/GaiUsd502_00044`
+  - `quest/000/GaiUse401_00052`
+  - `quest/000/GaiUse402_00053`
+  - `quest/000/GaiUse415_00084`
+  - `quest/000/ManFst000_00083`
+  - `quest/004/ManFst005_00445`
+  - `quest/005/ManFst306_00514`
+  - `quest/005/ManFst405_00520`
+  - `quest/005/ManFst503_00524`
+  - `quest/005/ManSea000_00541`
+  - `quest/005/ManSea005_00543`
+  - `quest/005/ManWil000_00548`
+  - `quest/005/ManWil005_00550`
+- Nuevas sheets de `interfaz`:
+  - `ChatBubbleType`
+  - `CircleActivity`
+  - `TopicSelect`
+- Nuevas sheets de `items`:
+  - `AquariumWater`
+  - `BankaCraftWorks`
+  - `CabinetSubCategory`
+  - `ChocoboRaceItem`
+  - `CollectablesShop`
+  - `CollectablesShopItemGroup`
+  - `CompanyCraftDraft`
+  - `CompanyCraftDraftCategory`
+  - `CompanyCraftManufactoryState`
+  - `CompanyCraftType`
+  - `CraftLeveTalk`
+  - `CraftType`
+  - `DisposalShop`
+  - `DisposalShopFilterType`
+  - `EurekaAetherItem`
+  - `EurekaMagiciteItemType`
+  - `FccShop`
+  - `FittingShopCategory`
+  - `FittingShopItemSet`
+  - `GCShopItemCategory`
+  - `GilShop`
+  - `GlassesStyle`
+  - `HousingAppeal`
+  - `HousingEmploymentNpcRace`
+  - `HousingMateAuthority`
+  - `HousingMerchantPose`
+  - `HousingPlacement`
+  - `HousingPreset`
+  - `HousingRenovation`
+  - `HousingUnplacement`
+  - `HugeCraftworksNpc`
+  - `HWDCrafterSupplyTerm`
+  - `InclusionShop`
+  - `InclusionShopCategory`
+  - `InclusionShopWelcomText`
+  - `LotteryExchangeShop`
+  - `MJICraftworksObjectTheme`
+  - `MJIItemCategory`
+  - `RecipeSubCategory`
+  - `SharlayanCraftWorks`
+  - `SpecialShop`
+  - `Stain`
+  - `TomestoneConvert`
+  - `TofuBg`
+  - `TofuEditParam`
+  - `TofuObject`
+  - `TofuObjectCategory`
+  - `TofuPreset`
+  - `TofuPresetCategory`
+  - `Treasure`
+  - `ValentionSweetsMaterial`
+  - `ValentionSweetsRecipe`
+  - `Warp`
+  - `WKSItemSubCategory`
+  - `YKW`
+- Nuevas sheets de `logros`:
+  - `AchievementKind`
+  - `ContentsNote`
+  - `ContentsNoteCategory`
+  - `Description`
+  - `DescriptionStandAloneTransient`
+  - `VVDVoteRouteLabel`
+- Nueva sheet de `nombres`:
+  - `BeastReputationRank`
+- Nueva sheet de `eventos`:
+  - `EventItemCategory`
+- Nueva sheet de `coleccionables`:
+  - `OrchestrionCategory`
+
 ## v0.1.1
 
 - Añadida sección de resolución de problemas frecuentes en README.md
