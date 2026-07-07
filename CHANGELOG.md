@@ -5,6 +5,114 @@ Resumen de todos los cambios relevantes del proyecto.
 
 ## v0.2.0
 
+- Añadidas nuevas sheets traducidas al listado de categorías del patcher.
+- Nuevas sheets de `misiones`:
+  - `content/DeepDungeon2Achievement`
+  - `content/DeepDungeon2Entrance`
+  - `content/DeepDungeon2Gacha`
+  - `content/DeepDungeon2Reward`
+  - `content/DeepDungeonEntrance`
+  - `content/DeepDungeonGacha`
+  - `content/DeepDungeonMiddle`
+  - `content/DeepDungeonReward`
+  - `content/HalloweenEntrance`
+  - `custom/000/CmnBhtEnterLv020St0003_00013`
+  - `custom/000/CmnBhtRewardLv020St0003_00025`
+  - `custom/000/CmnDefCabinet_00082`
+  - `custom/000/CmnDefF1e4Entrance_00047`
+  - `custom/000/CmnDefF1e4Exit_00048`
+  - `custom/000/CmnDefF1e5Exit_00049`
+  - `custom/000/CmnDefInnBed_00020`
+  - `custom/000/CmnDefInnDoor_00021`
+  - `custom/000/CmnDefLinkShell_00006`
+  - `custom/000/CmnDefMogLetter_00002`
+  - `custom/000/CmnDefNpcRepair_00019`
+  - `custom/000/CmnDefRentalChocobo_00012`
+  - `custom/000/CmnDefRetainerCall_00010`
+  - `custom/000/CmnDefRetainerDesk_00009`
+  - `custom/000/CmnDefTemporaryBag_00083`
+  - `custom/000/CmnDefWarpNpc_00026`
+  - `custom/000/CmnDunEnterTamtara_00014`
+  - `custom/000/CmnRadEnterBowlofEmbers_00081`
+  - `custom/000/CmnRadEnterCopperbellMines_00078`
+  - `custom/000/CmnRadEnterShposhae_00077`
+  - `custom/000/JobDefBlm_00096`
+  - `custom/000/JobDefBrd_00094`
+  - `custom/000/JobDefDrg_00092`
+  - `custom/000/JobDefMnk_00093`
+  - `custom/000/JobDefNin_00015`
+  - `custom/000/JobDefPld_00091`
+  - `custom/000/JobDefSch_00098`
+  - `custom/000/JobDefSmn_00097`
+  - `custom/000/JobDefWar_00090`
+  - `custom/000/JobDefWhm_00095`
+  - `custom/000/RegSeaBsnGuild_00055`
+  - `custom/000/RegSeaCulGuild_00054`
+  - `custom/000/RegSeaExcGuild_00053`
+  - `custom/000/RegSeaFshGuild_00088`
+  - `custom/000/RegSeaMorabyDrydocks_00044`
+  - `custom/000/RegSeaPirate_00074`
+  - `custom/000/RegSeaRedFarm_00070`
+  - `custom/000/RegseaRedistribution_00087`
+  - `custom/000/RegSeaSkylift_00071`
+  - `custom/000/RegSeaSummerFarm_00069`
+  - `custom/000/RegSeaSwiftperch_00072`
+  - `custom/000/RegWilAetheGuid_00060`
+  - `custom/000/RegWilAlcGuild_00067`
+  - `custom/000/RegWilArrzanethOssuary_00043`
+  - `custom/000/RegWilBlackBrash_00042`
+  - `custom/000/RegWilDrybone_00058`
+  - `custom/000/RegWilGlaGuild_00063`
+  - `custom/000/RegWilGldGuild_00068`
+  - `custom/000/RegWilHorizon_00057`
+  - `custom/000/RegWilInn_00061`
+  - `custom/001/CmnDefAchievementReward_00107`
+  - `custom/001/CmnDefBeautySalon_00148`
+  - `custom/001/CmnDefChocoboRename_00134`
+  - `custom/001/CmnDefCompanyManufactory_00150`
+  - `custom/001/CmnDefCutSceneReplay_00132`
+  - `custom/001/CmnDefHousingGardeningPlant_00151`
+  - `custom/001/CmnDefHousingPersonalRoomEntrance_00178`
+  - `custom/001/CmnDefHousingPersonalRoomExit_00179`
+  - `custom/001/CmnDefHousingSignboard_00135`
+  - `custom/001/CmnDefMateriaSlot_00174`
+  - `custom/001/CmnDefMateriaSlotTalk_00175`
+  - `custom/001/CmnDefRelicWeapon020Trade_00165`
+  - `custom/001/CmnDefRelicWeapon025CancelNote_00168`
+  - `custom/001/CmnDefRelicWeapon025GetNote_00167`
+  - `custom/001/CmnDefRelicWeapon025NoteTalk_00170`
+  - `custom/001/CmnDefRelicWeapon025Trade_00166`
+  - `custom/001/CmnDefRelicWeapon030GetReplica_00171`
+  - `custom/001/CmnDefRelicWeapon030GetTreasureMap_00172`
+  - `custom/001/CmnDefRelicWeapon030ReplicaTalk_00176`
+  - `custom/001/RegWilNotoriousMonsterHintF5_00193`
+  - `custom/001/RegWilRingofAsh_00143`
+  - `custom/001/RegWilRowena_00106`
+  - `custom/001/RegWilSandsUrianger_00139`
+  - `custom/001/RegWilTheQuicksand_00157`
+  - `custom/001/RegWiltheWakingSands_00131`
+  - `dungeon/000/DungeonOmega_00000`
+  - `dungeon/000/DungeonTamtara_00000`
+  - `dungeon/000/DungeonYTC1_00000`
+  - `guild_order/GuildOrderGuide`
+  - `guild_order/GuildOrderOfficer`
+  - `leve/CraftLeveClient`
+  - `leve/GuildleveAssignment`
+  - `leve/LeveDirector`
+  - `quest/000/GaiUse403_00054`
+  - `quest/000/GaiUse404_00057`
+  - `quest/000/GaiUse405_00062`
+  - `quest/000/GaiUse406_00069`
+  - `quest/000/GaiUse407_00074`
+  - `quest/000/GaiUse408_00075`
+  - `quest/000/GaiUse409_00077`
+  - `quest/000/GaiUse410_00078`
+  - `quest/000/GaiUse411_00079`
+  - `quest/000/GaiUse412_00080`
+  - `quest/000/GaiUse413_00081`
+  - `quest/000/GaiUse414_00082`
+- Validado que las 380 sheets empaquetables del corpus local quedan cubiertas por categorías conocidas.
+
 ## v0.1.3
 
 - Añadidas nuevas sheets traducidas al listado de categorías del patcher.

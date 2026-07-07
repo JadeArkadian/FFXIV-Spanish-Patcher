@@ -16,6 +16,18 @@ public static class TranslationCategories
     /// <summary>The curated sheet -> domain map used by the patcher's advanced panel.</summary>
     public static DomainMap Domains => PatcherDomains;
 
+    private static readonly (string Prefix, string Domain)[] PrefixDomains =
+    [
+        ("content/", "misiones"),
+        ("custom/", "misiones"),
+        ("cut_scene/", "misiones"),
+        ("dungeon/", "misiones"),
+        ("guild_order/", "misiones"),
+        ("leve/", "misiones"),
+        ("opening/", "misiones"),
+        ("quest/", "misiones"),
+    ];
+
     /// <summary>
     /// Patcher taxonomy: every translated sheet -> one of the advanced-panel domains. Relevant,
     /// distinct sheets get their own domain (items, acciones, logros, registro, eventos,
@@ -204,49 +216,6 @@ public static class TranslationCategories
         ["Quest"] = "misiones",
         ["DefaultTalk"] = "misiones",
         ["CustomTalk"] = "misiones",
-        ["custom/000/ComDefFreeCompany_00076"] = "misiones",
-        ["custom/000/ComDefGCSupplyDuty_00075"] = "misiones",
-        ["custom/000/ComDefGrandCompany_00046"] = "misiones",
-        ["custom/000/ComDefGrandCompanyOfficer_00073"] = "misiones",
-        ["custom/000/ComDefSanction_00086"] = "misiones",
-        ["custom/000/RegFstAdvGuild_00005"] = "misiones",
-        ["custom/000/RegFstAetheryteGuid_00032"] = "misiones",
-        ["custom/000/RegFstArcGuild_00008"] = "misiones",
-        ["custom/000/RegFstCnjGuild_00023"] = "misiones",
-        ["custom/000/RegFstCnjPreach_00024"] = "misiones",
-        ["custom/000/RegFstEternalCeremonyGuideHall_00017"] = "misiones",
-        ["custom/000/RegFstEternalCeremonyGuideRoom_00016"] = "misiones",
-        ["custom/000/RegFstHrvGuild_00033"] = "misiones",
-        ["custom/000/RegFstInnInfo_00022"] = "misiones",
-        ["custom/000/RegFstLncGuild_00007"] = "misiones",
-        ["custom/000/RegFstMagicItemTips_00045"] = "misiones",
-        ["custom/000/RegFstTanGuild_00030"] = "misiones",
-        ["custom/000/RegFstWdkGuild_00029"] = "misiones",
-        ["custom/000/RegSeaAcnGuild_00089"] = "misiones",
-        ["custom/000/RegSeaAdvGuild_00050"] = "misiones",
-        ["custom/000/RegSeaAetheGuid_00051"] = "misiones",
-        ["custom/000/RegSeaArmGuild_00056"] = "misiones",
-        ["custom/000/TstPlnCmpFCCounter_00035"] = "misiones",
-        ["custom/000/TstPrgTest_00001"] = "misiones",
-        ["custom/001/ComDefFreeCompanyCrest_00101"] = "misiones",
-        ["custom/001/ComDefFreeCompanyReward_00100"] = "misiones",
-        ["custom/001/ComDefFrontLine_00182"] = "misiones",
-        ["custom/001/ComDefHousingOfficer_00136"] = "misiones",
-        ["custom/001/ComDefMobOfficer_00180"] = "misiones",
-        ["custom/001/ComDefSuspendedMateria_00103"] = "misiones",
-        ["custom/002/ComDefMobHuntBoard_00202"] = "misiones",
-        ["custom/003/ComArmGcArmyEnterLobby_00325"] = "misiones",
-        ["custom/003/ComArmGcArmyInterview_00345"] = "misiones",
-        ["custom/003/ComArmGcArmyOfficer_00342"] = "misiones",
-        ["custom/003/ComArmGcArmyTraining_00344"] = "misiones",
-        ["cut_scene/022/VoiceMan_02200"] = "misiones",
-        ["cut_scene/023/VoiceMan_02300"] = "misiones",
-        ["cut_scene/024/VoiceMan_02400"] = "misiones",
-        ["cut_scene/024/VoiceMan_02401"] = "misiones",
-        ["cut_scene/025/VoiceMan_02500"] = "misiones",
-        ["opening/OpeningGridania"] = "misiones",
-        ["opening/OpeningLimsaLominsa"] = "misiones",
-        ["opening/OpeningUldah"] = "misiones",
         ["NpcYell"] = "misiones",
         ["PublicContentTextData"] = "misiones",
         ["AirshipExplorationLog"] = "misiones",
@@ -275,21 +244,6 @@ public static class TranslationCategories
         ["WeeklyBingoText"] = "misiones",
         ["Fate"] = "misiones",
         ["Leve"] = "misiones",
-        ["quest/000/GaiUsd020_00090"] = "misiones",
-        ["quest/000/GaiUsd501_00043"] = "misiones",
-        ["quest/000/GaiUsd502_00044"] = "misiones",
-        ["quest/000/GaiUse401_00052"] = "misiones",
-        ["quest/000/GaiUse402_00053"] = "misiones",
-        ["quest/000/GaiUse415_00084"] = "misiones",
-        ["quest/000/ManFst000_00083"] = "misiones",
-        ["quest/004/ManFst005_00445"] = "misiones",
-        ["quest/005/ManFst306_00514"] = "misiones",
-        ["quest/005/ManFst405_00520"] = "misiones",
-        ["quest/005/ManFst503_00524"] = "misiones",
-        ["quest/005/ManSea000_00541"] = "misiones",
-        ["quest/005/ManSea005_00543"] = "misiones",
-        ["quest/005/ManWil000_00548"] = "misiones",
-        ["quest/005/ManWil005_00550"] = "misiones",
 
         // Logros: achievements.
         ["Achievement"] = "logros",
@@ -327,7 +281,25 @@ public static class TranslationCategories
     });
 
     /// <summary>Category domain of an entry, e.g. <c>items</c> or <c>misiones</c>.</summary>
-    public static string DomainOf(TranslationEntry entry) => Domains.Resolve(entry);
+    public static string DomainOf(TranslationEntry entry)
+    {
+        var domain = Domains.Resolve(entry);
+        var sheet = entry.SourceKey?.Sheet;
+        if (string.IsNullOrWhiteSpace(sheet) || !string.Equals(domain, sheet, StringComparison.OrdinalIgnoreCase))
+        {
+            return domain;
+        }
+
+        foreach (var (prefix, prefixDomain) in PrefixDomains)
+        {
+            if (sheet.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                return prefixDomain;
+            }
+        }
+
+        return domain;
+    }
 
     /// <summary>
     /// True when <paramref name="selected"/> is null (all categories) or contains the entry's
