@@ -17,6 +17,34 @@ La traducción todavía está en progreso. Gran parte de la interfaz, nombres de
 monstruos, objetos y textos del sistema ya está traducida, pero parte del guion, conversaciones y
 prosa narrativa puede seguir en inglés.
 
+## Avance del proyecto
+
+Datos del seguimiento EXD actual. El porcentaje principal mide líneas traducidas reales sobre líneas
+traducibles exactas; las barras son aproximadas porque `progressbar.info` usa porcentajes enteros.
+
+**Avance total por líneas:** 394.266/808.657 (48,8%)
+
+![48,8%](https://progressbar.info/large/label/48)
+
+**Hojas OK:** 751/6.957 (10,8%)
+
+![10,8%](https://progressbar.info/large/label/10)
+
+| Área | Líneas traducidas | Avance |
+| --- | ---: | --- |
+| UI / menús / sistema visible | 25.749/25.749 (100,0%) | ![100,0%](https://progressbar.info/label/100) |
+| Objetos / economía / tiendas | 176.572/176.572 (100,0%) | ![100,0%](https://progressbar.info/label/100) |
+| Combate / acciones / duties | 30.330/34.928 (86,8%) | ![86,8%](https://progressbar.info/label/86) |
+| Mundo / NPCs / localizaciones | 87.951/88.327 (99,6%) | ![99,6%](https://progressbar.info/label/99) |
+| Crafting / recolección / progreso | 2.156/7.614 (28,3%) | ![28,3%](https://progressbar.info/label/28) |
+| Lore / diarios / colecciones | 19.424/20.745 (93,6%) | ![93,6%](https://progressbar.info/label/93) |
+| Minijuegos / eventos / perfil | 2.188/7.532 (29,0%) | ![29,0%](https://progressbar.info/label/29) |
+| Guion - quests | 13.376/269.333 (5,0%) | ![5,0%](https://progressbar.info/label/5) |
+| Guion - cinemáticas | 1.518/26.426 (5,7%) | ![5,7%](https://progressbar.info/label/5) |
+| Guion - custom talk/NPC | 4.506/28.374 (15,9%) | ![15,9%](https://progressbar.info/label/15) |
+| Guion - eventos explícitos | 581/1.492 (38,9%) | ![38,9%](https://progressbar.info/label/38) |
+| Otros / revisión | 29.915/117.863 (25,4%) | ![25,4%](https://progressbar.info/label/25) |
+
 ## Descargar
 
 Ve a la página de **Releases** del proyecto y descarga el ZIP de tu sistema:
