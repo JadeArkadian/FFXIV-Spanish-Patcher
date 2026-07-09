@@ -24,23 +24,23 @@ traducibles exactas.
 
 | Métrica | Valor | Avance |
 | --- | ---: | --- |
-| Avance total por líneas | 394.266/808.657 (48,8%) | <img src="https://geps.dev/progress/48.8?barColor=d29922" alt="48,8%" width="160"> |
-| Hojas OK | 751/6.957 (10,8%) | <img src="https://geps.dev/progress/10.8?barColor=da3633" alt="10,8%" width="160"> |
+| Avance total por líneas | 394.266/808.657 (48,8%) | <img src="https://geps.dev/progress/48.8?barColor=f1c232" alt="48,8%" width="220"> |
+| Hojas OK | 751/6.957 (10,8%) | <img src="https://geps.dev/progress/10.8?barColor=da3633" alt="10,8%" width="220"> |
 
 | Área | Líneas traducidas | Avance |
 | --- | ---: | --- |
-| UI / menús / sistema visible | 25.749/25.749 (100,0%) | <img src="https://geps.dev/progress/100?barColor=2ea043" alt="100,0%" width="120"> |
-| Objetos / economía / tiendas | 176.572/176.572 (100,0%) | <img src="https://geps.dev/progress/100?barColor=2ea043" alt="100,0%" width="120"> |
-| Combate / acciones / duties | 30.330/34.928 (86,8%) | <img src="https://geps.dev/progress/86.8?barColor=1f6feb" alt="86,8%" width="120"> |
-| Mundo / NPCs / localizaciones | 87.951/88.327 (99,6%) | <img src="https://geps.dev/progress/99.6?barColor=2ea043" alt="99,6%" width="120"> |
-| Crafting / recolección / progreso | 2.156/7.614 (28,3%) | <img src="https://geps.dev/progress/28.3?barColor=f0883e" alt="28,3%" width="120"> |
-| Lore / diarios / colecciones | 19.424/20.745 (93,6%) | <img src="https://geps.dev/progress/93.6?barColor=2ea043" alt="93,6%" width="120"> |
-| Minijuegos / eventos / perfil | 2.188/7.532 (29,0%) | <img src="https://geps.dev/progress/29?barColor=f0883e" alt="29,0%" width="120"> |
-| Guion - quests | 13.376/269.333 (5,0%) | <img src="https://geps.dev/progress/5?barColor=da3633" alt="5,0%" width="120"> |
-| Guion - cinemáticas | 1.518/26.426 (5,7%) | <img src="https://geps.dev/progress/5.7?barColor=da3633" alt="5,7%" width="120"> |
-| Guion - custom talk/NPC | 4.506/28.374 (15,9%) | <img src="https://geps.dev/progress/15.9?barColor=da3633" alt="15,9%" width="120"> |
-| Guion - eventos explícitos | 581/1.492 (38,9%) | <img src="https://geps.dev/progress/38.9?barColor=d29922" alt="38,9%" width="120"> |
-| Otros / revisión | 29.915/117.863 (25,4%) | <img src="https://geps.dev/progress/25.4?barColor=f0883e" alt="25,4%" width="120"> |
+| UI / menús / sistema visible | 25.749/25.749 (100,0%) | <img src="https://geps.dev/progress/100?barColor=2ea043" alt="100,0%" width="170"> |
+| Objetos / economía / tiendas | 176.572/176.572 (100,0%) | <img src="https://geps.dev/progress/100?barColor=2ea043" alt="100,0%" width="170"> |
+| Combate / acciones / duties | 30.330/34.928 (86,8%) | <img src="https://geps.dev/progress/86.8?barColor=8bc34a" alt="86,8%" width="170"> |
+| Mundo / NPCs / localizaciones | 87.951/88.327 (99,6%) | <img src="https://geps.dev/progress/99.6?barColor=2ea043" alt="99,6%" width="170"> |
+| Crafting / recolección / progreso | 2.156/7.614 (28,3%) | <img src="https://geps.dev/progress/28.3?barColor=f0883e" alt="28,3%" width="170"> |
+| Lore / diarios / colecciones | 19.424/20.745 (93,6%) | <img src="https://geps.dev/progress/93.6?barColor=2ea043" alt="93,6%" width="170"> |
+| Minijuegos / eventos / perfil | 2.188/7.532 (29,0%) | <img src="https://geps.dev/progress/29?barColor=f0883e" alt="29,0%" width="170"> |
+| Guion - quests | 13.376/269.333 (5,0%) | <img src="https://geps.dev/progress/5?barColor=da3633" alt="5,0%" width="170"> |
+| Guion - cinemáticas | 1.518/26.426 (5,7%) | <img src="https://geps.dev/progress/5.7?barColor=da3633" alt="5,7%" width="170"> |
+| Guion - custom talk/NPC | 4.506/28.374 (15,9%) | <img src="https://geps.dev/progress/15.9?barColor=da3633" alt="15,9%" width="170"> |
+| Guion - eventos explícitos | 581/1.492 (38,9%) | <img src="https://geps.dev/progress/38.9?barColor=f1c232" alt="38,9%" width="170"> |
+| Otros / revisión | 29.915/117.863 (25,4%) | <img src="https://geps.dev/progress/25.4?barColor=f0883e" alt="25,4%" width="170"> |
 
 ## Descargar
 
