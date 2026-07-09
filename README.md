@@ -17,6 +17,31 @@ La traducción todavía está en progreso. Gran parte de la interfaz, nombres de
 monstruos, objetos y textos del sistema ya está traducida, pero parte del guion, conversaciones y
 prosa narrativa puede seguir en inglés.
 
+## Avance del proyecto
+
+Datos del seguimiento EXD actual. El porcentaje principal mide líneas traducidas reales sobre líneas
+traducibles exactas.
+
+| Métrica | Valor | Avance |
+| --- | ---: | --- |
+| Avance total por líneas | 394.266/808.657 (48,8%) | ![48,8%](https://geps.dev/progress/48.8?barColor=f1c232) |
+| Hojas OK | 751/6.957 (10,8%) | ![10,8%](https://geps.dev/progress/10.8?barColor=da3633) |
+
+| Área | Líneas traducidas | Avance |
+| --- | ---: | --- |
+| UI / menús / sistema visible | 25.749/25.749 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
+| Objetos / economía / tiendas | 176.572/176.572 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
+| Combate / acciones / duties | 30.330/34.928 (86,8%) | ![86,8%](https://geps.dev/progress/86.8?barColor=8bc34a) |
+| Mundo / NPCs / localizaciones | 87.951/88.327 (99,6%) | ![99,6%](https://geps.dev/progress/99.6?barColor=2ea043) |
+| Crafting / recolección / progreso | 2.156/7.614 (28,3%) | ![28,3%](https://geps.dev/progress/28.3?barColor=f0883e) |
+| Lore / diarios / colecciones | 19.424/20.745 (93,6%) | ![93,6%](https://geps.dev/progress/93.6?barColor=2ea043) |
+| Minijuegos / eventos / perfil | 2.188/7.532 (29,0%) | ![29,0%](https://geps.dev/progress/29?barColor=f0883e) |
+| Guion - quests | 13.376/269.333 (5,0%) | ![5,0%](https://geps.dev/progress/5?barColor=da3633) |
+| Guion - cinemáticas | 1.518/26.426 (5,7%) | ![5,7%](https://geps.dev/progress/5.7?barColor=da3633) |
+| Guion - custom talk/NPC | 4.506/28.374 (15,9%) | ![15,9%](https://geps.dev/progress/15.9?barColor=da3633) |
+| Guion - eventos explícitos | 581/1.492 (38,9%) | ![38,9%](https://geps.dev/progress/38.9?barColor=f1c232) |
+| Otros / revisión | 29.915/117.863 (25,4%) | ![25,4%](https://geps.dev/progress/25.4?barColor=f0883e) |
+
 ## Descargar
 
 Ve a la página de **Releases** del proyecto y descarga el ZIP de tu sistema:

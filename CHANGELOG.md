@@ -2,7 +2,24 @@
 
 Resumen de todos los cambios relevantes del proyecto.
 
-## v0.1.2
+
+## v0.2.0
+
+- README.md ahora informa del avance actual de la traducción
+- Gran ampliación de contenido de misiones y diálogos (15.901 lineas traducidas):
+  - 146 nuevas sheets `quest/` traducidas respecto al corte anterior, excluyendo los commits de extracción masiva.
+  - Nuevas líneas de historia principal ARR, incluyendo bloques `GaiUse`, `GaiUsd`, `ManFst`, `ManSea` y `ManWil`.
+  - Nuevas misiones de clase para arquero, conjurador, lancero y pícaro.
+  - Nuevas misiones tribales Amalj'aa y sílfides.
+  - Nuevas misiones estacionales: Halloween, Heavensturn, Little Ladies' Day y eventos relacionados.
+  - Nuevas misiones de Hildibrand/Manderville (`ChrHdb`).
+- Ampliado el soporte del patcher para familias completas de sheets de guion:
+  - `quest/`, `custom/`, `content/`, `cut_scene/`, `dungeon/`, `guild_order/`, `leve/` y `opening/` ahora se agrupan automáticamente en la categoría `misiones`.
+- Añadidas más sheets de contenido instanciado y scripts de sistema:
+  - Deep Dungeon / Deep Dungeon 2, Halloween entrance, entradas de dungeon, guild orders, leves, openings y NPCs/servicios comunes.
+- Validado que las 549 sheets empaquetables del corpus local quedan cubiertas por categorías conocidas.
+
+## v0.1.3
 
 - Añadidas nuevas sheets traducidas al listado de categorías del patcher.
 - Revisado lote de traducción de la v0.1.0
