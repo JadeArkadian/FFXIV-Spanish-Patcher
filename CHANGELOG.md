@@ -5,6 +5,7 @@ Resumen de todos los cambios relevantes del proyecto.
 
 ## v0.2.0
 
+- README.md ahora informa del avance actual de la traducción
 - Gran ampliación de contenido de misiones y diálogos:
   - 146 nuevas sheets `quest/` traducidas respecto al corte anterior, excluyendo los commits de extracción masiva.
   - Nuevas líneas de historia principal ARR, incluyendo bloques `GaiUse`, `GaiUsd`, `ManFst`, `ManSea` y `ManWil`.
