@@ -40,7 +40,7 @@ jobs:
         include:
           # nexus_file_id: "API Info" del fichero en la pestaña Files de nexusmods.com (mod 2513).
           - { rid: win-x64,   os: ubuntu-latest, nexus_file_id: 7608014 }
-          - { rid: linux-x64, os: ubuntu-latest }
+          - { rid: linux-x64, os: ubuntu-latest, nexus_file_id: 7651772 }
           # macos-latest pinned to macos-15: the "latest" label migrates to macOS 26 (beta) from
           # 2026-06-15, before it is a stable target for the ad-hoc codesign/publish steps below.
           - { rid: osx-arm64, os: macos-15,  nexus_file_id: 7608017 }
@@ -157,5 +157,5 @@ jobs:
           filename: FFXIVSpanishPatcher-${{ needs.validate-tag.outputs.version }}-${{ matrix.rid }}.zip
           version: ${{ needs.validate-tag.outputs.version }}
           display_name: FFXIVSpanishPatcher ${{ needs.validate-tag.outputs.version }} (${{ matrix.rid }})
-          description: ${{ matrix.rid == 'win-x64' && format('Versión {0} para Windows 11', needs.validate-tag.outputs.version) || format('Versión {0} para Mac OS Silicon Graphics', needs.validate-tag.outputs.version) }}
+          description: ${{ matrix.rid == 'win-x64' && format('Versión {0} para Windows 11', needs.validate-tag.outputs.version) || (matrix.rid == 'linux-x64' && format('Versión {0} para Linux (x64)', needs.validate-tag.outputs.version) || format('Versión {0} para Mac OS Silicon Graphics', needs.validate-tag.outputs.version)) }}
           archive_existing_version: true
