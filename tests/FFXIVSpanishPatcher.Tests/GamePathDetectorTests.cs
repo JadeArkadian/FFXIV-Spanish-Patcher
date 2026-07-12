@@ -34,6 +34,32 @@ public sealed class GamePathDetectorTests
     public void ParseSteamLibraryFolders_NoPaths_ReturnsEmpty()
         => Assert.Empty(GamePathDetector.ParseSteamLibraryFolders("\"libraryfolders\" { }"));
 
+    [Fact]
+    public void ParseXlCoreGamePath_ExtractsGamePath()
+    {
+        const string ini = """
+        AcceptLanguage=es-ES
+        GamePath=/home/user/.xlcore/ffxiv
+        GameConfigPath=/home/user/.xlcore/ffxivConfig
+        """;
+
+        Assert.Equal("/home/user/.xlcore/ffxiv", GamePathDetector.ParseXlCoreGamePath(ini));
+    }
+
+    [Fact]
+    public void ParseXlCoreGamePath_ToleratesWhitespaceAndCase()
+        => Assert.Equal(
+            "/games/ffxiv",
+            GamePathDetector.ParseXlCoreGamePath("  gamepath = /games/ffxiv  \r\nOther=1"));
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("GameConfigPath=/home/user/.xlcore/ffxivConfig")]
+    [InlineData("GamePath=")]
+    [InlineData("=GamePath")]
+    public void ParseXlCoreGamePath_NoUsableValue_ReturnsNull(string ini)
+        => Assert.Null(GamePathDetector.ParseXlCoreGamePath(ini));
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]

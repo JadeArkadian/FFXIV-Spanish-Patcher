@@ -2,6 +2,20 @@
 
 Resumen de todos los cambios relevantes del proyecto.
 
+## v0.2.1
+
+- Actualizado el corpus de traducciones embebido (`translations.dat`), regenerado por primera vez desde Linux.
+- Quitado fléxión de género con @ en toda la traducción. (muy artificial y forzado)
+- ~9.900 líneas nuevas traducidas y aprobadas:
+  - Revisión de calidad de traducción de la v0.2.0
+  - Nuevas misiones de historia principal ARR (bloques `ManFst006-304` y `GaiUse606-616`).
+  - Mazmorras profundas (Deep Dungeon) traducidas.
+  - FATEs (`FateEvent`, primer lote).
+  - TODAS las misiones de Hildibrand (Dawntrail incluido)
+  - Acciones y combate: `ActionComboRoute`, `AozActionTransient`, `BgcArmyAction`, `AOZScore` y atributos base (`BaseParam`).
+  - Textos del buscador de contenidos (`ContentFinderConditionTransient`).
+- Correcciones de calidad en el corpus: filas no localizables depuradas y arreglo de traducciones que partían por error del francés/alemán.
+- Mejorada la detección automática de la ruta del juego, especialmente en Linux
 
 ## v0.2.0
 
