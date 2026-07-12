@@ -83,20 +83,33 @@ La procedencia historica vive en `vendor/VENDORED.md`.
 
 ## Comandos
 
-```powershell
+```bash
 dotnet restore
+```
+```bash
 dotnet build
+```
+```bash
 dotnet test
+```
 
 # Regenerar corpus crudo desde upstream y reconstruir blob + version recomendada.
+```bash
 dotnet run --project tools/XivSpanish.BlobBuilder -- sync --build
+```
 
 # Solo compactar data/translations/jsonl/ -> data/translations.dat.
+```bash
 dotnet run --project tools/XivSpanish.BlobBuilder -- build
+```
 
-# Publicar un ejecutable self-contained single-file.
-dotnet publish src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj -c Release -r win-x64 `
-  --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+# Publicar un ejecutable self-contained single-file (Windows y Linux)
+```bash
+dotnet publish src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+```
+
+```bash
+dotnet publish src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj -c Release -r linux-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
 ```
 
 El proyecto usa `global.json` con SDK `10.0.100` y `rollForward: latestFeature`.
