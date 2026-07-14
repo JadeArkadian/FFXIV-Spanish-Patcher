@@ -2,6 +2,21 @@
 
 Resumen de todos los cambios relevantes del proyecto.
 
+## v0.2.2
+
+- Actualizado el corpus de traducciones embebido con 8 lotes nuevos (~6.300 filas aprobadas, +16.769 líneas exactas):
+  - Misiones de gremio y clase: Armero, Herrero, Culinario, Conjurador y Gladiador (29 hojas).
+  - Misiones GaiUsa (`GaiUsa101-308`, 26 hojas).
+  - Misiones de la Bandada de Syldra (`BanSyl005-301`, 22 hojas).
+  - Eventos de temporada (años pasados): Starlight, All Saints' Wake, Moonfire Faire, Valentione, Hatching-tide, Little Ladies' Day y Gold Saucer (18 hojas).
+  - Guías de raid y duty (12 hojas).
+  - Tiendas y teleports (24 hojas).
+  - Gimmicks: `GimmickBill`, `GimmickYesNo`, Halloween y pesca oceánica.
+  - Textos custom: guías de principiante, avisos PvP, pistas de Notorious Monsters, Unukalhai, Tríada Bélica y diálogos regionales (33 hojas; dominio custom completo, 82/82 ficheros).
+- Progreso total: 426.936/804.955 líneas (53,0%, antes 50,7%). Combate/duties al 99,9%, Mundo/NPCs al 100%, eventos explícitos al 98,5%.
+- Coherencia de terminología: auditoría y canon-lint en todos los lotes
+- Página de Nexus Mods actualizada: enlace de release y versión de Linux publicados.
+
 ## v0.2.1
 
 - Actualizado el corpus de traducciones embebido (`translations.dat`), regenerado por primera vez desde Linux.

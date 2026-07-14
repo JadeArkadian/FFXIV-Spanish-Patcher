@@ -24,23 +24,23 @@ traducibles exactas.
 
 | Métrica | Valor | Avance |
 | --- | ---: | --- |
-| Avance total por líneas | 410.167/808.657 (50,7%) | ![50,7%](https://geps.dev/progress/50.7?barColor=f1c232) |
-| Hojas OK | 870/6.957 (12,5%) | ![12,5%](https://geps.dev/progress/12.5?barColor=da3633) |
+| Avance total por líneas | 426.936/804.955 (53,0%) | ![53,0%](https://geps.dev/progress/53?barColor=f1c232) |
+| Hojas OK | 1.212/6.956 (17,4%) | ![17,4%](https://geps.dev/progress/17.4?barColor=da3633) |
 
 | Área | Líneas traducidas | Avance |
 | --- | ---: | --- |
 | UI / menús / sistema visible | 25.749/25.749 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
 | Objetos / economía / tiendas | 176.572/176.572 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
-| Combate / acciones / duties | 31.535/34.928 (90,3%) | ![90,3%](https://geps.dev/progress/90.3?barColor=8bc34a) |
-| Mundo / NPCs / localizaciones | 87.951/88.327 (99,6%) | ![99,6%](https://geps.dev/progress/99.6?barColor=2ea043) |
+| Combate / acciones / duties | 34.912/34.928 (99,9%) | ![99,9%](https://geps.dev/progress/99.9?barColor=2ea043) |
+| Mundo / NPCs / localizaciones | 88.327/88.327 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
 | Crafting / recolección / progreso | 2.156/7.614 (28,3%) | ![28,3%](https://geps.dev/progress/28.3?barColor=f0883e) |
 | Lore / diarios / colecciones | 19.424/20.745 (93,6%) | ![93,6%](https://geps.dev/progress/93.6?barColor=2ea043) |
 | Minijuegos / eventos / perfil | 2.188/7.532 (29,0%) | ![29,0%](https://geps.dev/progress/29?barColor=f0883e) |
-| Guion - quests | 28.072/269.333 (10,4%) | ![10,4%](https://geps.dev/progress/10.4?barColor=da3633) |
+| Guion - quests | 35.161/269.333 (13,1%) | ![13,1%](https://geps.dev/progress/13.1?barColor=da3633) |
 | Guion - cinemáticas | 1.518/26.426 (5,7%) | ![5,7%](https://geps.dev/progress/5.7?barColor=da3633) |
-| Guion - custom talk/NPC | 4.506/28.374 (15,9%) | ![15,9%](https://geps.dev/progress/15.9?barColor=da3633) |
-| Guion - eventos explícitos | 581/1.492 (38,9%) | ![38,9%](https://geps.dev/progress/38.9?barColor=f1c232) |
-| Otros / revisión | 29.915/117.863 (25,4%) | ![25,4%](https://geps.dev/progress/25.4?barColor=f0883e) |
+| Guion - custom talk/NPC | 6.158/28.374 (21,7%) | ![21,7%](https://geps.dev/progress/21.7?barColor=f0883e) |
+| Guion - eventos explícitos | 1.469/1.492 (98,5%) | ![98,5%](https://geps.dev/progress/98.5?barColor=2ea043) |
+| Otros / revisión | 33.302/117.863 (28,3%) | ![28,3%](https://geps.dev/progress/28.3?barColor=f0883e) |
 
 ## Descargar
 
