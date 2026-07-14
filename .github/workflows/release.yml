@@ -148,6 +148,32 @@ jobs:
 
       # Sube el zip como nueva versión del fichero existente en Nexus Mods (Upload API v3, beta).
       # Requiere el secret NEXUSMODS_API_KEY (Site Preferences -> API Keys en nexusmods.com).
+      - name: Prepare Nexus Mods description
+        id: nexus-description
+        if: matrix.nexus_file_id != ''
+        shell: bash
+        run: |
+          VERSION="${{ needs.validate-tag.outputs.version }}"
+          RID="${{ matrix.rid }}"
+
+          case "$RID" in
+            win-x64)
+              DESCRIPTION="Versión $VERSION para Windows 11. Si la descarga aún no está disponible en Nexus (validación manual pendiente), puedes bajarla ya desde GitHub: https://github.com/${{ github.repository }}/releases/latest"
+              ;;
+            linux-x64)
+              DESCRIPTION="Versión $VERSION para Linux (x64)"
+              ;;
+            osx-arm64)
+              DESCRIPTION="Versión $VERSION para macOS Apple Silicon"
+              ;;
+            *)
+              echo "::error::RID no soportado: $RID"
+              exit 1
+              ;;
+          esac
+
+          echo "description=$DESCRIPTION" >> "$GITHUB_OUTPUT"
+
       - name: Upload to Nexus Mods
         if: matrix.nexus_file_id != ''
         uses: Nexus-Mods/upload-action@f6e1e2ea683dfe8f88cccf642c6e0e69ab66825e # v1.0.0-beta.8
@@ -157,5 +183,5 @@ jobs:
           filename: FFXIVSpanishPatcher-${{ needs.validate-tag.outputs.version }}-${{ matrix.rid }}.zip
           version: ${{ needs.validate-tag.outputs.version }}
           display_name: FFXIVSpanishPatcher ${{ needs.validate-tag.outputs.version }} (${{ matrix.rid }})
-          description: ${{ matrix.rid == 'win-x64' && format('Versión {0} para Windows 11. Si la descarga aún no está disponible en Nexus (validación manual pendiente), puedes bajarla ya desde GitHub: https://github.com/{1}/releases/latest', needs.validate-tag.outputs.version, github.repository) || (matrix.rid == 'linux-x64' && format('Versión {0} para Linux (x64)', needs.validate-tag.outputs.version) || format('Versión {0} para Mac OS Silicon Graphics', needs.validate-tag.outputs.version)) }}
+          description: ${{ steps.nexus-description.outputs.description }}
           archive_existing_version: true
