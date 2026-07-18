@@ -130,6 +130,37 @@ public sealed class PatchPipelineTests : IDisposable
     }
 
     [Fact]
+    public void Run_PlayerGenderMacro_PackagesCompiledConditional()
+    {
+        const string sheet = "quest/045/ChrHdb811_04542";
+        const string exdPath = "exd/quest/045/chrhdb811_04542_0_en.exd";
+        const string source = "Could it be!? The Warrior of Darkness!";
+        const string target = "¡<Gender>Guerrera de la Oscuridad<GenderElse>Guerrero de la Oscuridad<GenderEnd>!";
+        var baseSource = new FakeExdSource()
+            .AddPage(exdPath, SyntheticExd.BuildExd([(121u, source)]))
+            .AddLayout(sheet, new ExdLayout(4, [0], 1))
+            .AddFieldNames(sheet, "Column1");
+        var entries = new[] { Approved(sheet, 121u, "Column1", exdPath, source, target) };
+        var pipeline = new PatchPipeline(new ListTranslationSource(entries), new FakePatchBackendFactory(baseSource));
+
+        var result = pipeline.Run(Request());
+
+        Assert.True(result.Success);
+        Assert.Equal(PatchOutcome.Ok, result.Outcome);
+        Assert.Equal(1, result.Applied);
+        Assert.Equal(0, result.Skipped);
+
+        using var archive = ZipFile.OpenRead(result.OutputPath!);
+        var patched = ReadEntryBytes(archive, "files/" + exdPath);
+        var patchedRaw = ExdRowReader.ReadRawStrings(patched, 4, [0])
+            .Single(row => row.RowId == 121u)
+            .Raw;
+        Assert.Equal(
+            "¡<If><Raw>\u0005<Run>Guerrera de la Oscuridad<RunEnd><Run#2>Guerrero de la Oscuridad<RunEnd#2><MacroEnd>!",
+            SeStringTreeTokenizer.TokenizeRawText(patchedRaw));
+    }
+
+    [Fact]
     public void Run_WithDebugLogging_EmitsBroadcastDiagnostics()
     {
         var pipeline = new PatchPipeline(new ListTranslationSource(ApprovedManifest()), new FakePatchBackendFactory(BuildSource()));
