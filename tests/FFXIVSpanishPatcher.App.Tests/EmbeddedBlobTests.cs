@@ -1,3 +1,4 @@
+using System.Reflection;
 using FFXIVSpanishPatcher.App.ViewModels;
 using FFXIVSpanishPatcher.Pipeline;
 using Xunit;
@@ -5,19 +6,27 @@ using Xunit;
 namespace FFXIVSpanishPatcher.App.Tests;
 
 /// <summary>
-/// Guards the build → consume contract for the embedded <c>translations.dat</c>: the compact blob
-/// emitted by <c>tools/XivSpanish.BlobBuilder</c> (field-projected, filtered to approved+gold) must
-/// still deserialize into packageable <c>TranslationEntry</c> rows the pipeline can apply. Loading
-/// the real resource catches a projection that drops a field the model needs.
+/// Guards the build → consume contract for <c>translations.dat</c>, whether the selected build
+/// embeds it or ships it beside the executable. The compact blob emitted by
+/// <c>tools/XivSpanish.BlobBuilder</c> must still deserialize into packageable rows.
 /// </summary>
 public class EmbeddedBlobTests
 {
     private const string ResourceName = "FFXIVSpanishPatcher.App.translations.dat";
 
     [Fact]
-    public void EmbeddedBlob_LoadsPackageableEntries()
+    public void PackagedBlob_LoadsPackageableEntries()
     {
-        var source = EmbeddedTranslationSource.FromAssemblyResource(typeof(MainViewModel).Assembly, ResourceName);
+        var assembly = typeof(MainViewModel).Assembly;
+        var external = assembly
+            .GetCustomAttributes<AssemblyMetadataAttribute>()
+            .Any(attribute =>
+                attribute.Key.Equals("ExternalTranslations", StringComparison.OrdinalIgnoreCase)
+                && bool.TryParse(attribute.Value, out var enabled)
+                && enabled);
+        var source = external
+            ? EmbeddedTranslationSource.FromFile(Path.Combine(AppContext.BaseDirectory, "translations.dat"))
+            : EmbeddedTranslationSource.FromAssemblyResource(assembly, ResourceName);
 
         var entries = source.Load();
 

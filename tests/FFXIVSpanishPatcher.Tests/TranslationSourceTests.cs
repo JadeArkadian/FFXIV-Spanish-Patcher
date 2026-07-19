@@ -76,4 +76,26 @@ public sealed class TranslationSourceTests : IDisposable
         Assert.Equal("a", loaded[0].Target);
         Assert.Equal("b", loaded[1].Target);
     }
+
+    [Fact]
+    public void EmbeddedTranslationSource_FromFileLoadsBrotliJsonl()
+    {
+        var path = Path.Combine(_temp, "translations.dat");
+        using (var output = File.Create(path))
+        using (var brotli = new BrotliStream(output, CompressionLevel.Optimal))
+        using (var writer = new StreamWriter(brotli, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)))
+        {
+            writer.Write(JsonSerializer.Serialize(new TranslationEntry
+            {
+                Source = "External",
+                Target = "Lateral",
+                Status = TranslationEntryStatus.Approved,
+            }));
+        }
+
+        var loaded = EmbeddedTranslationSource.FromFile(path).Load();
+
+        var entry = Assert.Single(loaded);
+        Assert.Equal("Lateral", entry.Target);
+    }
 }

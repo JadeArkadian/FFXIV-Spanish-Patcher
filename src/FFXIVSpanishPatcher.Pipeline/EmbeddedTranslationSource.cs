@@ -19,6 +19,10 @@ public sealed class EmbeddedTranslationSource(Func<Stream> openCompressedBlob) :
         => new(() => assembly.GetManifestResourceStream(resourceName)
             ?? throw new InvalidOperationException($"Embedded translation resource not found: {resourceName}"));
 
+    /// <summary>Wraps a Brotli-JSONL blob stored beside a portable application publish.</summary>
+    public static EmbeddedTranslationSource FromFile(string path)
+        => new(() => File.OpenRead(path));
+
     public IReadOnlyList<TranslationEntry> Load()
     {
         using var compressed = _open();

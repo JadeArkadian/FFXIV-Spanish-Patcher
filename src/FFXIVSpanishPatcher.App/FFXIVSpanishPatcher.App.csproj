@@ -7,6 +7,11 @@
     <BuiltInComInteropSupport>false</BuiltInComInteropSupport>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Company>JadeArkadian</Company>
+    <Product>FFXIVSpanish Patcher</Product>
+    <Description>Generador del mod de traducción castellana para FINAL FANTASY XIV</Description>
+    <Copyright>Copyright © 2026 JadeArkadian y colaboradores</Copyright>
+    <RepositoryUrl>https://github.com/JadeArkadian/FFXIV-Spanish-Patcher</RepositoryUrl>
     <!-- Windows .exe file icon. -->
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
     <!-- Single-file publish tuning: embed symbols (no loose .pdb), compress the bundle, and drop
@@ -22,6 +27,9 @@
     <RepositorySlug Condition="'$(RepositorySlug)' == ''">JadeArkadian/FFXIV-Spanish-Patcher</RepositorySlug>
     <LatestReleaseApiUrl Condition="'$(LatestReleaseApiUrl)' == ''">https://api.github.com/repos/$(RepositorySlug)/releases/latest</LatestReleaseApiUrl>
     <LatestReleasePageUrl Condition="'$(LatestReleasePageUrl)' == ''">https://github.com/$(RepositorySlug)/releases/latest</LatestReleasePageUrl>
+    <!-- Nexus can ship the Brotli blob beside the app so static PE scanners do not treat the
+         high-entropy translation corpus as an executable payload. Other builds keep it embedded. -->
+    <ExternalTranslations Condition="'$(ExternalTranslations)' == ''">false</ExternalTranslations>
   </PropertyGroup>
 
   <ItemGroup>
@@ -49,6 +57,7 @@
     <AssemblyMetadata Include="RepositorySlug" Value="$(RepositorySlug)" />
     <AssemblyMetadata Include="LatestReleaseApiUrl" Value="$(LatestReleaseApiUrl)" />
     <AssemblyMetadata Include="LatestReleasePageUrl" Value="$(LatestReleasePageUrl)" />
+    <AssemblyMetadata Include="ExternalTranslations" Value="$(ExternalTranslations)" />
   </ItemGroup>
 
   <!-- App assets (window/taskbar icon) bundled as Avalonia resources. -->
@@ -58,9 +67,16 @@
 
   <!-- The versioned translation blob is embedded directly into the executable. -->
   <ItemGroup>
-    <EmbeddedResource Include="..\..\data\translations.dat">
+    <EmbeddedResource Include="..\..\data\translations.dat"
+                      Condition="'$(ExternalTranslations)' != 'true'">
       <LogicalName>FFXIVSpanishPatcher.App.translations.dat</LogicalName>
     </EmbeddedResource>
+    <Content Include="..\..\data\translations.dat"
+             Condition="'$(ExternalTranslations)' == 'true'"
+             Link="translations.dat"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest"
+             TargetPath="translations.dat" />
     <EmbeddedResource Include="..\..\data\recommended-game-version.txt">
       <LogicalName>FFXIVSpanishPatcher.App.recommended-game-version.txt</LogicalName>
     </EmbeddedResource>

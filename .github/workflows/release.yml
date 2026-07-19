@@ -122,6 +122,7 @@ jobs:
             -c Release -r "$RID" --self-contained \
             -p:PublishSingleFile=false \
             -p:IncludeNativeLibrariesForSelfExtract=false \
+            -p:ExternalTranslations=true \
             -p:DebuggerSupport=false \
             -p:EventSourceSupport=false \
             -p:DebugType=none \

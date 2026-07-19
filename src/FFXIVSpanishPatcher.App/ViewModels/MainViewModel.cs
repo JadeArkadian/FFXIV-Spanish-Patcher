@@ -17,6 +17,8 @@ namespace FFXIVSpanishPatcher.App.ViewModels;
 public partial class MainViewModel : ObservableObject
 {
     private const string ResourceName = "FFXIVSpanishPatcher.App.translations.dat";
+    private const string ExternalTranslationsMetadataName = "ExternalTranslations";
+    private const string ExternalTranslationsFileName = "translations.dat";
     private const string RecommendedGameVersionResourceName = "FFXIVSpanishPatcher.App.recommended-game-version.txt";
     private const string LandingPageUrl = "https://ffxivspanish.carrd.co/";
 
@@ -32,10 +34,25 @@ public partial class MainViewModel : ObservableObject
     public MainViewModel(IShellServices shell, bool debugLogging = false)
         : this(
             shell,
-            EmbeddedTranslationSource.FromAssemblyResource(typeof(MainViewModel).Assembly, ResourceName),
+            CreateDefaultTranslationSource(),
             LoadRecommendedGameVersion(typeof(MainViewModel).Assembly, RecommendedGameVersionResourceName),
             debugLogging: debugLogging)
     {
+    }
+
+    private static ITranslationSource CreateDefaultTranslationSource()
+    {
+        var assembly = typeof(MainViewModel).Assembly;
+        var useExternalTranslations = assembly
+            .GetCustomAttributes<AssemblyMetadataAttribute>()
+            .Any(attribute =>
+                attribute.Key.Equals(ExternalTranslationsMetadataName, StringComparison.OrdinalIgnoreCase)
+                && bool.TryParse(attribute.Value, out var enabled)
+                && enabled);
+
+        return useExternalTranslations
+            ? EmbeddedTranslationSource.FromFile(Path.Combine(AppContext.BaseDirectory, ExternalTranslationsFileName))
+            : EmbeddedTranslationSource.FromAssemblyResource(assembly, ResourceName);
     }
 
     public MainViewModel(
