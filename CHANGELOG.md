@@ -2,6 +2,19 @@
 
 Resumen de todos los cambios relevantes del proyecto.
 
+## v0.2.3
+
+- Flexión de género del personaje: el patcher ahora genera condicionales de género nativos del juego, de forma que los diálogos concuerdan con el género del personaje del jugador (Guerrero/Guerrera de la Luz, aventurero/aventurera...).
+- Actualizado el corpus de traducciones embebido (~47.000 líneas nuevas aprobadas):
+  - Misiones de gremio post-Heavensward de TODAS las clases de crafteo y recolección: Alquimista, Minero, Carpintero, Curtidor, Armero, Pescador, Culinario, Botánico y Herrero (~90 hojas).
+  - Historia principal ARR: parches 2.1 a 2.3 (bloques `GaiUse211-216` y lote `msq22`: apertura, Ul'dah y refugiados de Doma).
+  - Lore y progreso: `MJIProgress` (Isla del Vagabundo), `WKSCosmoToolName` y arranque de `WKSMechaEventData` (Cosmic Exploration).
+- Progreso total: 473.962/802.280 líneas (59,1%, antes 53,0%). Crafting/recolección al 74,2%, minijuegos/eventos al 99,8%, lore/diarios y eventos explícitos al 100%.
+- Barrido tipográfico de todo el corpus: guiones de caja (U+2500) sustituidos por rayas (—) según la puntuación española.
+- Ronda de canon ratificada por entrevista: decisiones de terminología y estilo aplicadas de forma coherente a todo el corpus.
+- Correcciones de parcheo (vendor): auto-corrección de etiquetas de campo permutadas en `ExdPatcher` — filas que antes fallaban en silencio (biografías del Bozja Notebook, `Perform`, `Snipe`, `QTE`...) ahora se aplican al 100%.
+- Arreglado falso positivo en la verificación del patcher.
+
 ## v0.2.2
 
 - Actualizado el corpus de traducciones embebido con 8 lotes nuevos (~6.300 filas aprobadas, +16.769 líneas exactas):
