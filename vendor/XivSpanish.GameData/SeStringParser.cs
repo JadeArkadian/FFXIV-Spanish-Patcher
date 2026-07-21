@@ -332,6 +332,15 @@ public static class SeStringParser
             return false;
         }
 
+        // Target-authored standard macros require the run-aware tree so their binary framing and
+        // length-prefixed branches are synthesized structurally. Never write their authoring tags
+        // as visible literal text through the flat replacement path.
+        if (SeStringStandardMacros.HasReservedDelimiter(target))
+        {
+            reason = "target contains standard macros requiring run-aware translation";
+            return false;
+        }
+
         var sourceTokens = SeStringTokenizer.FindTokenReferences(source);
         var targetTokens = SeStringTokenizer.FindTokenReferences(target);
         if (!TokenReferencesEqual(sourceTokens, targetTokens))
@@ -440,6 +449,12 @@ public static class SeStringParser
         if (string.IsNullOrEmpty(source))
         {
             reason = "source is empty";
+            return false;
+        }
+
+        if (SeStringStandardMacros.HasReservedDelimiter(target))
+        {
+            reason = "target contains standard macros requiring run-aware translation";
             return false;
         }
 

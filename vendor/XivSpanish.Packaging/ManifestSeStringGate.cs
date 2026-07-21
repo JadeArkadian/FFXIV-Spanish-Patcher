@@ -36,9 +36,11 @@ public sealed record ManifestSeStringViolation(TranslationEntry Entry, SeStringC
 
 /// <summary>
 /// Hard SeString gate run at manifest load, before any build work (T-19-03). Every entry that
-/// would be packaged and whose SOURCE carries payload tokens or raw macro control bytes must pass
+/// would be packaged and whose source carries payload machinery, or whose target carries an
+/// allow-listed standard macro, must pass
 /// <see cref="SeStringCompatibilityValidator"/>; otherwise the build fails (exit ≠ 0) listing ALL
-/// offending rows — the check never stops at the first violation. Plain-text rows pass trivially.
+/// offending rows — the check never stops at the first violation. Plain-text rows without a
+/// reserved target macro pass trivially.
 /// Mirrors the XivSpanish.Jsonl T-19-02 gate, including the loudly-logged
 /// <c>--force-sestring</c> override.
 /// </summary>
@@ -48,7 +50,8 @@ public static class ManifestSeStringGate
     public const string OverrideMarker = "!! SESTRING OVERRIDE (--force-sestring)";
 
     /// <summary>
-    /// Checks every entry and collects ALL violations. Only payload-bearing sources are validated;
+    /// Checks every entry and collects ALL violations. Payload-bearing sources and targets carrying
+    /// reserved standard-macro delimiters are validated;
     /// entries with a null/empty target are skipped (they are not packageable and are reported as
     /// skips elsewhere). The caller decides whether the manifest is rejected or force-overridden.
     /// </summary>
@@ -57,7 +60,9 @@ public static class ManifestSeStringGate
         var violations = new List<ManifestSeStringViolation>();
         foreach (var entry in entries)
         {
-            if (string.IsNullOrEmpty(entry.Target) || !SeStringCompatibilityValidator.HasPayloads(entry.Source))
+            if (string.IsNullOrEmpty(entry.Target)
+                || (!SeStringCompatibilityValidator.HasPayloads(entry.Source)
+                    && !SeStringStandardMacros.HasReservedDelimiter(entry.Target)))
             {
                 continue;
             }

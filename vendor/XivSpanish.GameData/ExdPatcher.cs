@@ -232,6 +232,63 @@ public static class ExdPatcher
             }
         }
 
+        // Full current source of each string column (tokenized run-aware, the exact form the
+        // manifest carries for a whole column). Used to VERIFY that a replacement's Field label
+        // actually points at the column that holds its source, and to recover the right column
+        // when it does not (field-name drift, see below). Null entries are out-of-range columns.
+        var columnSource = new string?[stringColumnOffsets.Count];
+        for (var ordinal = 0; ordinal < stringColumnOffsets.Count; ordinal++)
+        {
+            var columnOffset = stringColumnOffsets[ordinal];
+            if (columnOffset + 4 > fixedData.Length)
+            {
+                continue;
+            }
+
+            var strOffset = BinaryPrimitives.ReadUInt32BigEndian(fixedData.AsSpan(columnOffset, 4));
+            columnSource[ordinal] = SeStringTreeTokenizer.TokenizeRawText(
+                ReadNulTerminatedBytes(stringArea, (int)strOffset));
+        }
+
+        var fieldTargeted = new Dictionary<int, StringReplacement>();
+
+        // Resolves the string-column ordinal a non-empty field-targeted replacement should write.
+        // The label resolves to <paramref name="labeled"/>, but a corpus extracted before the
+        // offset-correct field resolver can carry field labels PERMUTED relative to the on-disk
+        // column offsets (e.g. MYCWarResultNotebook, whose "Description"/"NameJP" labels point at
+        // the wrong ordinal). When the labeled column does not actually hold the source, retarget
+        // to the unique OTHER column whose FULL content equals the source — an exact whole-column
+        // match, never a substring, so this cannot reintroduce the substring collision (a short
+        // name that appears verbatim inside its own long biography stays out of the bio column).
+        // Falls back to the labeled ordinal when the source is genuinely absent or the match is
+        // ambiguous, so Phase A still reports a precise miss instead of guessing.
+        int ResolveFieldOrdinal(int labeled, string source)
+        {
+            if (string.Equals(columnSource[labeled], source, StringComparison.Ordinal))
+            {
+                return labeled;
+            }
+
+            var found = -1;
+            for (var ordinal = 0; ordinal < columnSource.Length; ordinal++)
+            {
+                if (fieldTargeted.ContainsKey(ordinal)
+                    || !string.Equals(columnSource[ordinal], source, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                if (found >= 0)
+                {
+                    return labeled; // Ambiguous: two columns hold the source. Keep the label.
+                }
+
+                found = ordinal;
+            }
+
+            return found >= 0 ? found : labeled;
+        }
+
         // Partition replacements:
         //  - fieldTargeted[ordinal]: a replacement whose Field resolves to that exact column. It
         //    is applied to ONLY that column (fixing the substring collision: a Singular source
@@ -239,18 +296,25 @@ public static class ExdPatcher
         //  - contentMatched: non-empty source, no usable field → legacy content matching across
         //    the remaining (non-field-targeted) columns.
         //  - emptyWrites: empty source, no usable field → legacy write-at-offset.
-        var fieldTargeted = new Dictionary<int, StringReplacement>();
         var contentMatched = new List<StringReplacement>();
         var emptyWrites = new Queue<StringReplacement>();
         foreach (var rep in rowReplacements)
         {
             if (rep.Field is not null && fieldToOrdinal.TryGetValue(rep.Field, out var ordinal)
-                && stringColumnOffsets[ordinal] + 4 <= fixedData.Length
-                && !fieldTargeted.ContainsKey(ordinal))
+                && stringColumnOffsets[ordinal] + 4 <= fixedData.Length)
             {
-                fieldTargeted[ordinal] = rep;
+                // A non-empty source verifies/self-corrects its target column by exact content;
+                // an empty source (write-at-offset) keeps the literal label — an empty column has
+                // no content to match against, so retargeting it is undefined.
+                var target = rep.Source.Length == 0 ? ordinal : ResolveFieldOrdinal(ordinal, rep.Source);
+                if (!fieldTargeted.ContainsKey(target))
+                {
+                    fieldTargeted[target] = rep;
+                    continue;
+                }
             }
-            else if (rep.Source.Length == 0)
+
+            if (rep.Source.Length == 0)
             {
                 emptyWrites.Enqueue(rep);
             }

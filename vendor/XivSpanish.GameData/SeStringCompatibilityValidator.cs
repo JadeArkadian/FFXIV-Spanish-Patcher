@@ -38,6 +38,9 @@ public enum SeStringViolationKind
     /// before any literal may change; identical literals (status-only edits) remain safe.
     /// </summary>
     StaleRunLength,
+
+    /// <summary>An allow-listed target-authored macro has invalid syntax or was added to a payload-bearing source.</summary>
+    InvalidStandardMacro,
 }
 
 /// <summary>
@@ -120,6 +123,11 @@ public static partial class SeStringCompatibilityValidator
 
         var violations = new List<SeStringViolation>();
 
+        if (SeStringStandardMacros.HasReservedDelimiter(target))
+        {
+            return ValidateStandardMacros(source, target);
+        }
+
         var sourceAtoms = ExtractAtoms(source);
         var targetAtoms = ExtractAtoms(target);
 
@@ -131,6 +139,56 @@ public static partial class SeStringCompatibilityValidator
         CheckStaleRunLength(source, target, sourceAtoms, targetAtoms, violations);
 
         return new SeStringCompatibilityReport(violations);
+    }
+
+    private static SeStringCompatibilityReport ValidateStandardMacros(string source, string target)
+    {
+        var violations = new List<SeStringViolation>();
+        if (HasPayloads(source))
+        {
+            violations.Add(new SeStringViolation(
+                SeStringViolationKind.InvalidStandardMacro,
+                GenderToken(target),
+                target.IndexOf(SeStringStandardMacros.GenderOpen, StringComparison.Ordinal),
+                "standard target macros may only be added when the source SeString is plain text"));
+            return new SeStringCompatibilityReport(violations);
+        }
+
+        if (!SeStringStandardMacros.TryParse(target, out _, out var reason))
+        {
+            violations.Add(new SeStringViolation(
+                SeStringViolationKind.InvalidStandardMacro,
+                GenderToken(target),
+                FirstGenderDelimiter(target),
+                reason ?? "invalid standard target macro"));
+            return new SeStringCompatibilityReport(violations);
+        }
+
+        CheckControlChars(source, target, violations);
+        return new SeStringCompatibilityReport(violations);
+    }
+
+    private static string? GenderToken(string target)
+    {
+        var position = FirstGenderDelimiter(target);
+        if (position < 0)
+        {
+            return null;
+        }
+
+        var end = target.IndexOf(SeStringTokenizer.TokenClose, position);
+        return end < 0 ? "<" : target[position..(end + 1)];
+    }
+
+    private static int FirstGenderDelimiter(string target)
+    {
+        var positions = new[]
+        {
+            target.IndexOf(SeStringStandardMacros.GenderOpen, StringComparison.Ordinal),
+            target.IndexOf(SeStringStandardMacros.GenderElse, StringComparison.Ordinal),
+            target.IndexOf(SeStringStandardMacros.GenderEnd, StringComparison.Ordinal),
+        };
+        return positions.Where(position => position >= 0).DefaultIfEmpty(-1).Min();
     }
 
     /// <summary>One payload token occurrence: its exact text (e.g. "&lt;Num#2&gt;") and char index.</summary>

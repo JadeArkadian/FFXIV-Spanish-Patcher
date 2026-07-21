@@ -96,7 +96,23 @@ public static class SeStringTree
             return false;
         }
 
-        if (!SeStringTreeTokenizer.TryDetokenize(target, tok.Tokens, out var rebuilt, out var detokenReason))
+        List<SeNode> rebuilt;
+        string? detokenReason;
+        if (SeStringStandardMacros.HasReservedDelimiter(target))
+        {
+            if (tok.Tokens.Count != 0)
+            {
+                reason = "standard target macros may only be added when the source SeString is plain text";
+                return false;
+            }
+
+            if (!SeStringStandardMacros.TryParse(target, out rebuilt, out detokenReason))
+            {
+                reason = detokenReason ?? "could not parse standard target macros";
+                return false;
+            }
+        }
+        else if (!SeStringTreeTokenizer.TryDetokenize(target, tok.Tokens, out rebuilt, out detokenReason))
         {
             reason = detokenReason ?? "could not detokenize target";
             return false;
