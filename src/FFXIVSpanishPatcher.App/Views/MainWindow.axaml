@@ -137,7 +137,7 @@
           <StackPanel Spacing="10">
             <TextBlock Classes="h2" Text="Ruta del juego (FFXIV)"/>
             <Grid ColumnDefinitions="*,Auto" >
-              <TextBox Grid.Column="0" Text="{Binding GamePath}" Watermark="C:\...\FINAL FANTASY XIV - A Realm Reborn"/>
+              <TextBox Grid.Column="0" Text="{Binding GamePath}" PlaceholderText="C:\...\FINAL FANTASY XIV - A Realm Reborn"/>
               <Button Grid.Column="1" Margin="10,0,0,0" Content="Examinar..." Command="{Binding BrowseCommand}"/>
             </Grid>
             <TextBlock Foreground="{StaticResource Muted}" FontSize="12"
