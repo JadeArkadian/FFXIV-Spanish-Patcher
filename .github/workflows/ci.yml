@@ -30,10 +30,9 @@ jobs:
       - name: Test
         run: dotnet test --no-build -c Release --verbosity minimal
 
-  # Manual native smoke for the binaries users download. Cross-publish proves only that the
-  # executable was produced; these runners prove it stays alive on its target OS.
+  # Native smoke for binaries users download. Cross-publish proves only that the executable was
+  # produced; these runners prove it stays alive on its target OS before merge or release.
   native-publish-smoke:
-    if: github.event_name == 'workflow_dispatch'
     strategy:
       fail-fast: false
       matrix:
