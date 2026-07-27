@@ -33,13 +33,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Avalonia" Version="11.2.*" />
-    <PackageReference Include="Avalonia.Desktop" Version="11.2.*" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.*" />
-    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.*" />
+    <PackageReference Include="Avalonia" Version="12.1.*" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.*" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.*" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.*" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.*" />
-    <!-- 0.92.0 fixes GHSA-xrw6-gwf8-vvr9 and is last version compatible with Avalonia 11.2's Connection API. Linux-only. -->
-    <PackageReference Include="Tmds.DBus.Protocol" Version="0.92.0" />
+    <!-- Override Avalonia's Tmds.DBus.Protocol with the latest 0.94 patch. Linux-only. -->
+    <PackageReference Include="Tmds.DBus.Protocol" Version="0.94.2" />
   </ItemGroup>
 
   <ItemGroup>
