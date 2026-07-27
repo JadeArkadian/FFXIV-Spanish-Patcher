@@ -2,6 +2,12 @@
 
 Resumen de todos los cambios relevantes del proyecto.
 
+## v0.2.5
+- Hotfix que impedia funcionar la aplicación en su ultima version
+- Upgrade de la versión de Avalonia
+- Validación de los ejecutables en el workflow CI para evitar futuras regresiones
+- Sin cambios en la traducción con respecto a la anterior version
+
 ## v0.2.4
 
 - Actualizado el corpus de traducciones embebido con **16.032 líneas nuevas aprobadas**. El progreso total alcanza **489.994/802.221 líneas traducibles (61,1 %)**, frente al 59,1 % de v0.2.3.
