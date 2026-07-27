@@ -116,7 +116,7 @@ jobs:
 
       - name: Upload smoke log
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: native-smoke-${{ matrix.rid }}
           path: ${{ runner.temp }}/FFXIVSpanishPatcher-smoke-*.log
