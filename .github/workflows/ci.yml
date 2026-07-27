@@ -37,6 +37,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - { os: ubuntu-latest, rid: linux-x64 }
           - { os: windows-latest, rid: win-x64 }
           - { os: macos-15, rid: osx-arm64 }
     runs-on: ${{ matrix.os }}
@@ -93,9 +94,29 @@ jobs:
           kill "$app_pid"
           wait "$app_pid" || true
 
+      - name: Smoke Linux executable
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="$GITHUB_WORKSPACE/publish/linux-x64/FFXIVSpanishPatcher"
+          log="$RUNNER_TEMP/FFXIVSpanishPatcher-smoke.log"
+          chmod +x "$app"
+          xvfb-run -a "$app" >"$log" 2>&1 &
+          app_pid=$!
+          sleep 10
+          if ! kill -0 "$app_pid" 2>/dev/null; then
+            cat "$log"
+            wait "$app_pid" || true
+            echo "FFXIVSpanishPatcher exited during Linux smoke test." >&2
+            exit 1
+          fi
+          kill "$app_pid"
+          wait "$app_pid" || true
+
       - name: Upload smoke log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: native-smoke-${{ matrix.rid }}
           path: ${{ runner.temp }}/FFXIVSpanishPatcher-smoke-*.log
