@@ -51,12 +51,13 @@ public partial class MainWindow : Window, IShellServices
         return folders.Count > 0 ? folders[0].TryGetLocalPath() : null;
     }
 
-    public async Task CopyToClipboardAsync(string text)
+    public Task CopyToClipboardAsync(string text)
     {
         if (Clipboard is { } clipboard)
         {
-            await clipboard.SetTextAsync(text);
+            clipboard.SetText(text);
         }
+        return Task.CompletedTask;
     }
 
     public void RevealInFileManager(string path)
