@@ -2,6 +2,18 @@
 
 Resumen de todos los cambios relevantes del proyecto.
 
+## v0.2.4
+
+- Actualizado el corpus de traducciones embebido con **16.032 líneas nuevas aprobadas**. El progreso total alcanza **489.994/802.221 líneas traducibles (61,1 %)**, frente al 59,1 % de v0.2.3.
+- Gran ampliación de misiones y diálogos de *A Realm Reborn*:
+  - Más tramos de la historia principal de ARR
+  - Nuevas misiones secundarias de las cadenas de quests de ARR
+  - Misiones de las tribus bestia amalj'aa, sahagin e ixal
+  - Misiones de job de *Heavensward* de astrólogo, caballero oscuro, monje, paladín e invocador, además del arco de las armas reliquia.
+  - Más contenido de eventos estacionales y textos de Exploración Cósmica.
+- Terminología revisada en todo el corpus: **Velo / Velo Negro** pasa a ser **Espesura / Espesura Negra**, con sus variantes regionales y referencias relacionadas actualizadas de forma consistente.
+- Actualizadas dependencias y herramientas de desarrollo: SDK de .NET 10.0.302, Lumina 7.6.0, Lumina.Excel 7.5.0, Tmds.DBus.Protocol y Microsoft.NET.Test.Sdk. Añadida comprobación semanal de actualizaciones con Dependabot.
+
 ## v0.2.3
 
 - Flexión de género del personaje: el patcher ahora genera condicionales de género nativos del juego, de forma que los diálogos concuerdan con el género del personaje del jugador (Guerrero/Guerrera de la Luz, aventurero/aventurera...).
