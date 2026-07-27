@@ -4,6 +4,7 @@ on:
   push:
     branches: [ main ]
   pull_request:
+  workflow_dispatch:
 
 jobs:
   build-test:
@@ -28,3 +29,75 @@ jobs:
       # data/translations.dat is versioned, so no corpus sync is needed in CI.
       - name: Test
         run: dotnet test --no-build -c Release --verbosity minimal
+
+  # Manual native smoke for the binaries users download. Cross-publish proves only that the
+  # executable was produced; these runners prove it stays alive on its target OS.
+  native-publish-smoke:
+    if: github.event_name == 'workflow_dispatch'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, rid: win-x64 }
+          - { os: macos-15, rid: osx-arm64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          lfs: true
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Publish ${{ matrix.rid }}
+        run: >
+          dotnet publish src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj
+          -c Release -r ${{ matrix.rid }} --self-contained
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -o publish/${{ matrix.rid }}
+
+      - name: Smoke Windows executable
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $stdout = Join-Path $env:RUNNER_TEMP 'FFXIVSpanishPatcher-smoke-stdout.log'
+          $stderr = Join-Path $env:RUNNER_TEMP 'FFXIVSpanishPatcher-smoke-stderr.log'
+          $app = Join-Path $env:GITHUB_WORKSPACE 'publish/win-x64/FFXIVSpanishPatcher.exe'
+          $process = Start-Process -FilePath $app -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
+          Start-Sleep -Seconds 10
+          if ($process.HasExited) {
+            Get-Content $stdout, $stderr -ErrorAction SilentlyContinue
+            throw "FFXIVSpanishPatcher exited during Windows smoke test with code $($process.ExitCode)."
+          }
+          Stop-Process -Id $process.Id -Force
+
+      - name: Smoke macOS executable
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="$GITHUB_WORKSPACE/publish/osx-arm64/FFXIVSpanishPatcher"
+          log="$RUNNER_TEMP/FFXIVSpanishPatcher-smoke.log"
+          chmod +x "$app"
+          "$app" >"$log" 2>&1 &
+          app_pid=$!
+          sleep 10
+          if ! kill -0 "$app_pid" 2>/dev/null; then
+            cat "$log"
+            wait "$app_pid" || true
+            echo "FFXIVSpanishPatcher exited during macOS smoke test." >&2
+            exit 1
+          fi
+          kill "$app_pid"
+          wait "$app_pid" || true
+
+      - name: Upload smoke log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-smoke-${{ matrix.rid }}
+          path: ${{ runner.temp }}/FFXIVSpanishPatcher-smoke-*.log
+          if-no-files-found: ignore
