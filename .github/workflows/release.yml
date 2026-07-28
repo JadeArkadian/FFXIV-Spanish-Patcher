@@ -72,6 +72,48 @@ jobs:
           -p:LatestReleasePageUrl=https://github.com/${{ github.repository }}/releases/latest
           -o publish/${{ matrix.rid }}
 
+      # Self-signed Authenticode: preserves a verifiable publisher identity without placing its
+      # private key in the repository. Windows will not treat this as a publicly trusted CA
+      # signature, so SHA-256 checksums below remain the release-verification mechanism.
+      - name: Self-sign Windows executable
+        if: matrix.rid == 'win-x64'
+        env:
+          WINDOWS_SELF_SIGNING_PFX_BASE64: ${{ secrets.WINDOWS_SELF_SIGNING_PFX_BASE64 }}
+          WINDOWS_SELF_SIGNING_PFX_PASSWORD: ${{ secrets.WINDOWS_SELF_SIGNING_PFX_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$WINDOWS_SELF_SIGNING_PFX_BASE64" || -z "$WINDOWS_SELF_SIGNING_PFX_PASSWORD" ]]; then
+            echo "::warning::Windows self-signing skipped: configure WINDOWS_SELF_SIGNING_PFX_BASE64 and WINDOWS_SELF_SIGNING_PFX_PASSWORD."
+            exit 0
+          fi
+
+          CERT_DIR="$(mktemp -d)"
+          trap 'rm -rf "$CERT_DIR"' EXIT
+          PFX="$CERT_DIR/FFXIVSpanishPatcher-self-signed.pfx"
+          CERT="$CERT_DIR/FFXIVSpanishPatcher-self-signed.pem"
+          EXE="publish/win-x64/FFXIVSpanishPatcher.exe"
+
+          printf '%s' "$WINDOWS_SELF_SIGNING_PFX_BASE64" | base64 --decode > "$PFX"
+          openssl pkcs12 -in "$PFX" -clcerts -nokeys -passin "pass:$WINDOWS_SELF_SIGNING_PFX_PASSWORD" -out "$CERT"
+          EXPECTED_FINGERPRINT="$(openssl x509 -in docs/security/FFXIVSpanishPatcher-self-signed.pem -noout -fingerprint -sha256)"
+          ACTUAL_FINGERPRINT="$(openssl x509 -in "$CERT" -noout -fingerprint -sha256)"
+          if [[ "$ACTUAL_FINGERPRINT" != "$EXPECTED_FINGERPRINT" ]]; then
+            echo "::error::Windows self-signing certificate does not match docs/security/FFXIVSpanishPatcher-self-signed.pem."
+            exit 1
+          fi
+          sudo apt-get update
+          sudo apt-get install --yes osslsigncode
+          osslsigncode sign \
+            -pkcs12 "$PFX" \
+            -pass "$WINDOWS_SELF_SIGNING_PFX_PASSWORD" \
+            -h sha256 \
+            -n "FFXIVSpanish Patcher" \
+            -i "https://ffxivspanish.carrd.co/" \
+            -in "$EXE" \
+            -out "$EXE.signed"
+          mv "$EXE.signed" "$EXE"
+          osslsigncode verify -in "$EXE" -CAfile "$CERT"
+
       - name: Package
         run: |
           set -euo pipefail
@@ -100,13 +142,20 @@ jobs:
             cp README.md "$OUT/README.md"
             ( cd "$OUT" && zip -r "../../$ASSET" . )
           fi
+          if command -v sha256sum >/dev/null; then
+            sha256sum "$ASSET" > "$ASSET.sha256"
+          else
+            shasum -a 256 "$ASSET" > "$ASSET.sha256"
+          fi
 
       - name: Attach to release
         uses: softprops/action-gh-release@v3
         with:
           name: ${{ needs.validate-tag.outputs.tag }}
           generate_release_notes: true
-          files: FFXIVSpanishPatcher-${{ needs.validate-tag.outputs.version }}-${{ matrix.rid }}.zip
+          files: |
+            FFXIVSpanishPatcher-${{ needs.validate-tag.outputs.version }}-${{ matrix.rid }}.zip
+            FFXIVSpanishPatcher-${{ needs.validate-tag.outputs.version }}-${{ matrix.rid }}.zip.sha256
 
       # Nexus/Windows false-positive mitigation: GitHub's single-file publish already keeps the
       # corpus external. Nexus additionally replaces it with a portable folder publish to avoid

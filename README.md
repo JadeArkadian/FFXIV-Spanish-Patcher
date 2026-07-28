@@ -55,6 +55,28 @@ Descomprime el ZIP y ejecuta `FFXIVSpanishPatcher`.
 No hace falta instalar .NET ni ningún runtime aparte: el programa viene empaquetado como ejecutable
 autónomo.
 
+### Verificar descarga
+
+Cada ZIP publicado incluye un fichero `*.zip.sha256` con su hash SHA-256. Descarga ambos ficheros
+en la misma carpeta y comprueba que coinciden:
+
+```powershell
+# Windows PowerShell
+Get-FileHash .\FFXIVSpanishPatcher-...-win-x64.zip -Algorithm SHA256
+```
+
+```bash
+# Linux
+sha256sum -c FFXIVSpanishPatcher-...-linux-x64.zip.sha256
+
+# macOS
+shasum -a 256 -c FFXIVSpanishPatcher-...-<plataforma>.zip.sha256
+```
+
+En Windows, compara el resultado con el hash del fichero `.sha256` de la misma release. Las builds
+Windows también llevan una firma autofirmada de FFXIVSpanish Patcher: permite detectar alteraciones,
+pero no sustituye un certificado emitido por una CA. Usa el SHA-256 como verificación principal.
+
 ## Requisitos
 
 - Final Fantasy XIV instalado.
