@@ -40,6 +40,7 @@ public sealed class TranslationCategoriesTests
     [InlineData("Leve", "misiones")]
     [InlineData("TextCommand", "interfaz")]
     [InlineData("TextCommandParam", "interfaz")]
+    [InlineData("KTGTypeWordTextData", "interfaz")]
     [InlineData("ChatBubbleType", "interfaz")]
     [InlineData("CircleActivity", "interfaz")]
     [InlineData("EmjAddon", "interfaz")]
