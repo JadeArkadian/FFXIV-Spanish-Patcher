@@ -40,7 +40,7 @@ en **Elementos comunes**, sin contarlos de nuevo en cada expansión.
 | <img src="docs/assets/ew-icon.png" alt="Endwalker" width="40"> | **Endwalker** | 20/47.170 (0,0%) | ![0,0%](https://geps.dev/progress/0?barColor=da3633) |
 | <img src="docs/assets/dt-icon.png" alt="Dawntrail" width="40"> | **Dawntrail** | 1.174/41.536 (2,8%) | ![2,8%](https://geps.dev/progress/2.8?barColor=da3633) |
 | <img src="docs/assets/ec-icon.png" alt="Evercold" width="40"> | **Evercold** | — (progreso desconocido) | ![0,0%](https://geps.dev/progress/0?barColor=da3633) |
-| — | **Elementos comunes** | 466.667/580.138 (80,4%) | ![80,4%](https://geps.dev/progress/80.4?barColor=f1c232) |
+| — | **Elementos comunes** | 466.667/580.138 (80,4%) | ![80,4%](https://geps.dev/progress/80.4?barColor=7ee787) |
 
 Evercold todavía no se ha publicado. Se muestra al 0 % hasta que exista contenido con el que medir
 su progreso real.
