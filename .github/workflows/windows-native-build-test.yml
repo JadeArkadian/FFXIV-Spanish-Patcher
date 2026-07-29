@@ -1,0 +1,176 @@
+name: Windows native build AV test
+
+# Experimental workflow isolated from releases. It compares the current Ubuntu
+# cross-publish with a native Windows publish, then signs both outputs in the
+# same Ubuntu job so the build operating system is the only changed variable.
+on:
+  push:
+    branches:
+      - test/windows-native-build-av
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  TEST_VERSION: 0.3.0
+  TEST_TAG: v0.3.0
+
+jobs:
+  publish:
+    name: Publish on ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: github-ubuntu-cross
+            os: ubuntu-latest
+          - label: github-windows-native
+            os: windows-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          lfs: true
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Publish win-x64
+        shell: bash
+        run: >
+          dotnet restore src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj
+          --locked-mode
+          &&
+          dotnet publish src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj
+          -c Release -r win-x64 --self-contained --no-restore
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:ExternalTranslations=true
+          -p:Version=${{ env.TEST_VERSION }}
+          -p:InformationalVersion=${{ env.TEST_TAG }}
+          -p:AssemblyVersion=${{ env.TEST_VERSION }}.0
+          -p:FileVersion=${{ env.TEST_VERSION }}.0
+          -p:RepositorySlug=${{ github.repository }}
+          -p:LatestReleaseApiUrl=https://api.github.com/repos/${{ github.repository }}/releases/latest
+          -p:LatestReleasePageUrl=https://github.com/${{ github.repository }}/releases/latest
+          -o publish/win-x64
+
+      - name: Stage unsigned comparison files
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir unsigned
+          cp publish/win-x64/FFXIVSpanishPatcher.exe unsigned/
+          cp publish/win-x64/translations.dat unsigned/
+          cp README.md unsigned/
+          sha256sum unsigned/FFXIVSpanishPatcher.exe
+
+      - name: Upload unsigned build
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: unsigned-${{ matrix.label }}
+          path: unsigned/
+          if-no-files-found: error
+          retention-days: 7
+
+  sign-and-package:
+    name: Sign and package comparison
+    needs: publish
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Download Ubuntu cross-build
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          name: unsigned-github-ubuntu-cross
+          path: staging/github-ubuntu-cross
+
+      - name: Download Windows native build
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          name: unsigned-github-windows-native
+          path: staging/github-windows-native
+
+      - name: Compare unsigned executables
+        run: |
+          set -euo pipefail
+          sha256sum \
+            staging/github-ubuntu-cross/FFXIVSpanishPatcher.exe \
+            staging/github-windows-native/FFXIVSpanishPatcher.exe
+
+      - name: Self-sign both executables identically
+        env:
+          WINDOWS_SELF_SIGNING_PFX_BASE64: ${{ secrets.WINDOWS_SELF_SIGNING_PFX_BASE64 }}
+          WINDOWS_SELF_SIGNING_PFX_PASSWORD: ${{ secrets.WINDOWS_SELF_SIGNING_PFX_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$WINDOWS_SELF_SIGNING_PFX_BASE64" || -z "$WINDOWS_SELF_SIGNING_PFX_PASSWORD" ]]; then
+            echo "::error::WINDOWS_SELF_SIGNING_PFX_BASE64 and WINDOWS_SELF_SIGNING_PFX_PASSWORD are required."
+            exit 1
+          fi
+
+          CERT_DIR="$(mktemp -d)"
+          trap 'rm -rf "$CERT_DIR"' EXIT
+          PFX="$CERT_DIR/FFXIVSpanishPatcher-self-signed.pfx"
+          CERT="$CERT_DIR/FFXIVSpanishPatcher-self-signed.pem"
+
+          printf '%s' "$WINDOWS_SELF_SIGNING_PFX_BASE64" | base64 --decode > "$PFX"
+          openssl pkcs12 -in "$PFX" -clcerts -nokeys \
+            -passin "pass:$WINDOWS_SELF_SIGNING_PFX_PASSWORD" -out "$CERT"
+          EXPECTED_FINGERPRINT="$(openssl x509 \
+            -in docs/security/FFXIVSpanishPatcher-self-signed.pem \
+            -noout -fingerprint -sha256)"
+          ACTUAL_FINGERPRINT="$(openssl x509 \
+            -in "$CERT" \
+            -noout -fingerprint -sha256)"
+          if [[ "$ACTUAL_FINGERPRINT" != "$EXPECTED_FINGERPRINT" ]]; then
+            echo "::error::Signing certificate does not match the documented public certificate."
+            exit 1
+          fi
+
+          sudo apt-get update
+          sudo apt-get install --yes osslsigncode
+
+          for BUILD in github-ubuntu-cross github-windows-native; do
+            EXE="staging/$BUILD/FFXIVSpanishPatcher.exe"
+            osslsigncode sign \
+              -pkcs12 "$PFX" \
+              -pass "$WINDOWS_SELF_SIGNING_PFX_PASSWORD" \
+              -h sha256 \
+              -n "FFXIVSpanish Patcher" \
+              -i "https://ffxivspanish.carrd.co/" \
+              -in "$EXE" \
+              -out "$EXE.signed"
+            mv "$EXE.signed" "$EXE"
+            osslsigncode verify -in "$EXE" -CAfile "$CERT"
+          done
+
+      - name: Package test ZIPs
+        run: |
+          set -euo pipefail
+          mkdir packages
+
+          for BUILD in github-ubuntu-cross github-windows-native; do
+            ASSET="FFXIVSpanishPatcher-${TEST_VERSION}-win-x64-${BUILD}-test.zip"
+            (cd "staging/$BUILD" && zip -r "../../packages/$ASSET" .)
+            sha256sum "packages/$ASSET" > "packages/$ASSET.sha256"
+          done
+
+          sha256sum \
+            staging/github-ubuntu-cross/FFXIVSpanishPatcher.exe \
+            staging/github-windows-native/FFXIVSpanishPatcher.exe
+          sha256sum packages/*.zip
+
+      - name: Upload signed comparison packages
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows-build-environment-test-${{ env.TEST_TAG }}
+          path: packages/
+          if-no-files-found: error
+          retention-days: 7
