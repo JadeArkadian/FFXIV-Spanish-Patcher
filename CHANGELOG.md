@@ -4,9 +4,15 @@ Resumen de todos los cambios relevantes del proyecto.
 
 ## v0.3.0
 
-- ¡Nuevo Patcher!
+- ¡Nuevo hito alcanzado! ¡TODO el contenido de A Realm Reborn está totalmente traducido! 🥳🥳🥳
+- ¡Nueva imagen! ¡Nuevo Patcher! 🎉
+- Todo el nuevo contenido de la version 7.55 localizado en prioridad (incluido el futuro evento de FF7 en el Gold Saucer)
+- Actualizado fichero README.md para reflejar estado del avance de la traducción basado en expansiones.
+
+Ahora en adelante, empezaremos a localizar el contenido de Heavensward ⚔️
 
 ## v0.2.5
+
 - Hotfix que impedia funcionar la aplicación en su ultima version
 - Upgrade de la versión de Avalonia
 - Validación de los ejecutables en el workflow CI para evitar futuras regresiones
