@@ -24,23 +24,23 @@ traducibles exactas.
 
 | Métrica | Valor | Avance |
 | --- | ---: | --- |
-| Avance total por líneas | 489.994/802.221 (61,1%) | ![61,1%](https://geps.dev/progress/61.1?barColor=f1c232) |
-| Hojas OK | 2.606/6.956 (37,5%) | ![37,5%](https://geps.dev/progress/37.5?barColor=f0883e) |
+| Avance total por líneas | 506.651/809.030 (62,6%) | ![62,6%](https://geps.dev/progress/62.6?barColor=f1c232) |
+| Hojas OK | 2.874/6.986 (41,1%) | ![41,1%](https://geps.dev/progress/41.1?barColor=f0883e) |
 
 | Área | Líneas traducidas | Avance |
 | --- | ---: | --- |
-| UI / menús / sistema visible | 25.749/25.749 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
-| Objetos / economía / tiendas | 176.572/176.572 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
-| Combate / acciones / duties | 34.911/34.927 (99,9%) | ![99,9%](https://geps.dev/progress/99.9?barColor=2ea043) |
-| Mundo / NPCs / localizaciones | 88.327/88.327 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
-| Crafting / recolección / progreso | 5.463/7.367 (74,2%) | ![74,2%](https://geps.dev/progress/74.2?barColor=f1c232) |
-| Lore / diarios / colecciones | 20.745/20.745 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
-| Minijuegos / eventos / perfil | 7.384/7.400 (99,8%) | ![99,8%](https://geps.dev/progress/99.8?barColor=2ea043) |
-| Guion - quests | 74.742/261.863 (28,5%) | ![28,5%](https://geps.dev/progress/28.5?barColor=f0883e) |
+| UI / menús / sistema visible | 25.916/25.916 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
+| Objetos / economía / tiendas | 178.169/178.169 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
+| Combate / acciones / duties | 36.384/36.384 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
+| Mundo / NPCs / localizaciones | 89.535/89.535 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
+| Crafting / recolección / progreso | 7.376/7.376 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
+| Lore / diarios / colecciones | 20.921/20.921 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
+| Minijuegos / eventos / perfil | 7.420/7.420 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
+| Guion - quests | 83.220/263.547 (31,6%) | ![31,6%](https://geps.dev/progress/31.6?barColor=f0883e) |
 | Guion - cinemáticas | 1.518/26.426 (5,7%) | ![5,7%](https://geps.dev/progress/5.7?barColor=da3633) |
-| Guion - custom talk/NPC | 12.443/28.367 (43,9%) | ![43,9%](https://geps.dev/progress/43.9?barColor=f0883e) |
+| Guion - custom talk/NPC | 13.609/28.420 (47,9%) | ![47,9%](https://geps.dev/progress/47.9?barColor=f0883e) |
 | Guion - eventos explícitos | 1.469/1.469 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
-| Otros / revisión | 40.671/123.008 (33,1%) | ![33,1%](https://geps.dev/progress/33.1?barColor=f0883e) |
+| Otros / revisión | 41.114/123.447 (33,3%) | ![33,3%](https://geps.dev/progress/33.3?barColor=f0883e) |
 
 ## Descargar
 
@@ -81,26 +81,29 @@ pero no sustituye un certificado emitido por una CA. Usa el SHA-256 como verific
 
 - Final Fantasy XIV instalado.
 - Penumbra instalado y funcionando en Dalamud.
-- Una versión del juego compatible con la release descargada.
+- Una instalación legible de FFXIV. La versión recomendada ofrece la cobertura más completa.
 
-Cada release del parcheador se construye para una versión concreta de FFXIV. La aplicación muestra
-esa versión recomendada al arrancar y la compara con la versión de tu instalación; si no coinciden,
-puede generar textos rotos o cierres del juego aunque el mod llegue a crearse.
+Cada release se prepara para una versión concreta de FFXIV. La aplicación muestra esa referencia y
+la compara con la instalación seleccionada. Si son diferentes, no decide cuál es más antigua ni
+bloquea la prueba: muestra un aviso y pide confirmación antes de aplicar un parcheo *best effort*.
 
-Si el juego acaba de actualizarse, lo recomendable es quitar el mod de Penumbra y esperar una release
-nueva del parcheador, o en su defecto, recrear el mod a partir de los nuevos ficheros postparche. 
-FFXIV cambia archivos internos en cada parche y un paquete generado para una versión antigua puede provocar 
-textos rotos o cierres del juego.
+En ese modo, las hojas, páginas y líneas que no existan se omiten y se contabilizan. Si queda
+contenido válido, el resultado aparece como **Mod verificado con omisiones**; si no puede aplicarse
+nada, no se crea un paquete vacío. Consulta la consola para conocer la cobertura exacta.
 
 ## Crear el mod
 
 1. Abre `FFXIVSpanishPatcher`.
 2. Si detecta la instalación de FFXIV, la ruta aparecerá automáticamente.
 3. Si no la detecta, pulsa **Examinar** y selecciona la carpeta del juego.
-4. Elige las categorías que quieras traducir. Puedes dejar todo marcado si no tienes una preferencia
-   concreta.
-5. Pulsa **Generar mod**.
-6. Cuando termine, abre la carpeta de salida desde la propia aplicación.
+4. Abre **Opciones avanzadas y categorías** si no quieres incluirlo todo. Debe quedar al menos una
+   categoría marcada.
+5. Pulsa **Crear traducción para Penumbra**.
+6. Si la versión difiere, revisa el aviso y decide si quieres generar *best effort*.
+7. Cuando termine, abre la carpeta de salida desde la propia aplicación.
+
+La integridad se comprueba siempre antes de publicar el fichero. Un error de verificación deja el
+paquete anterior intacto y se refleja tanto en el resultado como en la consola.
 
 El archivo generado tendrá un nombre parecido a:
 
@@ -119,11 +122,13 @@ Documentos/FFXIVSpanish Patcher/Output
 1. Abre Penumbra dentro del juego.
 2. Importa el `.pmp` generado por el parcheador.
 3. Activa el mod.
-4. En los ajustes de Dalamud, marca **Wait for plugins before game loads**. Si no se hace este paso los textos no se cargarán adecuadamente.
+4. En los ajustes de Dalamud, activa **Wait for plugins before game loads**.
 5. Reinicia el juego.
 
 Ese ajuste es importante: si Dalamud carga tarde, Penumbra puede no aplicar el mod a tiempo y verás
-el juego sin traducir.
+el juego sin traducir. Cuando puede localizar Dalamud y Penumbra, el patcher comprueba este ajuste. Si
+está desactivado, ofrece activarlo y explica exactamente qué propiedad modificará. Si la detección o
+la escritura fallan, continúa sin mostrar errores relacionados con herramientas externas.
 
 ## Actualizar o quitar el mod
 
@@ -168,6 +173,22 @@ Penumbra, comprueba también que el paquete esté instalado, activo y habilitado
 colección que estás usando.
 
 Si no se hacen estos pasos, Penumbra puede cargar tarde y los textos no se aplicarán.
+
+### El resultado dice «verificado con omisiones»
+
+El paquete se ha comprobado y es utilizable, pero algunas traducciones seleccionadas no existían o
+no pudieron aplicarse a la versión instalada. La consola separa `misses`, hojas, páginas y filas
+omitidas. Generar con la versión recomendada suele ofrecer la cobertura más completa.
+
+### Copiar varias líneas de la consola
+
+La consola es una única superficie seleccionable: arrastra el ratón a través de todas las líneas que
+necesites o usa **Seleccionar todo** / `Ctrl+A`, y copia con `Ctrl+C` o **Copiar log**.
+
+La consola conserva todas las líneas que emite el pipeline. Su documento es virtualizado: solo se
+componen visualmente las líneas visibles, por lo que desplazarse o seleccionar texto no depende del
+tamaño total del registro. `--debug` añade diagnóstico interno; no es necesario para ver el detalle
+normal de páginas y avisos.
 
 ### Mis macros han dejado de funcionar
 
@@ -224,9 +245,10 @@ además por `AI_USAGE.md`.
 
 Para desarrollo necesitas el SDK indicado en `global.json`.
 
-```powershell
-dotnet build
-dotnet test
+```bash
+dotnet restore --locked-mode
+dotnet build -c Release --no-restore
+dotnet test -c Release --no-build
 ```
 
 Para publicar un ejecutable autónomo de Windows:
@@ -236,4 +258,6 @@ dotnet publish src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj -c Rel
   --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
 ```
 
-El diseño técnico y las decisiones internas están en `docs/DESIGN.md`.
+El diseño técnico está en `docs/DESIGN.md`, la política *best effort* en
+`docs/COMPATIBILITY.md`, la edición del historial en `docs/TRANSLATION_MILESTONES.md` y la
+validación de releases en `docs/RELEASE_CHECKLIST.md`.

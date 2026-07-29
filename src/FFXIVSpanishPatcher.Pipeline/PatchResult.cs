@@ -23,20 +23,61 @@ public enum PatchOutcome
 
     /// <summary>The game data could not be opened/read (bad path, missing sqpack, ...).</summary>
     GameDataError,
+
+    /// <summary>The package could not be written or promoted to its final location.</summary>
+    OutputError,
+}
+
+/// <summary>Auditable coverage of one run. Counts refer only to selected packageable entries.</summary>
+public sealed record PatchStatistics(
+    int CandidateEntries = 0,
+    int AppliedWrites = 0,
+    int RowMisses = 0,
+    int MissingSheets = 0,
+    int MissingSheetEntries = 0,
+    int MissingPages = 0,
+    int MissingPageEntries = 0,
+    int UnresolvedRows = 0,
+    int UnsafeSeStringEntries = 0,
+    int UnsupportedPages = 0,
+    int UnsupportedPageEntries = 0,
+    int PatchedPages = 0,
+    int SkippedPages = 0)
+{
+    /// <summary>True when the verified package has less coverage than the selected manifest.</summary>
+    public bool HasOmissions =>
+        RowMisses > 0
+        || MissingSheetEntries > 0
+        || MissingPageEntries > 0
+        || UnresolvedRows > 0
+        || UnsafeSeStringEntries > 0
+        || UnsupportedPageEntries > 0
+        || SkippedPages > 0;
+
+    /// <summary>Compatibility bridge for older UI/tests. Category exclusions are not counted.</summary>
+    public int SkippedEntries =>
+        RowMisses
+        + MissingSheetEntries
+        + MissingPageEntries
+        + UnresolvedRows
+        + UnsafeSeStringEntries
+        + UnsupportedPageEntries;
 }
 
 /// <summary>Result of <see cref="PatchPipeline.Run"/>.</summary>
 public sealed record PatchResult(
     PatchOutcome Outcome,
     string? OutputPath,
-    int Pages,
-    int Applied,
-    int Missed,
-    int Skipped)
+    PatchStatistics Statistics)
 {
     /// <summary>True when a usable package was produced.</summary>
     public bool Success => Outcome is PatchOutcome.Ok or PatchOutcome.PackagedWithMisses;
 
-    internal static PatchResult Failure(PatchOutcome outcome, int skipped = 0)
-        => new(outcome, null, 0, 0, 0, skipped);
+    public int Pages => Statistics.PatchedPages;
+    public int Applied => Statistics.AppliedWrites;
+    public int Missed => Statistics.RowMisses;
+    public int Skipped => Statistics.SkippedEntries;
+
+    internal static PatchResult Failure(PatchOutcome outcome, PatchStatistics? statistics = null)
+        => new(outcome, null, statistics ?? new PatchStatistics());
 }

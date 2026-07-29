@@ -15,4 +15,5 @@ public interface IShellServices
 
     /// <summary>Opens a folder in the OS file manager.</summary>
     void RevealInFileManager(string path);
+
 }

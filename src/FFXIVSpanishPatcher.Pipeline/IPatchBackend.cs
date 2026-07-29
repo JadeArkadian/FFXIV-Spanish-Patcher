@@ -3,6 +3,20 @@ using XivSpanish.Translation;
 
 namespace FFXIVSpanishPatcher.Pipeline;
 
+public enum ExdResolutionKind
+{
+    Resolved,
+    MissingSheet,
+    UnresolvedRow,
+}
+
+public readonly record struct ExdResolution(ExdResolutionKind Kind, string? Path = null)
+{
+    public static ExdResolution Resolved(string path) => new(ExdResolutionKind.Resolved, path);
+    public static ExdResolution MissingSheet() => new(ExdResolutionKind.MissingSheet);
+    public static ExdResolution UnresolvedRow() => new(ExdResolutionKind.UnresolvedRow);
+}
+
 /// <summary>
 /// The game-data side of a pipeline run: the source of base (pre-patch) EXD bytes/layout and the
 /// resolver that maps a source key to its EXD page path. Opening this is where the live FFXIV
@@ -18,7 +32,7 @@ public interface IPatchBackend : IDisposable
     /// Resolves the EXD page path for a source key, preferring the key's own <c>ExdPath</c> and
     /// falling back to a live resolve. Returns null when the path cannot be determined.
     /// </summary>
-    string? ResolveExdPath(TranslationSourceKey key);
+    ExdResolution ResolveExd(TranslationSourceKey key);
 }
 
 /// <summary>Opens an <see cref="IPatchBackend"/> for a request. The pipeline owns the lifetime

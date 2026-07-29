@@ -47,19 +47,22 @@ jobs:
           # 2026-06-15, before it is a stable target for the ad-hoc codesign/publish steps below.
           - { rid: osx-arm64, os: macos-15,  nexus_file_id: 7608017, external_translations: "false" }
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           lfs: true
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
 
       - name: Publish ${{ matrix.rid }}
         run: >
+          dotnet restore src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj
+          --locked-mode
+          &&
           dotnet publish src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj
-          -c Release -r ${{ matrix.rid }} --self-contained
+          -c Release -r ${{ matrix.rid }} --self-contained --no-restore
           -p:PublishSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true
           -p:ExternalTranslations=${{ matrix.external_translations }}
@@ -149,7 +152,7 @@ jobs:
           fi
 
       - name: Attach to release
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
           name: ${{ needs.validate-tag.outputs.tag }}
           generate_release_notes: true
@@ -171,7 +174,7 @@ jobs:
           ASSET="FFXIVSpanishPatcher-$VERSION-$RID.zip"
           rm -rf "$OUT" "nexus/$RID" "$ASSET"
           dotnet publish src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj \
-            -c Release -r "$RID" --self-contained \
+            -c Release -r "$RID" --self-contained --no-restore \
             -p:PublishSingleFile=false \
             -p:IncludeNativeLibrariesForSelfExtract=false \
             -p:ExternalTranslations=true \
@@ -229,7 +232,7 @@ jobs:
 
       - name: Upload to Nexus Mods
         if: matrix.nexus_file_id != ''
-        uses: Nexus-Mods/upload-action@f6e1e2ea683dfe8f88cccf642c6e0e69ab66825e # v1.0.0-beta.8
+        uses: Nexus-Mods/upload-action@c96019556046053aa26044b44396cd38929daf23 # v1.0.0-beta.10
         with:
           api_key: ${{ secrets.NEXUSMODS_API_KEY }}
           file_id: ${{ matrix.nexus_file_id }}

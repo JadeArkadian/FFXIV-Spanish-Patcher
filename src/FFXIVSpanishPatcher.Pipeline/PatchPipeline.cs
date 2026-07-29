@@ -8,7 +8,8 @@ namespace FFXIVSpanishPatcher.Pipeline;
 /// <summary>
 /// Orchestrates a full run: load translations -> SeString gate -> resolve/group pages -> patch each
 /// page (with duplicate-row broadcast and safe field aliases) -> contamination guard -> package
-/// -> optional integrity verification. Progress is reported as <see cref="PipelineEvent"/>s so
+/// -> mandatory integrity verification -> atomic promotion. Progress is reported as
+/// <see cref="PipelineEvent"/>s so
 /// the GUI can stream a console. This is the orchestration ported from the upstream Packager's
 /// Program.cs Main; the game-data and packaging primitives it calls stay vendored.
 /// </summary>
@@ -53,7 +54,18 @@ public sealed class PatchPipeline
         Report(PipelineComponent.Pipeline, "Iniciando generación del mod...");
 
         // 1. Load the approved translation entries.
-        var entries = _translations.Load();
+        IReadOnlyList<TranslationEntry> entries;
+        try
+        {
+            entries = _translations.Load();
+        }
+        catch (Exception exception) when (exception is IOException or InvalidDataException or InvalidOperationException)
+        {
+            Report(PipelineComponent.Patcher,
+                $"No se pudieron cargar las traducciones: {exception.Message}", PipelineLevel.Error);
+            return PatchResult.Failure(PatchOutcome.ValidationFailed);
+        }
+
         Report(PipelineComponent.Patcher, "Cargando traducciones (FFXIVSpanish)", PipelineLevel.Ok, entries.Count);
 
         var selection = TranslationCategories.BuildSelection(request.Categories);
@@ -62,6 +74,33 @@ public sealed class PatchPipeline
             => Packageable(e, request.Statuses) is null && TranslationCategories.IsSelected(e, selection);
         bool IsCandidate(TranslationEntry e)
             => IsPackageableForSelection(e) && !unsafeSeStringEntries.Contains(e);
+        var candidateEntries = entries.Count(IsPackageableForSelection);
+
+        var appliedWrites = 0;
+        var rowMisses = 0;
+        var missingSheetEntries = 0;
+        var missingPageEntries = 0;
+        var unresolvedRows = 0;
+        var unsupportedPages = 0;
+        var unsupportedPageEntries = 0;
+        var skippedPages = 0;
+        var missingSheets = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var missingPages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        PatchStatistics Statistics(int patchedPages = 0) => new(
+            CandidateEntries: candidateEntries,
+            AppliedWrites: appliedWrites,
+            RowMisses: rowMisses,
+            MissingSheets: missingSheets.Count,
+            MissingSheetEntries: missingSheetEntries,
+            MissingPages: missingPages.Count,
+            MissingPageEntries: missingPageEntries,
+            UnresolvedRows: unresolvedRows,
+            UnsafeSeStringEntries: unsafeSeStringEntries.Count,
+            UnsupportedPages: unsupportedPages,
+            UnsupportedPageEntries: unsupportedPageEntries,
+            PatchedPages: patchedPages,
+            SkippedPages: skippedPages);
 
         // 2. SeString gate over the build candidates. Unsafe rows are skipped by default; a few bad
         // corpus rows must not abort an otherwise valid package.
@@ -83,7 +122,10 @@ public sealed class PatchPipeline
                 foreach (var violation in gate)
                 {
                     unsafeSeStringEntries.Add(violation.Entry);
-                    Report(PipelineComponent.Patcher, $"omitida fila insegura: {violation.Describe()}", PipelineLevel.Warning);
+                    Report(
+                        PipelineComponent.Patcher,
+                        $"omitida fila insegura: {violation.Describe()}",
+                        PipelineLevel.Warning);
                 }
 
                 Report(PipelineComponent.Pipeline,
@@ -100,10 +142,14 @@ public sealed class PatchPipeline
         {
             backend = _backendFactory.Open(request);
         }
-        catch (DirectoryNotFoundException exception)
+        catch (Exception exception) when (exception is DirectoryNotFoundException
+                                          or FileNotFoundException
+                                          or UnauthorizedAccessException
+                                          or IOException
+                                          or InvalidDataException)
         {
             Report(PipelineComponent.Extractor, exception.Message, PipelineLevel.Error);
-            return PatchResult.Failure(PatchOutcome.GameDataError);
+            return PatchResult.Failure(PatchOutcome.GameDataError, Statistics());
         }
 
         using (backend)
@@ -112,42 +158,68 @@ public sealed class PatchPipeline
 
             // 4. Group candidates by EXD page path.
             var pages = new Dictionary<string, PagePatch>(StringComparer.OrdinalIgnoreCase);
-            var skipped = 0;
+            var unresolvedBySheet = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            var missingBySheet = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             foreach (var entry in entries)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (!IsCandidate(entry))
                 {
-                    skipped++;
                     continue;
                 }
 
                 var key = entry.SourceKey!;
-                var exdPath = backend.ResolveExdPath(key);
-                if (exdPath is null)
+                var resolution = backend.ResolveExd(key);
+                if (resolution.Kind == ExdResolutionKind.MissingSheet)
                 {
-                    skipped++;
-                    Report(PipelineComponent.Extractor,
-                        $"omitido: no se resuelve la ruta EXD de {key.Sheet}/{key.RowId}", PipelineLevel.Warning);
+                    missingSheets.Add(key.Sheet);
+                    missingSheetEntries++;
+                    Increment(missingBySheet, key.Sheet);
                     continue;
                 }
 
+                if (resolution.Kind != ExdResolutionKind.Resolved || resolution.Path is null)
+                {
+                    unresolvedRows++;
+                    Increment(unresolvedBySheet, key.Sheet);
+                    continue;
+                }
+
+                var exdPath = resolution.Path;
                 if (!pages.TryGetValue(exdPath, out var page))
                 {
                     page = new PagePatch(key.Sheet);
                     pages[exdPath] = page;
                 }
 
-                page.Add(
+                page.AddManifest(
                     key.RowId!.Value,
                     new StringReplacement(entry.Source, entry.Target, string.IsNullOrWhiteSpace(key.Field) ? null : key.Field),
                     Conflict);
             }
 
+            foreach (var (sheet, count) in missingBySheet.OrderBy(item => item.Key, StringComparer.OrdinalIgnoreCase))
+            {
+                Report(
+                    PipelineComponent.Extractor,
+                    $"omitida hoja {sheet}: no existe en esta versión ({count} entrada(s))",
+                    PipelineLevel.Warning,
+                    count);
+            }
+
+            foreach (var (sheet, count) in unresolvedBySheet.OrderBy(item => item.Key, StringComparer.OrdinalIgnoreCase))
+            {
+                Report(
+                    PipelineComponent.Extractor,
+                    $"omitidas {count} fila(s) de {sheet}: no pertenecen a ninguna página de esta versión",
+                    PipelineLevel.Warning,
+                    count);
+            }
+
             if (pages.Count == 0)
             {
                 Report(PipelineComponent.Pipeline, "No hay entradas empaquetables para la selección.", PipelineLevel.Warning);
-                return PatchResult.Failure(PatchOutcome.NothingToPackage, skipped);
+                return PatchResult.Failure(PatchOutcome.NothingToPackage, Statistics());
             }
 
             // 5. Broadcast table: approved target per sheet+field+source (ambiguous source -> null).
@@ -156,146 +228,288 @@ public sealed class PatchPipeline
                 request.Statuses,
                 selection);
 
-            // 6. Patch each page into the staging tree.
-            var writer = new PackageWriter(request.StagingPath);
-            var totalApplied = 0;
-            var totalMissed = 0;
+            // 6. Patch each page into an isolated per-run staging tree.
+            var runStaging = Path.Combine(request.StagingPath, Guid.NewGuid().ToString("N"));
+            var temporaryOutput = string.Empty;
             var missedAbsentSource = 0;
-
-            foreach (var (exdPath, page) in pages)
+            var gameReadErrors = 0;
+            try
             {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                var layout = backend.BaseSource.ReadStringLayout(page.Sheet);
-                var raw = backend.BaseSource.ReadBaseExd(exdPath);
-                if (layout is null || raw is null)
+                temporaryOutput = SiblingTemporaryPath(request.OutputPath);
+                var writer = new PackageWriter(runStaging);
+                foreach (var (exdPath, page) in pages)
                 {
-                    Report(PipelineComponent.Patcher,
-                        $"omitida página {exdPath}: falta layout EXH o bytes EXD ({page.Sheet})", PipelineLevel.Warning);
-                    continue;
-                }
+                    cancellationToken.ThrowIfCancellationRequested();
 
-                if (layout.Value.Variant == 2)
-                {
-                    Report(PipelineComponent.Patcher,
-                        $"omitida página {exdPath}: {page.Sheet} es subrow variant 2 (no soportado)", PipelineLevel.Warning);
-                    continue;
-                }
-
-                var fieldNames = backend.BaseSource.ResolveFieldNames(page.Sheet, layout.Value.StringColumnOffsets.Count);
-
-                // Broadcast approved targets to duplicate base rows the manifest does not list.
-                // Payload-bearing strings are allowed only when their raw bytes match an explicit
-                // approved row's signature; plain strings keep the legacy any-field fallback.
-                var broadcastColumns = ReadBroadcastColumns(
-                    raw,
-                    layout.Value.FixedDataSize,
-                    layout.Value.StringColumnOffsets,
-                    fieldNames);
-                var payloadSignatures = BroadcastPlanner.BuildPayloadSignatures(
-                    broadcastColumns,
-                    page.ToReplacements());
-
-                var broadcasted = 0;
-                var payloadBroadcasted = 0;
-                foreach (var column in broadcastColumns)
-                {
-                    var decision = BroadcastPlanner.Decide(broadcast, page.Sheet, column, payloadSignatures);
-                    if (decision is null)
+                    ExdLayout? layout;
+                    byte[]? raw;
+                    try
                     {
+                        layout = backend.BaseSource.ReadStringLayout(page.Sheet);
+                        raw = layout is null ? null : backend.BaseSource.ReadBaseExd(exdPath);
+                    }
+                    catch (Exception exception) when (exception is IOException or InvalidDataException)
+                    {
+                        gameReadErrors++;
+                        missingPages.Add(exdPath);
+                        missingPageEntries += page.ManifestEntryCount;
+                        skippedPages++;
+                        Report(
+                            PipelineComponent.Patcher,
+                            $"omitida página {exdPath}: no se pudo leer ({exception.Message})",
+                            PipelineLevel.Warning,
+                            page.ManifestEntryCount);
                         continue;
                     }
 
-                    if (page.Add(column.RowId, new StringReplacement(column.Source, decision.Target, decision.ReplacementField), Conflict))
+                    if (layout is null)
                     {
-                        broadcasted++;
-                        if (decision.Kind == BroadcastKind.Payload)
+                        missingSheets.Add(page.Sheet);
+                        missingSheetEntries += page.ManifestEntryCount;
+                        skippedPages++;
+                        Report(
+                            PipelineComponent.Patcher,
+                            $"omitida hoja {page.Sheet}: falta su layout EXH ({page.ManifestEntryCount} entrada(s))",
+                            PipelineLevel.Warning,
+                            page.ManifestEntryCount);
+                        continue;
+                    }
+
+                    if (raw is null)
+                    {
+                        missingPages.Add(exdPath);
+                        missingPageEntries += page.ManifestEntryCount;
+                        skippedPages++;
+                        Report(
+                            PipelineComponent.Patcher,
+                            $"omitida página {exdPath}: no existe en esta versión ({page.ManifestEntryCount} entrada(s))",
+                            PipelineLevel.Warning,
+                            page.ManifestEntryCount);
+                        continue;
+                    }
+
+                    if (layout.Value.Variant == 2)
+                    {
+                        unsupportedPages++;
+                        unsupportedPageEntries += page.ManifestEntryCount;
+                        skippedPages++;
+                        Report(
+                            PipelineComponent.Patcher,
+                            $"omitida página {exdPath}: {page.Sheet} es subrow variant 2 (no soportado)",
+                            PipelineLevel.Warning,
+                            page.ManifestEntryCount);
+                        continue;
+                    }
+
+                    IReadOnlyList<string> fieldNames;
+                    try
+                    {
+                        fieldNames = backend.BaseSource.ResolveFieldNames(
+                            page.Sheet,
+                            layout.Value.StringColumnOffsets.Count);
+                    }
+                    catch (Exception exception) when (exception is IOException or InvalidDataException)
+                    {
+                        gameReadErrors++;
+                        missingPages.Add(exdPath);
+                        missingPageEntries += page.ManifestEntryCount;
+                        skippedPages++;
+                        Report(
+                            PipelineComponent.Patcher,
+                            $"omitida página {exdPath}: no se pudo leer su esquema ({exception.Message})",
+                            PipelineLevel.Warning,
+                            page.ManifestEntryCount);
+                        continue;
+                    }
+
+                    // Broadcast approved targets to duplicate base rows the manifest does not list.
+                    // Payload-bearing strings require the raw signature of an explicit approved row.
+                    IReadOnlyList<BroadcastColumn> broadcastColumns;
+                    try
+                    {
+                        broadcastColumns = ReadBroadcastColumns(
+                            raw,
+                            layout.Value.FixedDataSize,
+                            layout.Value.StringColumnOffsets,
+                            fieldNames);
+                    }
+                    catch (InvalidDataException exception)
+                    {
+                        unsupportedPages++;
+                        unsupportedPageEntries += page.ManifestEntryCount;
+                        skippedPages++;
+                        Report(
+                            PipelineComponent.Patcher,
+                            $"omitida página {exdPath}: {exception.Message}",
+                            PipelineLevel.Warning,
+                            page.ManifestEntryCount);
+                        continue;
+                    }
+                    var payloadSignatures = BroadcastPlanner.BuildPayloadSignatures(
+                        broadcastColumns,
+                        page.ToReplacements());
+
+                    var broadcasted = 0;
+                    var payloadBroadcasted = 0;
+                    foreach (var column in broadcastColumns)
+                    {
+                        var decision = BroadcastPlanner.Decide(broadcast, page.Sheet, column, payloadSignatures);
+                        if (decision is null)
                         {
-                            payloadBroadcasted++;
+                            continue;
+                        }
+
+                        if (page.Add(
+                                column.RowId,
+                                new StringReplacement(column.Source, decision.Target, decision.ReplacementField),
+                                Conflict))
+                        {
+                            broadcasted++;
+                            if (decision.Kind == BroadcastKind.Payload)
+                            {
+                                payloadBroadcasted++;
+                            }
                         }
                     }
-                }
 
-                if (broadcasted > 0)
-                {
-                    Debug(
-                        $"broadcast {exdPath}: +{broadcasted} duplicados ({payloadBroadcasted} payload-safe)",
-                        broadcasted);
-                }
-
-                var fieldAliasBroadcasted = 0;
-                foreach (var decision in FieldAliasPlanner.Decide(page.Sheet, broadcastColumns, page.ToReplacements()))
-                {
-                    if (page.Add(decision.RowId, new StringReplacement(decision.Source, decision.Target, decision.ReplacementField), Conflict))
+                    if (broadcasted > 0)
                     {
-                        fieldAliasBroadcasted++;
+                        Debug(
+                            $"broadcast {exdPath}: +{broadcasted} duplicados ({payloadBroadcasted} payload-safe)",
+                            broadcasted);
                     }
+
+                    var fieldAliasBroadcasted = 0;
+                    foreach (var decision in FieldAliasPlanner.Decide(
+                                 page.Sheet,
+                                 broadcastColumns,
+                                 page.ToReplacements()))
+                    {
+                        if (page.Add(
+                                decision.RowId,
+                                new StringReplacement(decision.Source, decision.Target, decision.ReplacementField),
+                                Conflict))
+                        {
+                            fieldAliasBroadcasted++;
+                        }
+                    }
+
+                    if (fieldAliasBroadcasted > 0)
+                    {
+                        Debug(
+                            $"field-alias {exdPath}: +{fieldAliasBroadcasted} alias de campo",
+                            fieldAliasBroadcasted);
+                    }
+
+                    ExdPatchResult result;
+                    try
+                    {
+                        result = ExdPatcher.Patch(
+                            raw,
+                            layout.Value.FixedDataSize,
+                            layout.Value.StringColumnOffsets,
+                            page.ToReplacements(),
+                            fieldNames);
+                    }
+                    catch (InvalidDataException exception)
+                    {
+                        unsupportedPages++;
+                        unsupportedPageEntries += page.ManifestEntryCount;
+                        skippedPages++;
+                        Report(
+                            PipelineComponent.Patcher,
+                            $"omitida página {exdPath}: {exception.Message}",
+                            PipelineLevel.Warning,
+                            page.ManifestEntryCount);
+                        continue;
+                    }
+
+                    appliedWrites += result.Applied;
+                    rowMisses += result.Missed.Count;
+                    foreach (var miss in result.Missed)
+                    {
+                        if (miss.Reason == ContaminationGuard.AbsentSourceReason)
+                        {
+                            missedAbsentSource++;
+                        }
+
+                        Debug($"miss {page.Sheet}/{miss.RowId}: {miss.Reason} | source: {Preview(miss.Source)}");
+                    }
+
+                    if (result.Applied > 0)
+                    {
+                        writer.AddPatchedExd(exdPath, result.Bytes);
+                    }
+                    else
+                    {
+                        skippedPages++;
+                    }
+
+                    Report(
+                        PipelineComponent.Patcher,
+                        PageResultMessage(page.Sheet, result.Missed),
+                        result.Missed.Count == 0 ? PipelineLevel.Ok : PipelineLevel.Warning,
+                        result.Applied);
                 }
 
-                if (fieldAliasBroadcasted > 0)
+                if (appliedWrites == 0 || writer.FileCount == 0)
                 {
-                    Debug(
-                        $"field-alias {exdPath}: +{fieldAliasBroadcasted} alias de campo",
-                        fieldAliasBroadcasted);
+                    if (gameReadErrors > 0 && gameReadErrors == pages.Count)
+                    {
+                        Report(PipelineComponent.Extractor,
+                            "No se pudo leer ninguna página del juego; comprueba la instalación y los permisos.",
+                            PipelineLevel.Error);
+                        return PatchResult.Failure(PatchOutcome.GameDataError, Statistics(writer.FileCount));
+                    }
+
+                    Report(PipelineComponent.Pipeline,
+                        "No se aplicó ninguna traducción; no se generará un paquete vacío.",
+                        PipelineLevel.Error);
+                    return PatchResult.Failure(PatchOutcome.NothingToPackage, Statistics(writer.FileCount));
                 }
 
-                ExdPatchResult result;
+                // 7. Guard over readable rows only. Missing sheets/pages never lower this rate.
+                var guard = ContaminationGuard.Evaluate(
+                    appliedWrites,
+                    missedAbsentSource,
+                    request.MinMatchRate,
+                    minVolume: 50);
+                if (guard.Contaminated)
+                {
+                    if (request.CompatibilityMode == PatchCompatibilityMode.Strict)
+                    {
+                        Report(PipelineComponent.Pipeline,
+                            $"Base EXD contaminada o incompatible (coincidencia {guard.MatchRate:P1} < umbral {request.MinMatchRate:P1}). " +
+                            "Usa una instalación limpia del juego o confirma el modo de compatibilidad desde la aplicación.",
+                            PipelineLevel.Error);
+                        return PatchResult.Failure(PatchOutcome.Contaminated, Statistics(writer.FileCount));
+                    }
+
+                    Report(PipelineComponent.Pipeline,
+                        $"Compatibilidad best effort: coincidencia baja ({guard.MatchRate:P1}); se conservarán las páginas válidas.",
+                        PipelineLevel.Warning);
+                }
+
+                // 8. Build beside the destination, verify every time, then promote atomically.
+                Report(PipelineComponent.Packager, "Generando .pmp temporal...");
+                var output = writer.Package(request.Meta, temporaryOutput);
+                Report(PipelineComponent.Packager,
+                    "Comprimiendo y empaquetando archivos", PipelineLevel.Ok, writer.FileCount);
+
+                IReadOnlyList<string> problems;
                 try
                 {
-                    result = ExdPatcher.Patch(
-                        raw, layout.Value.FixedDataSize, layout.Value.StringColumnOffsets, page.ToReplacements(), fieldNames);
+                    problems = _verifier.Verify(output, writer.DeclaredFiles);
                 }
-                catch (InvalidDataException exception)
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
-                    Report(PipelineComponent.Patcher, $"omitida página {exdPath}: {exception.Message}", PipelineLevel.Warning);
-                    continue;
+                    throw;
                 }
-
-                totalApplied += result.Applied;
-                totalMissed += result.Missed.Count;
-                foreach (var miss in result.Missed)
+                catch (Exception exception)
                 {
-                    if (miss.Reason == ContaminationGuard.AbsentSourceReason)
-                    {
-                        missedAbsentSource++;
-                    }
-
-                    // Per-miss reason: the summary line only carries row ids, which is not enough to
-                    // tell a drifted source from a rejected payload. Debug-gated, so the default log
-                    // stays quiet.
-                    Debug($"miss {page.Sheet}/{miss.RowId}: {miss.Reason} | source: {Preview(miss.Source)}");
+                    problems = [$"No se pudo verificar el paquete: {exception.Message}"];
                 }
 
-                writer.AddPatchedExd(exdPath, result.Bytes);
-                Report(PipelineComponent.Patcher, PageResultMessage(page.Sheet, result.Missed),
-                    result.Missed.Count == 0 ? PipelineLevel.Ok : PipelineLevel.Warning, result.Applied);
-            }
-
-            if (writer.FileCount == 0)
-            {
-                Report(PipelineComponent.Pipeline, "Ninguna página EXD fue parcheada.", PipelineLevel.Warning);
-                return PatchResult.Failure(PatchOutcome.NothingToPackage, skipped);
-            }
-
-            // 7. Contamination guard: a base that no longer matches English sources is likely modded.
-            var guard = ContaminationGuard.Evaluate(totalApplied, missedAbsentSource, request.MinMatchRate, minVolume: 50);
-            if (guard.Contaminated)
-            {
-                Report(PipelineComponent.Pipeline,
-                    $"Base EXD contaminada o ya traducida (match {guard.MatchRate:P1} < umbral {request.MinMatchRate:P1}). " +
-                    "Usa una instalación limpia del juego.", PipelineLevel.Error);
-                return PatchResult.Failure(PatchOutcome.Contaminated, skipped);
-            }
-
-            // 8. Write manifests and zip the .pmp.
-            Report(PipelineComponent.Packager, "Generando .pmp...");
-            var output = writer.Package(request.Meta, request.OutputPath);
-            Report(PipelineComponent.Packager, "Comprimiendo y empaquetando archivos", PipelineLevel.Ok, writer.FileCount);
-
-            // 9. Optional integrity verification.
-            if (request.VerifyIntegrity)
-            {
-                var problems = _verifier.Verify(output, writer.DeclaredFiles);
                 if (problems.Count > 0)
                 {
                     foreach (var problem in problems)
@@ -303,15 +517,42 @@ public sealed class PatchPipeline
                         Report(PipelineComponent.Verifier, problem, PipelineLevel.Error);
                     }
 
-                    return PatchResult.Failure(PatchOutcome.ValidationFailed, skipped);
+                    Report(PipelineComponent.Pipeline,
+                        "La integridad falló. El paquete anterior, si existía, se conserva.",
+                        PipelineLevel.Error);
+                    return PatchResult.Failure(PatchOutcome.ValidationFailed, Statistics(writer.FileCount));
                 }
 
                 Report(PipelineComponent.Verifier, "Integridad verificada", PipelineLevel.Ok);
-            }
+                PromoteVerifiedOutput(output, request.OutputPath);
+                Report(PipelineComponent.Packager, "Paquete publicado en su destino", PipelineLevel.Ok);
 
-            var outcome = totalMissed > 0 ? PatchOutcome.PackagedWithMisses : PatchOutcome.Ok;
-            Report(PipelineComponent.Pipeline, "Proceso completado correctamente.", PipelineLevel.Ok);
-            return new PatchResult(outcome, output, writer.FileCount, totalApplied, totalMissed, skipped);
+                var statistics = Statistics(writer.FileCount);
+                var outcome = statistics.HasOmissions ? PatchOutcome.PackagedWithMisses : PatchOutcome.Ok;
+                Report(PipelineComponent.Pipeline, CoverageMessage(statistics),
+                    outcome == PatchOutcome.Ok ? PipelineLevel.Ok : PipelineLevel.Warning);
+                Report(PipelineComponent.Pipeline,
+                    outcome == PatchOutcome.Ok
+                        ? "Proceso completado correctamente."
+                        : "Proceso completado con omisiones; el paquete verificado es utilizable.",
+                    outcome == PatchOutcome.Ok ? PipelineLevel.Ok : PipelineLevel.Warning);
+                return new PatchResult(outcome, request.OutputPath, statistics);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                Report(PipelineComponent.Packager,
+                    $"No se pudo escribir el paquete: {exception.Message}", PipelineLevel.Error);
+                return PatchResult.Failure(PatchOutcome.OutputError, Statistics());
+            }
+            finally
+            {
+                if (temporaryOutput.Length > 0)
+                {
+                    DeleteFileBestEffort(temporaryOutput);
+                }
+
+                DeleteDirectoryBestEffort(runStaging);
+            }
         }
     }
 
@@ -381,6 +622,69 @@ public sealed class PatchPipeline
         return columns;
     }
 
+    private static void Increment(Dictionary<string, int> counts, string key)
+        => counts[key] = counts.GetValueOrDefault(key) + 1;
+
+    private static string SiblingTemporaryPath(string outputPath)
+    {
+        var fullOutput = Path.GetFullPath(outputPath);
+        var directory = Path.GetDirectoryName(fullOutput)
+            ?? throw new IOException($"No se puede determinar el directorio de salida de {outputPath}.");
+        Directory.CreateDirectory(directory);
+        return Path.Combine(
+            directory,
+            $".{Path.GetFileName(outputPath)}.{Guid.NewGuid():N}.tmp");
+    }
+
+    private static void PromoteVerifiedOutput(string temporaryPath, string outputPath)
+    {
+        var fullOutput = Path.GetFullPath(outputPath);
+        if (File.Exists(fullOutput))
+        {
+            File.Replace(temporaryPath, fullOutput, destinationBackupFileName: null, ignoreMetadataErrors: true);
+        }
+        else
+        {
+            File.Move(temporaryPath, fullOutput);
+        }
+    }
+
+    private static void DeleteFileBestEffort(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+        catch
+        {
+            // Cleanup must not hide the real pipeline result.
+        }
+    }
+
+    private static void DeleteDirectoryBestEffort(string path)
+    {
+        try
+        {
+            if (Directory.Exists(path))
+            {
+                Directory.Delete(path, recursive: true);
+            }
+        }
+        catch
+        {
+            // Cleanup must not hide the real pipeline result.
+        }
+    }
+
+    private static string CoverageMessage(PatchStatistics statistics)
+        => $"Cobertura: {statistics.AppliedWrites} escritura(s), {statistics.RowMisses} miss(es), " +
+           $"{statistics.MissingSheets} hoja(s) ausente(s), {statistics.MissingPages} página(s) ausente(s), " +
+           $"{statistics.UnresolvedRows} fila(s) fuera de versión, {statistics.UnsupportedPageEntries} entrada(s) " +
+           $"en páginas no soportadas y {statistics.UnsafeSeStringEntries} fila(s) SeString omitida(s).";
+
     /// <summary>Single-line, length-capped source preview for diagnostic logs.</summary>
     private static string Preview(string source)
     {
@@ -395,11 +699,16 @@ public sealed class PatchPipeline
             return sheet;
         }
 
-        var rowIds = string.Join(", ", missed
+        var distinctRowIds = missed
             .Select(miss => miss.RowId)
             .Distinct()
-            .OrderBy(rowId => rowId));
-        return $"{sheet}: {missed.Count} miss(es), rowId(s): {rowIds}";
+            .OrderBy(rowId => rowId)
+            .ToArray();
+        var visibleRowIds = string.Join(", ", distinctRowIds.Take(20));
+        var remainder = distinctRowIds.Length > 20
+            ? $" … y {distinctRowIds.Length - 20} más"
+            : string.Empty;
+        return $"{sheet}: {missed.Count} miss(es), rowId(s): {visibleRowIds}{remainder}";
     }
 
     /// <summary>Replacements grouped for one EXD page, deduped per (field, source).</summary>
@@ -408,6 +717,13 @@ public sealed class PatchPipeline
         private readonly Dictionary<uint, List<StringReplacement>> _rows = new();
 
         public string Sheet { get; } = sheet;
+        public int ManifestEntryCount { get; private set; }
+
+        public bool AddManifest(uint rowId, StringReplacement replacement, Action<string>? onConflict = null)
+        {
+            ManifestEntryCount++;
+            return Add(rowId, replacement, onConflict);
+        }
 
         public bool Add(uint rowId, StringReplacement replacement, Action<string>? onConflict = null)
         {

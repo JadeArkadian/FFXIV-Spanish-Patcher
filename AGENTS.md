@@ -43,13 +43,14 @@ vendorizado propio bajo `vendor/`.
   `data/recommended-game-version.txt`.
 - `data/translations.dat` - blob Brotli-JSONL versionado con filas empaquetables.
 - `data/recommended-game-version.txt` - version de FFXIV para la que se construyo el blob/release.
+- `data/translation-milestones.md` - historial Markdown embebido que muestra la GUI.
 - `data/translations/jsonl/` - corpus crudo local, git-ignored; no se versiona.
 - `tests/FFXIVSpanishPatcher.Tests` - tests de pipeline, EXD sintetico, categorias, detector, SeString
   y packaging.
 - `tests/FFXIVSpanishPatcher.App.Tests` - tests headless de GUI/blob/viewmodel.
 - `.github/workflows/ci.yml` - build + test en `main` y PR.
 - `.github/workflows/release.yml` - tags `vX.Y.Z` publican zips self-contained para `win-x64`,
-  `linux-x64`, `osx-x64`, `osx-arm64`.
+  `linux-x64` y `osx-arm64`.
 - `build/macos/Info.plist` - metadatos del bundle `.app`.
 - `docs/DESIGN.md` - diseno historico/arquitectura.
 - `README.md`, `CONTRIBUTING.md`, `AI_USAGE.md`, `NOTICE.md` - docs publicas/legal/uso.
@@ -69,7 +70,8 @@ La procedencia historica vive en `vendor/VENDORED.md`.
 
 1. GUI = **.NET 10 + Avalonia UI**, no WPF.
 2. Distribucion = ejecutables self-contained single-file por RID; no instalador obligatorio.
-3. Traducciones = embebidas en el ejecutable. Actualizar traducciones implica regenerar blob y publicar
+3. Traducciones = embebidas por defecto. La release Windows mantiene `translations.dat` adyacente
+   como mitigacion de falsos positivos AV. Actualizar traducciones implica regenerar blob y publicar
    nueva release.
 4. Datos del juego = extraccion lean desde la instalacion del usuario. No redistribuir archivos de FFXIV.
 5. Corpus empaquetable = `status in {approved, gold}` + `target` no vacio + `sourceKey` util.
@@ -84,13 +86,13 @@ La procedencia historica vive en `vendor/VENDORED.md`.
 ## Comandos
 
 ```bash
-dotnet restore
+dotnet restore --locked-mode
 ```
 ```bash
-dotnet build
+dotnet build -c Release --no-restore
 ```
 ```bash
-dotnet test
+dotnet test -c Release --no-build
 ```
 
 # Regenerar corpus crudo desde upstream y reconstruir blob + version recomendada.
@@ -112,7 +114,8 @@ dotnet publish src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj -c Rel
 dotnet publish src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj -c Release -r linux-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
 ```
 
-El proyecto usa `global.json` con SDK `10.0.100` y `rollForward: latestFeature`.
+El proyecto usa `global.json` con SDK `10.0.302` y `rollForward: latestFeature`. Los
+`packages.lock.json` estan versionados; CI y releases restauran con `--locked-mode`.
 
 La app publica con trimming activado (`PublishTrimmed=true`, `TrimMode=full`) y rootea `Lumina` /
 `Lumina.Excel` para conservar metadatos usados por reflexion. No quitar esos roots sin validar un
@@ -127,12 +130,12 @@ publish real.
 - comprime con `BrotliStream`;
 - escribe `data/recommended-game-version.txt` cuando tiene fuente de version.
 
-Estado observado el 2026-07-03:
+Estado observado el 2026-07-29:
 
-- `data/translations.dat`: ~8.5 MiB (`8928043` bytes).
-- `data/recommended-game-version.txt`: `2026.06.18.0000.0000`.
+- `data/translations.dat`: ~16.9 MiB (`17708236` bytes).
+- `data/recommended-game-version.txt`: `2026.07.16.0001.0000`.
 - remote GitHub configurado: `JadeArkadian/FFXIV-Spanish-Patcher`.
-- tags publicados/locales hasta `v0.0.13`.
+- tags publicados/locales hasta `v0.2.5`.
 
 CI no reconstruye el corpus: usa el blob versionado.
 
@@ -148,13 +151,15 @@ CI no reconstruye el corpus: usa el blob versionado.
 6. calcula broadcast para duplicados;
 7. parchea paginas;
 8. aplica contamination guard/min match rate;
-9. escribe staging y `.pmp`;
-10. verifica integridad si `VerifyIntegrity=true`.
+9. escribe staging y un `.pmp` temporal;
+10. verifica siempre la integridad;
+11. promueve la salida verificada de forma atomica.
 
 Resultados esperados:
 
 - `Ok` o `PackagedWithMisses` producen paquete usable.
-- `NothingToPackage`, `Contaminated`, `ValidationFailed`, `GameDataError` fallan sin paquete usable.
+- `NothingToPackage`, `Contaminated`, `ValidationFailed`, `GameDataError` y `OutputError` fallan sin
+  paquete usable.
 - `SeStringGate` existe como outcome historico/diagnostico, pero el flujo actual omite filas inseguras
   por defecto en vez de abortar todo el build.
 
@@ -164,9 +169,12 @@ La GUI debe seguir siendo una herramienta directa, no landing page:
 
 - selector/deteccion de ruta FFXIV;
 - aviso de version recomendada vs instalada;
+- confirmacion y best effort auditable cuando las versiones difieren;
 - categorias con contadores reales;
-- toggle de integridad;
-- consola streaming;
+- al menos una categoria obligatoria;
+- consola streaming grande, coloreada y multiseleccionable;
+- historial de hitos desde `data/translation-milestones.md`;
+- deteccion silenciosa de Dalamud/Penumbra y correccion opcional del ajuste de carga;
 - abrir carpeta/salida;
 - comprobacion de nueva version via GitHub Releases;
 - textos orientados a usuario final en castellano.
@@ -194,7 +202,7 @@ No commitear fixtures de FFXIV reales. Si un test necesita EXD, construirlo en c
 Los tags validos son `vX.Y.Z` con cada numero `0..999`. El workflow:
 
 - publica `win-x64` y `linux-x64` desde Ubuntu;
-- publica `osx-x64` y `osx-arm64` desde macOS;
+- publica `osx-arm64` desde macOS;
 - monta `.app` en macOS, incluye `icon.icns` y firma ad-hoc;
 - adjunta zips a GitHub Release;
 - inyecta version, `RepositorySlug` y URLs de latest release en assembly metadata.
@@ -206,13 +214,15 @@ Los tags validos son `vX.Y.Z` con cada numero `0..999`. El workflow:
 - No anadir traduccion automatica sin decision humana explicita; el corpus debe estar curado/revisado.
 - No convertir `vendor/` en submodule ni resync masivo.
 - No quitar trimming/Lumina roots/update metadata sin probar publish.
-- No mover las traducciones a fichero lateral: el modelo cerrado es blob embebido.
+- No cambiar el modelo de distribucion del corpus: embebido por defecto y lateral solo en los
+  paquetes Windows que lo declaran mediante `ExternalTranslations`.
 - No hacer cambios legales/licencia a la ligera; revisar `LICENSE.md`, `NOTICE.md`, `CONTRIBUTING.md`
   y `AI_USAGE.md`.
 
 ## Estado actual
 
-El plan inicial F0-F7 esta completado y el proyecto ya esta en fase de mantenimiento/release. Hay repo
-remoto GitHub, tags de release y workflows activos. Pendiente normal de cada release: regenerar blob
-cuando cambie upstream, publicar tag, validar manualmente contra una instalacion real de FFXIV y
-Penumbra en las plataformas que toque.
+El plan inicial F0-F7 esta completado y el proyecto ya esta en fase de mantenimiento/release. La
+evolucion v0.3.0 vive temporalmente en `docs/evolucion-v0.3.0/`; esa carpeta solo se elimina despues
+de validar la implementacion y recibir aprobacion expresa. Pendiente normal de cada release:
+regenerar blob cuando cambie upstream, publicar tag y validar manualmente contra una instalacion real
+de FFXIV y Penumbra en las plataformas que toque. Usar `docs/RELEASE_CHECKLIST.md`.

@@ -53,9 +53,83 @@ public sealed class MainViewModelValidationTests
         }
     }
 
-    private static MainViewModel ReadyViewModel(CapturingShell shell)
+    [AvaloniaFact]
+    public async Task DeliberatelyOldGameVersion_IsWarnedAndCanReturnWithoutGenerating()
     {
-        var viewModel = new MainViewModel(shell, new ListTranslationSource([]), recommendedGameVersion: null)
+        using var install = TempGameInstall("2025.01.01.0000.0000");
+        var viewModel = ReadyViewModel(new CapturingShell(), "2026.06.18.0000.0000");
+        viewModel.Categories.Add(Category(selected: true));
+        viewModel.GamePath = install.Root;
+
+        Assert.Equal(GameVersionCompatibility.Different, viewModel.VersionCompatibility);
+        Assert.True(viewModel.IsVersionWarning);
+        Assert.Equal("Versión diferente", viewModel.VersionCheckTitle);
+
+        var generation = viewModel.GenerateModCommand.ExecuteAsync(null);
+        Assert.True(viewModel.IsModalOpen);
+        Assert.Contains("no coincide", viewModel.ModalTitle, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("hojas, páginas y líneas", viewModel.ModalExplanation, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("Generar de todos modos", viewModel.ModalPrimaryText);
+        Assert.Equal("Volver", viewModel.ModalSecondaryText);
+
+        viewModel.DismissModalCommand.Execute(null);
+        await generation;
+
+        Assert.Equal(PatcherUiStage.Preparation, viewModel.Stage);
+        Assert.DoesNotContain(
+            viewModel.Console,
+            line => line.Text.Contains("best effort", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [AvaloniaFact]
+    public async Task DeliberatelyOldGameVersion_CanConfirmBestEffort()
+    {
+        using var install = TempGameInstall("2025.01.01.0000.0000");
+        var viewModel = ReadyViewModel(new CapturingShell(), "2026.06.18.0000.0000");
+        viewModel.Categories.Add(Category(selected: true));
+        viewModel.GamePath = install.Root;
+
+        var generation = viewModel.GenerateModCommand.ExecuteAsync(null);
+        Assert.True(viewModel.IsModalOpen);
+
+        viewModel.AcceptModalCommand.Execute(null);
+        await generation;
+
+        Assert.Contains(
+            viewModel.Console,
+            line => line.Text.Contains("best effort", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(PatcherUiStage.Result, viewModel.Stage);
+        Assert.False(viewModel.LastSuccess);
+    }
+
+    [AvaloniaFact]
+    public void CategoryCommands_KeepAtLeastOneSelectionRequired()
+    {
+        var viewModel = ReadyViewModel(new CapturingShell());
+        viewModel.Categories.Add(Category(selected: true));
+        viewModel.Categories.Add(Category(selected: true));
+
+        viewModel.SelectNoCategoriesCommand.Execute(null);
+
+        Assert.False(viewModel.HasSelectedCategories);
+        Assert.True(viewModel.ShowCategorySelectionError);
+        Assert.False(viewModel.GenerateModCommand.CanExecute(null));
+
+        viewModel.SelectAllCategoriesCommand.Execute(null);
+
+        Assert.True(viewModel.HasSelectedCategories);
+        Assert.False(viewModel.ShowCategorySelectionError);
+    }
+
+    private static MainViewModel ReadyViewModel(CapturingShell shell)
+        => ReadyViewModel(shell, recommendedGameVersion: null);
+
+    private static MainViewModel ReadyViewModel(CapturingShell shell, string? recommendedGameVersion)
+    {
+        var viewModel = new MainViewModel(
+            shell,
+            new ListTranslationSource([]),
+            recommendedGameVersion)
         {
             TranslationsReady = true,
         };
@@ -69,6 +143,28 @@ public sealed class MainViewModelValidationTests
             IsSelected = selected,
         };
         return category;
+    }
+
+    private static TempInstall TempGameInstall(string version)
+    {
+        var root = Path.Combine(Path.GetTempPath(), "ffxivsp-app-game-" + Guid.NewGuid().ToString("N"));
+        var game = Path.Combine(root, "game");
+        Directory.CreateDirectory(Path.Combine(game, "sqpack", "ffxiv"));
+        File.WriteAllText(Path.Combine(game, "ffxivgame.ver"), version + Environment.NewLine);
+        return new TempInstall(root);
+    }
+
+    private sealed class TempInstall(string root) : IDisposable
+    {
+        public string Root { get; } = root;
+
+        public void Dispose()
+        {
+            if (Directory.Exists(Root))
+            {
+                Directory.Delete(Root, recursive: true);
+            }
+        }
     }
 
     private sealed class CapturingShell : IShellServices

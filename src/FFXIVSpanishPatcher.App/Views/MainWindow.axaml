@@ -1,244 +1,891 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:FFXIVSpanishPatcher.App.ViewModels"
+        xmlns:views="using:FFXIVSpanishPatcher.App.Views"
         x:Class="FFXIVSpanishPatcher.App.Views.MainWindow"
         x:DataType="vm:MainViewModel"
         Icon="/Assets/icon.ico"
         Title="{Binding WindowTitle}"
-        Width="1180" Height="780" MinWidth="1010" MinHeight="600"
-        Background="#0B1120">
+        Width="1240"
+        Height="820"
+        MinWidth="1080"
+        MinHeight="720"
+        Background="{StaticResource AppBackground}"
+        FontFamily="fonts:Inter#Inter">
 
   <Window.Resources>
-    <SolidColorBrush x:Key="Accent" Color="#2563EB"/>
-    <SolidColorBrush x:Key="Panel" Color="#151C2C"/>
-    <SolidColorBrush x:Key="PanelBorder" Color="#26304A"/>
-    <SolidColorBrush x:Key="ConsoleBg" Color="#0D1422"/>
-    <SolidColorBrush x:Key="Muted" Color="#9AA4B2"/>
-    <SolidColorBrush x:Key="Text" Color="#E6EAF2"/>
-    <SolidColorBrush x:Key="ControlBlue" Color="#1E2840"/>
-    <SolidColorBrush x:Key="ControlBlueHover" Color="#253456"/>
-    <SolidColorBrush x:Key="ControlBluePressed" Color="#1D4ED8"/>
-    <SolidColorBrush x:Key="ControlBlueBorder" Color="#34446A"/>
+    <FontFamily x:Key="UiFont">fonts:Inter#Inter</FontFamily>
+    <FontFamily x:Key="DisplayFont">avares://FFXIVSpanishPatcher/Assets/Fonts#Noto Serif</FontFamily>
+
+    <LinearGradientBrush x:Key="AppBackground" StartPoint="0%,0%" EndPoint="100%,100%">
+      <GradientStop Color="#07101E" Offset="0"/>
+      <GradientStop Color="#081426" Offset="0.48"/>
+      <GradientStop Color="#06101D" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="HeaderBackground" StartPoint="0%,0%" EndPoint="100%,100%">
+      <GradientStop Color="#081321" Offset="0"/>
+      <GradientStop Color="#07101E" Offset="0.55"/>
+      <GradientStop Color="#081426" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="Panel" StartPoint="0%,0%" EndPoint="100%,100%">
+      <GradientStop Color="#111D30" Offset="0"/>
+      <GradientStop Color="#0D192B" Offset="0.58"/>
+      <GradientStop Color="#0B1728" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="PanelElevated" StartPoint="0%,0%" EndPoint="100%,100%">
+      <GradientStop Color="#14243A" Offset="0"/>
+      <GradientStop Color="#101D31" Offset="0.55"/>
+      <GradientStop Color="#0E1A2D" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="InsetPanel" StartPoint="0%,0%" EndPoint="100%,100%">
+      <GradientStop Color="#0A182A" Offset="0"/>
+      <GradientStop Color="#091524" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="Console" StartPoint="0%,0%" EndPoint="100%,100%">
+      <GradientStop Color="#071320" Offset="0"/>
+      <GradientStop Color="#06111E" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="PrimaryGradient" StartPoint="50%,0%" EndPoint="50%,100%">
+      <GradientStop Color="#4699FF" Offset="0"/>
+      <GradientStop Color="#2F83EB" Offset="0.55"/>
+      <GradientStop Color="#2875D8" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="SecondaryGradient" StartPoint="0%,0%" EndPoint="100%,100%">
+      <GradientStop Color="#172A45" Offset="0"/>
+      <GradientStop Color="#102039" Offset="1"/>
+    </LinearGradientBrush>
+    <RadialGradientBrush x:Key="HeroGlow"
+                         GradientOrigin="92%,8%"
+                         Center="92%,8%"
+                         RadiusX="88%"
+                         RadiusY="150%">
+      <GradientStop Color="#313339" Offset="0"/>
+      <GradientStop Color="#1B293D" Offset="0.38"/>
+      <GradientStop Color="#101D31" Offset="1"/>
+    </RadialGradientBrush>
+    <SolidColorBrush x:Key="Line" Color="#29405F"/>
+    <SolidColorBrush x:Key="LineSoft" Color="#1D3350"/>
+    <SolidColorBrush x:Key="Text" Color="#EFF5FD"/>
+    <SolidColorBrush x:Key="Muted" Color="#8EA4BF"/>
+    <SolidColorBrush x:Key="Blue" Color="#3C8DFF"/>
+    <SolidColorBrush x:Key="Cyan" Color="#6BD8FF"/>
+    <SolidColorBrush x:Key="Gold" Color="#F0BD58"/>
+    <SolidColorBrush x:Key="Green" Color="#58DFA6"/>
+    <SolidColorBrush x:Key="Yellow" Color="#F4CB70"/>
+    <SolidColorBrush x:Key="Red" Color="#FF7B82"/>
   </Window.Resources>
 
   <Window.Styles>
-    <Style Selector="TextBlock.h2">
-      <Setter Property="FontSize" Value="16"/>
-      <Setter Property="FontWeight" Value="SemiBold"/>
-      <Setter Property="Foreground" Value="{StaticResource Text}"/>
-    </Style>
     <Style Selector="Border.card">
       <Setter Property="Background" Value="{StaticResource Panel}"/>
-      <Setter Property="BorderBrush" Value="{StaticResource PanelBorder}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="14"/>
+      <Setter Property="BoxShadow" Value="0 12 34 0 #42000000"/>
+    </Style>
+    <Style Selector="Border.card.elevated">
+      <Setter Property="Background" Value="{StaticResource PanelElevated}"/>
+      <Setter Property="BorderBrush" Value="#324968"/>
+      <Setter Property="BoxShadow" Value="0 16 42 0 #52000000"/>
+    </Style>
+    <Style Selector="Border.inset">
+      <Setter Property="Background" Value="{StaticResource InsetPanel}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource LineSoft}"/>
       <Setter Property="BorderThickness" Value="1"/>
       <Setter Property="CornerRadius" Value="10"/>
-      <Setter Property="Padding" Value="18"/>
+    </Style>
+    <Style Selector="TextBlock.h1">
+      <Setter Property="Foreground" Value="{StaticResource Text}"/>
+      <Setter Property="FontSize" Value="21"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="LetterSpacing" Value="-0.15"/>
+    </Style>
+    <Style Selector="TextBlock.h2">
+      <Setter Property="Foreground" Value="{StaticResource Text}"/>
+      <Setter Property="FontSize" Value="21"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="LetterSpacing" Value="-0.2"/>
+    </Style>
+    <Style Selector="TextBlock.h3">
+      <Setter Property="Foreground" Value="{StaticResource Text}"/>
+      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
     </Style>
     <Style Selector="Button">
-      <Setter Property="Background" Value="{StaticResource ControlBlue}"/>
-      <Setter Property="BorderBrush" Value="{StaticResource ControlBlueBorder}"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="Background" Value="{StaticResource SecondaryGradient}"/>
+      <Setter Property="BorderBrush" Value="#304A6C"/>
+      <Setter Property="BorderThickness" Value="1"/>
       <Setter Property="Foreground" Value="{StaticResource Text}"/>
-      <Setter Property="CornerRadius" Value="6"/>
+      <Setter Property="Padding" Value="13,8"/>
+      <Setter Property="MaxWidth" Value="Infinity"/>
+      <Setter Property="HorizontalAlignment" Value="Stretch"/>
+      <Setter Property="HorizontalContentAlignment" Value="Center"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
     </Style>
     <Style Selector="Button:pointerover">
-      <Setter Property="Background" Value="{StaticResource ControlBlueHover}"/>
-      <Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
+      <Setter Property="BorderBrush" Value="#5A9CF5"/>
     </Style>
     <Style Selector="Button:pressed">
-      <Setter Property="Background" Value="{StaticResource ControlBluePressed}"/>
-      <Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
+      <Setter Property="Background" Value="#183B69"/>
     </Style>
     <Style Selector="Button.primary">
-      <Setter Property="Background" Value="{StaticResource Accent}"/>
+      <Setter Property="Background" Value="{StaticResource PrimaryGradient}"/>
+      <Setter Property="BorderBrush" Value="#72B1FF"/>
       <Setter Property="Foreground" Value="White"/>
       <Setter Property="FontWeight" Value="SemiBold"/>
-      <Setter Property="Height" Value="48"/>
-      <Setter Property="HorizontalContentAlignment" Value="Center"/>
-      <Setter Property="VerticalContentAlignment" Value="Center"/>
-      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="MinHeight" Value="46"/>
     </Style>
     <Style Selector="Button.primary:disabled">
-      <Setter Property="Opacity" Value="0.45"/>
+      <Setter Property="Opacity" Value="0.42"/>
     </Style>
     <Style Selector="Button.secondary">
-      <Setter Property="Background" Value="#1E2840"/>
-      <Setter Property="Foreground" Value="{StaticResource Text}"/>
-      <Setter Property="Height" Value="48"/>
-      <Setter Property="HorizontalContentAlignment" Value="Center"/>
-      <Setter Property="VerticalContentAlignment" Value="Center"/>
-      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="Background" Value="{StaticResource SecondaryGradient}"/>
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="MinHeight" Value="46"/>
     </Style>
-    <!-- FlyoutPresenter's own control theme sets ScrollViewer.HorizontalScrollBarVisibility=Auto
-         via TemplateBinding; content-side settings can't override it, only a style targeting the
-         presenter itself can. -->
+    <Style Selector="Button.text">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Foreground" Value="{StaticResource Cyan}"/>
+      <Setter Property="Padding" Value="4,2"/>
+      <Setter Property="FontSize" Value="11"/>
+    </Style>
+    <Style Selector="Button.console">
+      <Setter Property="Background" Value="{StaticResource SecondaryGradient}"/>
+      <Setter Property="BorderBrush" Value="#2C4668"/>
+      <Setter Property="Padding" Value="11,6"/>
+      <Setter Property="FontSize" Value="11"/>
+      <Setter Property="MinHeight" Value="30"/>
+    </Style>
+    <Style Selector="TextBox">
+      <Setter Property="Background" Value="#091523"/>
+      <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+      <Setter Property="Foreground" Value="{StaticResource Text}"/>
+      <Setter Property="CornerRadius" Value="7"/>
+    </Style>
+    <Style Selector="CheckBox">
+      <Setter Property="Foreground" Value="#D7E3F2"/>
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="MinHeight" Value="24"/>
+    </Style>
+    <Style Selector="Expander">
+      <Setter Property="Foreground" Value="#C3D2E4"/>
+      <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+    </Style>
     <Style Selector="FlyoutPresenter">
       <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
-      <Setter Property="Padding" Value="18,26"/>
+      <Setter Property="Padding" Value="18,24"/>
     </Style>
   </Window.Styles>
 
-  <DockPanel>
-    <!-- Status bar -->
-    <Border DockPanel.Dock="Bottom" Background="#0E1525" BorderBrush="{StaticResource PanelBorder}"
-            BorderThickness="0,1,0,0" Padding="18,10">
-      <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto">
-        <TextBlock Grid.Column="0" VerticalAlignment="Center" Foreground="{StaticResource Muted}"
-                   Text="{Binding LastOutputName, StringFormat='Salida: {0}', FallbackValue='Salida: —'}"/>
-        <Border Grid.Column="1" Margin="12,0,0,0" CornerRadius="6" Padding="10,3" VerticalAlignment="Center"
-                IsVisible="{Binding LastSuccess}"
-                Background="#14361F">
-          <TextBlock Text="{Binding StatusText}" Foreground="#4ADE80" FontWeight="SemiBold"/>
-        </Border>
-        <TextBlock Grid.Column="2" Margin="20,0" VerticalAlignment="Center" Foreground="{StaticResource Muted}"
-                   TextTrimming="CharacterEllipsis"
-                   Text="{Binding OutputFolder, StringFormat='Carpeta de salida: {0}'}"/>
-        <TextBlock Grid.Column="3" Margin="0,0,14,0" VerticalAlignment="Center"
-                   Foreground="{StaticResource Muted}"
-                   Text="{Binding AppVersionLabel, StringFormat='Versión: {0}'}"/>
-        <Button Grid.Column="4" Margin="0,0,10,0" VerticalAlignment="Center" Padding="6,4"
-                Background="Transparent" BorderThickness="0"
-                Foreground="{StaticResource Muted}" FontSize="12" Cursor="Hand">
-          <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-            <Path Width="13" Height="13" Stretch="Uniform" Stroke="{StaticResource Muted}" StrokeThickness="2"
-                  StrokeLineCap="Round" StrokeJoin="Round"
-                  Data="M14 2 H6 A2 2 0 0 0 4 4 V20 A2 2 0 0 0 6 22 H18 A2 2 0 0 0 20 20 V8 Z M14 2 V8 H20 M16 13 H8 M16 17 H8"/>
-            <TextBlock Text="Aviso legal" VerticalAlignment="Center"/>
+  <Grid RowDefinitions="96,*,44" Background="{StaticResource AppBackground}">
+    <Border Grid.Row="0"
+            Background="{StaticResource HeaderBackground}"
+            BorderBrush="{StaticResource Line}"
+            BorderThickness="0,0,0,1"
+            BoxShadow="0 8 30 0 #22000000"
+            Padding="30,12">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+          <Border Width="66"
+                  Height="66"
+                  Margin="0,0,16,0"
+                  ClipToBounds="True"
+                  CornerRadius="18"
+                  BorderBrush="#4666A0CE"
+                  BorderThickness="1"
+                  BoxShadow="0 8 22 0 #40125487">
+            <Border.Background>
+              <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                <GradientStop Color="#173252" Offset="0"/>
+                <GradientStop Color="#10223D" Offset="0.58"/>
+                <GradientStop Color="#0D1B31" Offset="1"/>
+              </LinearGradientBrush>
+            </Border.Background>
+            <Image Source="/Assets/logo-git.png"
+                   Width="100"
+                   Height="100"
+                   Stretch="Uniform"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Top"/>
+          </Border>
+          <StackPanel VerticalAlignment="Center" Spacing="6">
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <TextBlock Classes="h1" Text="FFXIV Spanish Patcher" VerticalAlignment="Center"/>
+              <Border Padding="9,4"
+                      BorderBrush="#4862BEEB"
+                      BorderThickness="1"
+                      CornerRadius="7"
+                      Background="#28205A77">
+                <TextBlock Text="{Binding AppVersionLabel}"
+                           Foreground="{StaticResource Cyan}"
+                           FontSize="11"
+                           FontWeight="Bold"/>
+              </Border>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Border Width="13"
+                      Height="13"
+                      BorderBrush="{StaticResource Gold}"
+                      BorderThickness="1"
+                      CornerRadius="3"
+                      RenderTransformOrigin="50%,50%">
+                <Border.RenderTransform>
+                  <RotateTransform Angle="45"/>
+                </Border.RenderTransform>
+              </Border>
+              <TextBlock Text="Edición A Realm Reborn"
+                         Foreground="{StaticResource Gold}"
+                         FontSize="13"
+                         FontWeight="SemiBold"/>
+              <TextBlock Text="· Traducción completa y revisada"
+                         Foreground="#C8D5E6"
+                         FontSize="13"/>
+            </StackPanel>
           </StackPanel>
-          <Button.Flyout>
-            <Flyout Placement="TopEdgeAlignedRight">
-              <StackPanel Spacing="10" Width="440">
-                <TextBlock Text="Aviso legal" FontWeight="SemiBold" FontSize="14"
-                           Foreground="{StaticResource Text}"/>
-                <SelectableTextBlock Text="{Binding LegalNoticeText}" TextWrapping="Wrap"
-                                     FontSize="12.5" Foreground="{StaticResource Muted}"
-                                     SelectionBrush="{StaticResource Accent}"/>
-              </StackPanel>
-            </Flyout>
-          </Button.Flyout>
-        </Button>
-        <Button Grid.Column="5" Command="{Binding CopyLogCommand}">
-          <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
-            <Path Width="13" Height="15" Stretch="Uniform" Stroke="{StaticResource Text}" StrokeThickness="2"
-                  StrokeLineCap="Round" StrokeJoin="Round"
-                  Data="M9 2 H15 A1 1 0 0 1 16 3 V5 A1 1 0 0 1 15 6 H9 A1 1 0 0 1 8 5 V3 A1 1 0 0 1 9 2 Z M16 4 H18 A2 2 0 0 1 20 6 V20 A2 2 0 0 1 18 22 H6 A2 2 0 0 1 4 20 V6 A2 2 0 0 1 6 4 H8"/>
-            <TextBlock Text="Copiar log" VerticalAlignment="Center"/>
-          </StackPanel>
-        </Button>
+        </StackPanel>
+
+        <StackPanel Grid.Column="1"
+                    Orientation="Horizontal"
+                    Spacing="12"
+                    VerticalAlignment="Center">
+          <Border Padding="12,9"
+                  BorderBrush="#3456D69B"
+                  BorderThickness="1"
+                  CornerRadius="10"
+                  Background="#2A0C3A38"
+                  IsVisible="{Binding IsVersionOk}">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Border Width="8" Height="8" CornerRadius="4"
+                      Background="{StaticResource Green}"
+                      BoxShadow="0 0 10 0 #A056D69B"/>
+              <TextBlock Text="FFXIV compatible"
+                         Foreground="#AEE6D1"
+                         FontSize="11.5"/>
+            </StackPanel>
+          </Border>
+          <Border Padding="12,9"
+                  BorderBrush="#55F2C96D"
+                  BorderThickness="1"
+                  CornerRadius="10"
+                  Background="#26976719"
+                  IsVisible="{Binding IsVersionWarning}">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Border Width="8" Height="8" CornerRadius="4"
+                      Background="{StaticResource Yellow}"
+                      BoxShadow="0 0 10 0 #80F2C96D"/>
+              <TextBlock Text="Versión diferente"
+                         Foreground="#FFD99A"
+                         FontSize="11.5"/>
+            </StackPanel>
+          </Border>
+
+          <Border Padding="3"
+                  BorderBrush="#304766"
+                  BorderThickness="1"
+                  CornerRadius="11"
+                  Background="#8F091524">
+            <Grid ColumnDefinitions="Auto,Auto,Auto">
+              <Grid Grid.Column="0">
+                <Border CornerRadius="8"
+                        Background="#26345B86"
+                        BorderBrush="#415A79A3"
+                        BorderThickness="1"
+                        IsVisible="{Binding IsPreparationStage}"/>
+                <TextBlock Text="Preparación"
+                           Margin="13,8"
+                           FontSize="11"
+                           Foreground="#EAF3FF"
+                           IsVisible="{Binding IsPreparationStage}"/>
+                <TextBlock Text="Preparación"
+                           Margin="13,8"
+                           FontSize="11"
+                           Foreground="#7F91A9"
+                           IsVisible="{Binding IsPastPreparation}"/>
+              </Grid>
+              <Grid Grid.Column="1">
+                <Border CornerRadius="8"
+                        Background="#26345B86"
+                        BorderBrush="#415A79A3"
+                        BorderThickness="1"
+                        IsVisible="{Binding IsGeneratingStage}"/>
+                <TextBlock Text="Generando"
+                           Margin="13,8"
+                           FontSize="11"
+                           Foreground="#EAF3FF"
+                           IsVisible="{Binding IsGeneratingStage}"/>
+                <TextBlock Text="Generando"
+                           Margin="13,8"
+                           FontSize="11"
+                           Foreground="#7F91A9"
+                           IsVisible="{Binding IsBeforeGenerating}"/>
+                <TextBlock Text="Generando"
+                           Margin="13,8"
+                           FontSize="11"
+                           Foreground="#91B3D5"
+                           IsVisible="{Binding IsPastGenerating}"/>
+              </Grid>
+              <Grid Grid.Column="2">
+                <Border CornerRadius="8"
+                        Background="#26345B86"
+                        BorderBrush="#415A79A3"
+                        BorderThickness="1"
+                        IsVisible="{Binding IsResultStage}"/>
+                <TextBlock Text="Resultado"
+                           Margin="13,8"
+                           FontSize="11"
+                           Foreground="#EAF3FF"
+                           IsVisible="{Binding IsResultStage}"/>
+                <TextBlock Text="Resultado"
+                           Margin="13,8"
+                           FontSize="11"
+                           Foreground="#7F91A9"
+                           IsVisible="{Binding IsPreparationStage}"/>
+                <TextBlock Text="Resultado"
+                           Margin="13,8"
+                           FontSize="11"
+                           Foreground="#7F91A9"
+                           IsVisible="{Binding IsGeneratingStage}"/>
+              </Grid>
+            </Grid>
+          </Border>
+        </StackPanel>
       </Grid>
     </Border>
 
-    <!-- Body: two columns -->
-    <Grid Margin="18" ColumnDefinitions="*,420" RowDefinitions="*">
-
-      <!-- Left column -->
-      <Grid Grid.Column="0" Margin="0,0,18,0" RowDefinitions="Auto,*">
-
-        <Border Grid.Row="0" Classes="card" Margin="0,0,0,16">
-          <StackPanel Spacing="10">
-            <TextBlock Classes="h2" Text="Ruta del juego (FFXIV)"/>
-            <Grid ColumnDefinitions="*,Auto" >
-              <TextBox Grid.Column="0" Text="{Binding GamePath}" PlaceholderText="C:\...\FINAL FANTASY XIV - A Realm Reborn"/>
-              <Button Grid.Column="1" Margin="10,0,0,0" Content="Examinar..." Command="{Binding BrowseCommand}"/>
-            </Grid>
-            <TextBlock Foreground="{StaticResource Muted}" FontSize="12"
-                       Text="Se intenta detectar automáticamente. Puedes cambiarla manualmente si es necesario."/>
-            <Grid ColumnDefinitions="210,*" Margin="0,6,0,0">
-              <Button Grid.Column="0" Classes="primary" Width="210" Margin="0,0,8,0"
-                      Command="{Binding GenerateModCommand}">
-                <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
-                  <Path Width="18" Height="18" Stretch="Uniform" Stroke="White" StrokeThickness="2"
-                        StrokeLineCap="Round" StrokeJoin="Round"
-                        Data="M12 15.5 A3.5 3.5 0 1 0 12 8.5 A3.5 3.5 0 0 0 12 15.5 Z M19.4 15 A1.65 1.65 0 0 0 19.73 16.82 L19.79 16.92 A2 2 0 0 1 19.06 19.65 L18.94 19.72 A2 2 0 0 1 16.21 18.99 L16.15 18.89 A1.65 1.65 0 0 0 14.55 18 H14.45 A1.65 1.65 0 0 0 12.85 18.89 L12.79 18.99 A2 2 0 0 1 10.06 19.72 L9.94 19.65 A2 2 0 0 1 9.21 16.92 L9.27 16.82 A1.65 1.65 0 0 0 9.6 15 V14.9 A1.65 1.65 0 0 0 8.33 13.29 L8.22 13.24 A2 2 0 0 1 8.22 10.76 L8.33 10.71 A1.65 1.65 0 0 0 9.6 9.1 V9 A1.65 1.65 0 0 0 9.27 7.18 L9.21 7.08 A2 2 0 0 1 9.94 4.35 L10.06 4.28 A2 2 0 0 1 12.79 5.01 L12.85 5.11 A1.65 1.65 0 0 0 14.45 6 H14.55 A1.65 1.65 0 0 0 16.15 5.11 L16.21 5.01 A2 2 0 0 1 18.94 4.28 L19.06 4.35 A2 2 0 0 1 19.79 7.08 L19.73 7.18 A1.65 1.65 0 0 0 19.4 9 V9.1 A1.65 1.65 0 0 0 20.67 10.71 L20.78 10.76 A2 2 0 0 1 20.78 13.24 L20.67 13.29 A1.65 1.65 0 0 0 19.4 14.9 Z"/>
-                  <TextBlock Text="Generar mod" VerticalAlignment="Center"/>
+    <Grid Grid.Row="1" Margin="28,19,28,15" RowDefinitions="1.36*,14,0.64*">
+      <Grid Grid.Row="0" ColumnDefinitions="1.55*,18,1*">
+        <Border x:Name="SetupPanel" Grid.Column="0" Classes="card" Padding="18,16">
+          <Grid RowDefinitions="Auto,10,Auto,10,*,10,Auto">
+              <Grid Grid.Row="0">
+                <StackPanel Spacing="5">
+                  <TextBlock Text="COMPROBACIÓN PREVIA"
+                             Foreground="{StaticResource Cyan}"
+                             FontSize="10"
+                             FontWeight="Bold"
+                             LetterSpacing="1.2"/>
+                  <TextBlock Classes="h2" Text="{Binding SetupTitle}"/>
+                  <TextBlock Text="{Binding SetupLead}" Foreground="{StaticResource Muted}" FontSize="12"/>
                 </StackPanel>
-              </Button>
-              <Button Grid.Column="1" Classes="secondary" Width="220" Margin="8,0,0,0"
-                      Command="{Binding OpenOutputFolderCommand}">
-                <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
-                  <Path Width="19" Height="17" Stretch="Uniform" Stroke="White" StrokeThickness="2"
-                        StrokeLineCap="Round" StrokeJoin="Round"
-                        Data="M3 6 H8 L10 8 H21 V19 A2 2 0 0 1 19 21 H5 A2 2 0 0 1 3 19 Z M3 6 V5 A2 2 0 0 1 5 3 H8 L10 5 H19 A2 2 0 0 1 21 7 V8"/>
-                  <TextBlock Text="Abrir carpeta de salida" VerticalAlignment="Center"/>
-                </StackPanel>
-              </Button>
-            </Grid>
-          </StackPanel>
-        </Border>
+              </Grid>
 
-        <Border Grid.Row="1" Classes="card">
-          <DockPanel>
-            <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
-              <TextBlock Classes="h2" Text="Consola"/>
-              <Button Grid.Column="1" Content="Limpiar" Command="{Binding ClearConsoleCommand}"/>
-            </Grid>
-            <Border Background="{StaticResource ConsoleBg}" CornerRadius="8" Padding="12">
-              <ScrollViewer Name="ConsoleScroll">
-                <ItemsControl ItemsSource="{Binding Console}">
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:ConsoleLine">
+              <Grid Grid.Row="2" ColumnDefinitions="*,7,*,7,*,7,*">
+                <Button Grid.Column="0"
+                        Command="{Binding BrowseCommand}"
+                        ToolTip.Tip="{Binding GamePath}"
+                        Padding="10,9"
+                        MinHeight="60"
+                        Background="{StaticResource InsetPanel}"
+                        BorderBrush="{StaticResource LineSoft}">
+                  <Grid x:Name="GameCheckContent"
+                        ColumnDefinitions="26,*"
+                        VerticalAlignment="Center">
+                    <Border Width="24" Height="24" CornerRadius="12"
+                            BorderBrush="#4156D69B" BorderThickness="1" Background="#2A0C3A38">
+                      <TextBlock Text="✓" Foreground="{StaticResource Green}" FontSize="11"
+                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center">
+                      <TextBlock Text="{Binding GameCheckTitle}" Foreground="#E1EAF5" FontSize="10.5" FontWeight="SemiBold"/>
+                      <TextBlock Text="{Binding GameCheckSubtitle}" Foreground="#7892B1" FontSize="9.5"/>
+                    </StackPanel>
+                  </Grid>
+                </Button>
+
+                <Border Grid.Column="2" Padding="10,9" CornerRadius="9" MinHeight="60"
+                        Background="{StaticResource InsetPanel}"
+                        BorderBrush="{StaticResource LineSoft}" BorderThickness="1">
+                  <Grid x:Name="VersionCheckContent"
+                        ColumnDefinitions="26,*"
+                        VerticalAlignment="Center">
+                    <Border Width="24" Height="24" CornerRadius="12"
+                            BorderBrush="#4156D69B" BorderThickness="1" Background="#2A0C3A38">
                       <Grid>
-                        <SelectableTextBlock Text="{Binding Text}" Foreground="{Binding Foreground}"
-                                             SelectionBrush="{StaticResource Accent}"
-                                             FontFamily="Cascadia Mono,Consolas,monospace" FontSize="12.5"
-                                             TextWrapping="Wrap" Margin="0,1"/>
+                        <TextBlock Text="✓" Foreground="{StaticResource Green}" FontSize="11"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   IsVisible="{Binding IsVersionOk}"/>
+                        <TextBlock Text="!" Foreground="{StaticResource Yellow}" FontSize="11"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   IsVisible="{Binding IsVersionWarning}"/>
                       </Grid>
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
-              </ScrollViewer>
-            </Border>
-          </DockPanel>
+                    </Border>
+                    <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center">
+                      <TextBlock Text="{Binding VersionCheckTitle}" Foreground="#E1EAF5" FontSize="10.5" FontWeight="SemiBold"/>
+                      <TextBlock Text="{Binding VersionCheckSubtitle}" Foreground="#7892B1" FontSize="9.5"
+                                 TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                  </Grid>
+                </Border>
+
+                <Border Grid.Column="4" Padding="10,9" CornerRadius="9" MinHeight="60"
+                        Background="{StaticResource InsetPanel}"
+                        BorderBrush="{StaticResource LineSoft}" BorderThickness="1">
+                  <Grid x:Name="CorpusCheckContent"
+                        ColumnDefinitions="26,*"
+                        VerticalAlignment="Center">
+                    <Border Width="24" Height="24" CornerRadius="12"
+                            BorderBrush="#4156D69B" BorderThickness="1" Background="#2A0C3A38">
+                      <TextBlock Text="✓" Foreground="{StaticResource Green}" FontSize="11"
+                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center">
+                      <TextBlock Text="{Binding CorpusCheckTitle}" Foreground="#E1EAF5" FontSize="10.5" FontWeight="SemiBold"/>
+                      <TextBlock Text="{Binding CorpusCheckSubtitle}" Foreground="#7892B1" FontSize="9.5"/>
+                    </StackPanel>
+                  </Grid>
+                </Border>
+
+                <Button Grid.Column="6"
+                        Command="{Binding ReviewDalamudCommand}"
+                        Padding="10,9"
+                        MinHeight="60"
+                        Background="{StaticResource InsetPanel}"
+                        BorderBrush="{StaticResource LineSoft}">
+                  <Grid x:Name="DalamudCheckContent"
+                        ColumnDefinitions="26,*"
+                        VerticalAlignment="Center">
+                    <Border Width="24" Height="24" CornerRadius="12"
+                            BorderBrush="#4156D69B" BorderThickness="1" Background="#2A0C3A38">
+                      <Grid>
+                        <TextBlock Text="✓" Foreground="{StaticResource Green}" FontSize="11"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   IsVisible="{Binding IsDalamudOk}"/>
+                        <TextBlock Text="!" Foreground="{StaticResource Yellow}" FontSize="11"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   IsVisible="{Binding IsDalamudWarning}"/>
+                      </Grid>
+                    </Border>
+                    <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center">
+                      <TextBlock Text="{Binding DalamudCheckTitle}" Foreground="#E1EAF5" FontSize="10.5"
+                                 FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                      <TextBlock Text="{Binding DalamudCheckSubtitle}" Foreground="#7892B1" FontSize="9.5"
+                                 TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                  </Grid>
+                </Button>
+              </Grid>
+
+              <Border x:Name="ModContentPanel"
+                      Grid.Row="4"
+                      Classes="inset"
+                      ClipToBounds="True"
+                      Padding="12,10">
+                <ScrollViewer x:Name="ModContentScroll"
+                              HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Auto">
+                  <StackPanel Spacing="7">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Spacing="3">
+                      <TextBlock Text="Contenido del mod"
+                                 Foreground="#E2EBF6"
+                                 FontSize="12.5"
+                                 FontWeight="SemiBold"/>
+                      <TextBlock Text="Configuración recomendada. Incluye toda traducción aprobada disponible."
+                                 Foreground="{StaticResource Muted}"
+                                 FontSize="10.5"
+                                 IsVisible="{Binding IsAdvancedClosed}"/>
+                    </StackPanel>
+                    <Border Grid.Column="1"
+                            Padding="9,5"
+                            CornerRadius="7"
+                            Background="#233C6FA9"
+                            BorderBrush="#333C78B3"
+                            BorderThickness="1"
+                            VerticalAlignment="Top">
+                      <TextBlock Text="{Binding CategorySummary}"
+                                 Foreground="#BDD8F5"
+                                 FontSize="10"/>
+                    </Border>
+                  </Grid>
+
+                  <Border Height="1" Background="#253954"/>
+
+                  <Border IsVisible="{Binding IsVersionWarning}"
+                          Padding="10,7"
+                          CornerRadius="7"
+                          Background="#26976719"
+                          BorderBrush="#55F2C96D"
+                          BorderThickness="1">
+                    <TextBlock Foreground="#FFD09A"
+                               FontSize="10.5"
+                               TextWrapping="Wrap"
+                               Text="La instalación usa una versión distinta. Al generar se pedirá confirmación y se aplicará best effort, omitiendo contenido inexistente."/>
+                  </Border>
+
+                  <Button Classes="text"
+                          HorizontalAlignment="Left"
+                          Command="{Binding ToggleAdvancedCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="5">
+                      <TextBlock Text="▸" IsVisible="{Binding IsAdvancedClosed}" FontSize="10"/>
+                      <TextBlock Text="▾" IsVisible="{Binding IsAdvancedOpen}" FontSize="10"/>
+                      <TextBlock Text="Opciones avanzadas y categorías" Foreground="#C3D2E4" FontSize="11"/>
+                    </StackPanel>
+                  </Button>
+                  <StackPanel x:Name="AdvancedPanel"
+                              IsVisible="{Binding IsAdvancedOpen}"
+                              Spacing="5">
+                      <Grid ColumnDefinitions="*,Auto,Auto">
+                        <TextBlock Text="Elige qué grupos incluir" Foreground="{StaticResource Muted}" FontSize="10"/>
+                        <Button Grid.Column="1" Classes="text" Content="Todas"
+                                Command="{Binding SelectAllCategoriesCommand}"/>
+                        <Button Grid.Column="2" Classes="text" Content="Ninguna"
+                                Command="{Binding SelectNoCategoriesCommand}" Margin="8,0,0,0"/>
+                      </Grid>
+                      <ItemsControl ItemsSource="{Binding Categories}">
+                        <ItemsControl.ItemsPanel>
+                          <ItemsPanelTemplate>
+                            <UniformGrid Columns="5"/>
+                          </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:CategoryViewModel">
+                            <CheckBox IsChecked="{Binding IsSelected}"
+                                      IsEnabled="{Binding IsEnabled}"
+                                      ToolTip.Tip="{Binding Tooltip}"
+                                      HorizontalAlignment="Stretch"
+                                      HorizontalContentAlignment="Stretch"
+                                      FontSize="9.5">
+                              <StackPanel Spacing="0">
+                                <TextBlock Text="{Binding Label}"
+                                           TextWrapping="NoWrap"
+                                           TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{Binding Count, StringFormat='({0:N0})'}"
+                                           Foreground="#6F86A2"
+                                           FontSize="9.5"/>
+                              </StackPanel>
+                            </CheckBox>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                      <TextBlock IsVisible="{Binding ShowCategorySelectionError}"
+                                 Text="Selecciona al menos una categoría para generar el mod."
+                                 Foreground="#FFD09A"
+                                 FontSize="11"/>
+                    </StackPanel>
+                  </StackPanel>
+                </ScrollViewer>
+              </Border>
+
+              <Grid Grid.Row="6" ColumnDefinitions="2.1*,10,1*">
+                <Button x:Name="PrimaryAction"
+                        Grid.Column="0"
+                        Classes="primary"
+                        Content="Crear traducción para Penumbra"
+                        Command="{Binding GenerateModCommand}"/>
+                <Button Grid.Column="2"
+                        Classes="secondary"
+                        Content="Abrir carpeta de salida"
+                        Command="{Binding OpenOutputFolderCommand}"/>
+              </Grid>
+          </Grid>
         </Border>
+
+        <Grid Grid.Column="2" RowDefinitions="1.05*,10,0.95*">
+          <Border Grid.Row="0"
+                  Classes="card elevated"
+                  Background="{StaticResource HeroGlow}"
+                  ClipToBounds="True"
+                  Padding="20,16">
+            <Grid>
+              <Canvas IsHitTestVisible="False">
+                <Ellipse Width="145"
+                         Height="145"
+                         Canvas.Left="325"
+                         Canvas.Top="-65"
+                         Stroke="#268F7742"
+                         StrokeThickness="1"/>
+                <Ellipse Width="88"
+                         Height="88"
+                         Canvas.Left="353"
+                         Canvas.Top="-37"
+                         Stroke="#1577C7F5"
+                         StrokeThickness="1"/>
+              </Canvas>
+              <StackPanel VerticalAlignment="Center" Spacing="7">
+                <Border HorizontalAlignment="Left"
+                        Padding="10,5"
+                        CornerRadius="8"
+                        Background="#247B5D20"
+                        BorderBrush="#5A9E7B32"
+                        BorderThickness="1">
+                  <StackPanel Orientation="Horizontal" Spacing="7">
+                    <Border Width="10" Height="10" CornerRadius="3"
+                            BorderBrush="{StaticResource Gold}" BorderThickness="1"
+                            RenderTransformOrigin="50%,50%">
+                      <Border.RenderTransform>
+                        <RotateTransform Angle="45"/>
+                      </Border.RenderTransform>
+                    </Border>
+                    <TextBlock Text="HITO DE TRADUCCIÓN" Foreground="{StaticResource Gold}"
+                               FontSize="10" FontWeight="Bold"/>
+                  </StackPanel>
+                </Border>
+                <TextBlock Text="Eorzea habla castellano."
+                           Foreground="{StaticResource Text}"
+                           FontFamily="{StaticResource DisplayFont}"
+                           FontSize="27"
+                           FontWeight="Normal"
+                           LetterSpacing="-0.3"/>
+                <TextBlock Text="Historia, misiones secundarias y diálogo ambiental de A Realm Reborn, reunidos en un paquete generado desde tu propia instalación."
+                           Foreground="{StaticResource Muted}"
+                           FontSize="11.5"
+                           LineHeight="16"
+                           TextWrapping="Wrap"
+                           MaxWidth="380"/>
+                <StackPanel Orientation="Horizontal" Spacing="13">
+                  <TextBlock Text="{Binding AppVersionLabel, StringFormat='Corpus {0}'}"
+                             Foreground="#728AA8"
+                             FontSize="9.5"/>
+                  <TextBlock Text="Auditoría ARR superada"
+                             Foreground="#728AA8"
+                             FontSize="9.5"/>
+                  <TextBlock Text="Sin archivos originales"
+                             Foreground="#728AA8"
+                             FontSize="9.5"/>
+                </StackPanel>
+                <Button Classes="text" HorizontalAlignment="Left"
+                        Content="Ver hitos de traducción"
+                        Command="{Binding ShowMilestonesCommand}"/>
+              </StackPanel>
+            </Grid>
+          </Border>
+
+          <Border Grid.Row="2" Classes="card elevated" Padding="18,15">
+            <Grid RowDefinitions="Auto,*">
+              <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                <TextBlock Classes="h3" Text="Estado de generación"/>
+                <TextBlock Grid.Column="1"
+                           Text="Consola visible abajo"
+                           Foreground="#758CA8"
+                           FontSize="9.5"/>
+              </Grid>
+
+              <Grid Grid.Row="1">
+                <StackPanel IsVisible="{Binding IsPreparationStage}"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Spacing="8">
+                  <Border Width="48" Height="48" CornerRadius="24"
+                          BorderBrush="#5556D69B" BorderThickness="1"
+                          BoxShadow="0 0 22 0 #3856D69B"
+                          Background="#2A0C3A38">
+                    <TextBlock Text="✓" Foreground="{StaticResource Green}" FontSize="22"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  </Border>
+                  <TextBlock Classes="h3" Text="Listo para empezar" HorizontalAlignment="Center"/>
+                  <TextBlock Text="La integridad se comprobará siempre al finalizar."
+                             Foreground="{StaticResource Muted}" FontSize="11.5"/>
+                </StackPanel>
+
+                <StackPanel IsVisible="{Binding IsGeneratingStage}"
+                            VerticalAlignment="Center"
+                            Spacing="10">
+                  <TextBlock Classes="h3" Text="Generando el mod"/>
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="{Binding ProgressText}" Foreground="{StaticResource Muted}" FontSize="11"/>
+                    <TextBlock Grid.Column="1" Text="{Binding ProgressPercent, StringFormat='{}{0} %'}"
+                               Foreground="{StaticResource Cyan}" FontSize="11" FontWeight="SemiBold"/>
+                  </Grid>
+                  <ProgressBar Value="{Binding ProgressPercent}" Minimum="0" Maximum="100"
+                               Height="8" Foreground="{StaticResource Blue}" Background="#152A4568"/>
+                  <Grid ColumnDefinitions="*,*,*,*,*">
+                    <TextBlock Grid.Column="0" Text="Traducciones" Foreground="#7E99B8" FontSize="9"/>
+                    <TextBlock Grid.Column="1" Text="Extracción" Foreground="#7E99B8" FontSize="9"/>
+                    <TextBlock Grid.Column="2" Text="Parcheando" Foreground="{StaticResource Cyan}" FontSize="9"/>
+                    <TextBlock Grid.Column="3" Text="Empaquetado" Foreground="#7E99B8" FontSize="9"/>
+                    <TextBlock Grid.Column="4" Text="Integridad" Foreground="#7E99B8" FontSize="9"/>
+                  </Grid>
+                </StackPanel>
+
+                <StackPanel IsVisible="{Binding IsResultStage}" Spacing="10" VerticalAlignment="Center">
+                  <Grid ColumnDefinitions="42,*">
+                    <Border Width="38" Height="38" CornerRadius="19"
+                            BorderBrush="#4D56D69B" BorderThickness="1" Background="#2556D69B"
+                            IsVisible="{Binding IsResultSuccess}">
+                      <TextBlock Text="✓" Foreground="{StaticResource Green}" FontSize="19"
+                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <Border Width="38" Height="38" CornerRadius="19"
+                            BorderBrush="#4DF2C96D" BorderThickness="1" Background="#25F2C96D"
+                            IsVisible="{Binding IsResultPartial}">
+                      <TextBlock Text="!" Foreground="{StaticResource Yellow}" FontSize="19"
+                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <Border Width="38" Height="38" CornerRadius="19"
+                            BorderBrush="#4DFF7B82" BorderThickness="1" Background="#25FF7B82"
+                            IsVisible="{Binding IsResultError}">
+                      <TextBlock Text="×" Foreground="{StaticResource Red}" FontSize="21"
+                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                      <TextBlock Classes="h3" Text="{Binding ResultTitle}"/>
+                      <TextBlock Text="{Binding ResultSubtitle}" Foreground="{StaticResource Muted}"
+                                 FontSize="10.5" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                  </Grid>
+                  <Grid ColumnDefinitions="*,*,*,*" IsVisible="{Binding IsUsableResult}">
+                    <StackPanel Grid.Column="0">
+                      <TextBlock Text="{Binding ResultApplied}" Foreground="{StaticResource Text}"
+                                 FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                      <TextBlock Text="Aplicadas" Foreground="{StaticResource Muted}" FontSize="9"
+                                 HorizontalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1">
+                      <TextBlock Text="{Binding ResultPages}" Foreground="{StaticResource Text}"
+                                 FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                      <TextBlock Text="Páginas" Foreground="{StaticResource Muted}" FontSize="9"
+                                 HorizontalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                      <TextBlock Text="{Binding ResultOmitted}" Foreground="{StaticResource Yellow}"
+                                 FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                      <TextBlock Text="Omitidas" Foreground="{StaticResource Muted}" FontSize="9"
+                                 HorizontalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="3">
+                      <TextBlock Text="{Binding ResultFailures}" Foreground="{StaticResource Green}"
+                                 FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                      <TextBlock Text="Fallos" Foreground="{StaticResource Muted}" FontSize="9"
+                                 HorizontalAlignment="Center"/>
+                    </StackPanel>
+                  </Grid>
+                </StackPanel>
+              </Grid>
+            </Grid>
+          </Border>
+        </Grid>
       </Grid>
 
-      <!-- Right column -->
-      <ScrollViewer Grid.Column="1">
-        <StackPanel Spacing="16">
-
-          <Border Classes="card">
-            <StackPanel Spacing="6">
-              <TextBlock Classes="h2" Text="Opciones avanzadas"/>
-              <TextBlock Foreground="{StaticResource Muted}" FontSize="12.5" TextWrapping="Wrap"
-                         Text="Selecciona manualmente qué categorías EXD incluir en el parche. Todas están seleccionadas por defecto."/>
+      <Border x:Name="ConsolePanel"
+              Grid.Row="2"
+              Classes="card elevated"
+              ClipToBounds="True"
+              Padding="15,12">
+        <Grid RowDefinitions="Auto,8,*">
+          <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+            <StackPanel>
+              <TextBlock Classes="h3" Text="Consola"/>
+              <TextBlock Text="Selección continua con ratón, Ctrl+A y Ctrl+C."
+                         Foreground="{StaticResource Muted}" FontSize="10"/>
             </StackPanel>
-          </Border>
-
-          <Border Classes="card">
-            <StackPanel Spacing="12">
-              <TextBlock Classes="h2" Text="Categorías EXD"/>
-              <ItemsControl ItemsSource="{Binding Categories}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:CategoryViewModel">
-                    <CheckBox IsChecked="{Binding IsSelected}" IsEnabled="{Binding IsEnabled}"
-                              ToolTip.Tip="{Binding Tooltip}" Margin="0,2">
-                      <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="{Binding Label}" Foreground="{StaticResource Text}"/>
-                        <TextBlock Text="{Binding Count, StringFormat=' ({0})'}"
-                                   Foreground="{StaticResource Muted}" Margin="6,0,0,0"/>
-                      </StackPanel>
-                    </CheckBox>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="7">
+              <Button Classes="console" Content="Seleccionar todo" Click="SelectConsoleAll_OnClick"/>
+              <Button Classes="console" Content="Copiar log" Command="{Binding CopyLogCommand}"/>
+              <Button Classes="console" Content="Limpiar" Command="{Binding ClearConsoleCommand}"/>
             </StackPanel>
+          </Grid>
+          <Border Grid.Row="2"
+                  Background="{StaticResource Console}"
+                  CornerRadius="9"
+                  BorderBrush="#263C59"
+                  BorderThickness="1"
+                  BoxShadow="0 8 24 0 #35000000"
+                  Padding="12,9">
+            <views:ConsoleLogTextBlock Name="ConsoleText"
+                                       Lines="{Binding Console}"
+                                       Background="Transparent"
+                                       FontFamily="Cascadia Mono,Consolas,monospace"
+                                       FontSize="12.5"
+                                       WordWrap="False"
+                                       HorizontalScrollBarVisibility="Auto"
+                                       VerticalScrollBarVisibility="Auto"
+                                       Foreground="#B7C6D9"/>
           </Border>
-
-          <Border Classes="card">
-            <StackPanel Spacing="10">
-              <TextBlock Classes="h2" Text="Opciones adicionales"/>
-              <Grid ColumnDefinitions="*,Auto">
-                <StackPanel Grid.Column="0" Spacing="2">
-                  <TextBlock Text="Verificar integridad al finalizar" Foreground="{StaticResource Text}"/>
-                  <TextBlock Text="Comprueba que los archivos generados sean válidos."
-                             Foreground="{StaticResource Muted}" FontSize="12"/>
-                </StackPanel>
-                <ToggleSwitch Grid.Column="1" VerticalAlignment="Center" IsChecked="{Binding VerifyIntegrity}"/>
-              </Grid>
-            </StackPanel>
-          </Border>
-
-        </StackPanel>
-      </ScrollViewer>
+        </Grid>
+      </Border>
     </Grid>
-  </DockPanel>
+
+    <Border Grid.Row="2"
+            Background="{StaticResource HeaderBackground}"
+            BorderBrush="{StaticResource Line}"
+            BorderThickness="0,1,0,0"
+            Padding="26,0">
+      <Grid ColumnDefinitions="*,Auto,Auto" VerticalAlignment="Center">
+        <TextBlock Text="{Binding OutputFolder, StringFormat='Salida: {0}'}"
+                   Foreground="{StaticResource Muted}"
+                   FontSize="11"
+                   TextTrimming="CharacterEllipsis"/>
+        <TextBlock Grid.Column="1"
+                   Text="{Binding CorpusFooterLabel, StringFormat='Corpus {0}'}"
+                   Foreground="{StaticResource Muted}"
+                   FontSize="11"
+                   Margin="18,0"/>
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="7">
+          <Border Width="7" Height="7" CornerRadius="4" Background="{StaticResource Green}"/>
+          <TextBlock Text="{Binding StatusText}" Foreground="#C4D4E7" FontSize="11" FontWeight="SemiBold"/>
+          <Button Classes="text" Content="Aviso legal" Margin="10,0,0,0">
+            <Button.Flyout>
+              <Flyout Placement="TopEdgeAlignedRight">
+                <StackPanel Width="440" Spacing="10">
+                  <TextBlock Text="Aviso legal" Foreground="{StaticResource Text}"
+                             FontWeight="SemiBold" FontSize="15"/>
+                  <SelectableTextBlock Text="{Binding LegalNoticeText}"
+                                       Foreground="{StaticResource Muted}"
+                                       FontSize="13"
+                                       TextWrapping="Wrap"
+                                       SelectionBrush="{StaticResource Blue}"/>
+                </StackPanel>
+              </Flyout>
+            </Button.Flyout>
+          </Button>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Grid Grid.RowSpan="3" Background="#D9050B14" IsVisible="{Binding IsMilestoneOpen}">
+      <Border Width="760" MaxHeight="660" Classes="card elevated" Padding="23"
+              HorizontalAlignment="Center" VerticalAlignment="Center">
+        <Grid RowDefinitions="Auto,12,*">
+          <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+            <StackPanel>
+              <TextBlock Text="Hitos de traducción" Classes="h2"/>
+              <TextBlock Text="Contenido incluido en data/translation-milestones.md"
+                         Foreground="{StaticResource Muted}" FontSize="11"/>
+            </StackPanel>
+            <Button Grid.Column="1" Classes="secondary" Content="Cerrar"
+                    Command="{Binding CloseMilestonesCommand}"/>
+          </Grid>
+          <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled"
+                        VerticalScrollBarVisibility="Auto">
+            <ContentControl Name="MilestoneContentHost"/>
+          </ScrollViewer>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <Grid Grid.RowSpan="3" Background="#D9050B14" IsVisible="{Binding IsModalOpen}">
+      <Border Width="620" Classes="card elevated" Padding="27"
+              HorizontalAlignment="Center" VerticalAlignment="Center">
+        <StackPanel Spacing="13">
+          <Border Width="45" Height="45" CornerRadius="23"
+                  BorderBrush="#55F2C96D" BorderThickness="1" Background="#289B701F"
+                  HorizontalAlignment="Left">
+            <TextBlock Text="!" Foreground="{StaticResource Yellow}" FontSize="21"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          </Border>
+          <TextBlock Text="{Binding ModalTitle}" Classes="h2" TextWrapping="Wrap"/>
+          <TextBlock Text="{Binding ModalBody}" Foreground="#C8D5E6" FontSize="13.5"
+                     TextWrapping="Wrap" LineHeight="19"/>
+          <Border Padding="14,11" CornerRadius="9" Background="#101F35"
+                  BorderBrush="{StaticResource Line}" BorderThickness="1">
+            <TextBlock Text="{Binding ModalExplanation}" Foreground="#DCE8F7"
+                       FontSize="13" TextWrapping="Wrap" LineHeight="18"/>
+          </Border>
+          <TextBlock Text="{Binding ModalNote}" Foreground="{StaticResource Muted}"
+                     FontSize="11.5" TextWrapping="Wrap"/>
+          <Grid ColumnDefinitions="*,10,*" Margin="0,4,0,0">
+            <Button Grid.Column="0" Classes="secondary"
+                    Content="{Binding ModalSecondaryText}"
+                    Command="{Binding DismissModalCommand}"/>
+            <Button Grid.Column="2" Classes="primary"
+                    Content="{Binding ModalPrimaryText}"
+                    Command="{Binding AcceptModalCommand}"/>
+          </Grid>
+        </StackPanel>
+      </Border>
+    </Grid>
+  </Grid>
 </Window>

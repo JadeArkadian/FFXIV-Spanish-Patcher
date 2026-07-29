@@ -1,171 +1,223 @@
-# FFXIVSpanish Patcher — Diseño y plan
+# FFXIVSpanish Patcher — diseño técnico
 
-Documento de diseño de la aplicación. Captura las decisiones tomadas, la arquitectura y el estado
-actual. Para el contexto operativo de un agente IA ver `../AGENTS.md`.
+Documento de arquitectura vigente a partir de v0.3.0. Para instrucciones operativas de agentes,
+consultar `../AGENTS.md`; para la política de desfase de versiones, `COMPATIBILITY.md`.
 
-## 1. Propósito
+## Propósito
 
-Aplicación de escritorio de un solo ejecutable (sin instalación, sin runtime previo) que extrae los
-`.exd` necesarios de una instalación local de Final Fantasy XIV, los parchea con traducciones al
-castellano y emite un `.pmp` instalable con Penumbra. UX simple: indicar ruta del juego → "Generar
-mod" → consola de progreso → `.pmp` de salida.
+Aplicación de escritorio self-contained que lee únicamente las páginas EXD necesarias de una
+instalación local de Final Fantasy XIV, aplica traducciones al castellano y genera un `.pmp`
+instalable con Penumbra.
 
-La app es un **shell** sobre lógica sembrada desde el repo upstream **FFXIV-Spanish** (extractor,
-parcheo binario de EXD, SeString, packager), mantenida ahora como código vendorizado propio.
+La aplicación no modifica la instalación ni distribuye datos del juego. La GUI es un shell fino:
+todo el procesamiento vive en el pipeline y en las bibliotecas propias bajo `vendor/`.
 
-## 2. Decisiones cerradas
+## Decisiones cerradas
 
-| # | Decisión | Elegido | Motivo |
-|---|----------|---------|--------|
-| 1 | GUI framework | .NET 10 + Avalonia UI (MVVM) | Cross-platform, reutiliza el core C# tal cual, tema oscuro Fluent, publica a single-file. WPF sería más rápido en Windows pero Windows-only. |
-| 2 | Modelo de datos | Traducciones embebidas + extracción lean | Solo se leen los sheets que se traducen, en vivo desde el juego del usuario. No se redistribuyen assets de Square Enix (legal-clean) y resiste parches del juego. |
-| 3 | Reuso / repo | Repo standalone que sembró `vendor/` copiando el core; ahora código propio editable | Producto distribuible desacoplado del repo de traducción. `vendor/` puede divergir de upstream; no hay re-sync automático. |
-| 4 | Bundling traducciones | Solo embebido en el `.exe` | Un único fichero para el usuario. Actualizar traducciones = re-publicar. Sin fichero lateral. |
-| 5 | Test de integración | EXD sintético generado en código | No se versionan `.exd` reales (regla del repo) ni se depende del juego en CI. Reproducible. |
-| 6 | Categorías panel avanzado | Híbrido: metadatos curados + gating por manifest | Etiquetas/tooltips/orden bonitos y controlados, pero contadores y habilitación reales según lo que hay en el manifest. |
+| Área | Decisión |
+| --- | --- |
+| GUI | .NET 10, Avalonia UI y MVVM |
+| Paridad | Una sola vista XAML y el mismo diseño en Windows, Linux y macOS |
+| Distribución | Self-contained; single-file salvo paquete portable especial para Nexus |
+| Traducciones | Blob Brotli-JSONL embebido; en Windows puede ir adyacente por mitigación AV |
+| Datos FFXIV | Extracción lean desde la instalación del usuario |
+| Integridad | Obligatoria; no existe opción para desactivarla |
+| Version mismatch | Confirmación explícita y *best effort* auditable |
+| Categorías | Metadatos curados, contadores/enablement derivados del corpus |
+| Tests EXD | Fixtures sintéticos generados en código |
+| Markdown | Markdig validado y controles Avalonia nativos; sin WebView |
 
-## 3. Arquitectura y layout
+## Layout
 
-```
-FFXIV-Spanish-Patcher/
-  FFXIVSpanishPatcher.slnx
-  global.json · Directory.Build.props · .gitignore
-  src/
-    FFXIVSpanishPatcher.App/        # GUI Avalonia (MVVM, entry point, tema oscuro)   [F3]
-    FFXIVSpanishPatcher.Pipeline/   # orquestación extract→patch→package + IProgress  [F1]
-  vendor/                           # sembrado desde upstream; código propio editable
-    XivSpanish.Core/                #   modelos, ManifestLoader, DomainMap
-    XivSpanish.GameData/            #   Lumina, EXD binario, ExdPatcher, SeString, GameLocator
-    XivSpanish.Packaging/           #   broadcast, alias, contamination guard, gate SeString
-    VENDORED.md                     #   procedencia (commit upstream + fecha)
-  data/
-    translations.dat                # blob Brotli-JSONL versionado
-    recommended-game-version.txt    # versión de FFXIV recomendada para el blob/release
-    translations/                   # README + corpus crudo git-ignored en jsonl/
-  tests/
-    FFXIVSpanishPatcher.Tests/      # unit + integración EXD sintético
-    FFXIVSpanishPatcher.App.Tests/  # smoke/headless GUI + blob/viewmodel
-  build/
-    macos/Info.plist                # metadatos del bundle .app (release)
-  tools/
-    XivSpanish.BlobBuilder/         # [F2] tool C#: sync (corpus) + build (→ data/translations.dat)
-  docs/DESIGN.md
-```
-
-### Vendoring (sembrado, no espejo)
-
-`vendor/` se sembró una vez copiando el core de upstream pero es **código propio editable** (regla
-read-only levantada 2026-06-24); ya ha divergido de upstream. No hay re-sync automático: se borró
-`sync-vendor.ps1` porque reimportaba upstream sobreescribiendo la divergencia. Para una mejora puntual
-de upstream, pórtala a mano. DRY entre repos = best-effort (coste aceptado al elegir "copiar" en vez de
-submodule/referencia cruzada).
-
-## 4. Capa Pipeline (SOLID)
-
-Cada pieza una responsabilidad; depende de abstracciones (inyectables, testeables). En la
-implementación actual varias responsabilidades viven como clases concretas pequeñas alrededor de
-`PatchPipeline`, no como todos los interfaces del bosquejo inicial:
-
-```
-ITranslationSource     // carga traducciones desde recurso embebido o fixtures
-IPatchBackend          // bytes base/layout desde cliente real o snapshot sintético
-GamePathDetector       // detecta instalación y lee ffxivgame.ver
-PackageWriter          // staging + meta.json + default_mod.json + zip .pmp
-IIntegrityVerifier     // re-parse EXD + estructura .pmp
-PatchPipeline          // orquesta y emite IProgress<PipelineEvent>
+```text
+src/
+  FFXIVSpanishPatcher.App/
+    Services/                       shell, actualizaciones, Dalamud, Markdown
+    ViewModels/                     estado MVVM, consola y etapas
+    Views/                          MainWindow, renderer Markdown, consola seleccionable
+  FFXIVSpanishPatcher.Pipeline/     load → resolve → patch → package → verify
+vendor/
+  XivSpanish.Core/                  modelos y manifest
+  XivSpanish.GameData/              Lumina, EXH/EXD, SeString y patcher binario
+  XivSpanish.Packaging/             broadcast, alias, guards y gates
+data/
+  translations.dat                 corpus runtime versionado
+  recommended-game-version.txt     referencia exacta de FFXIV
+  translation-milestones.md        historial mostrado por la GUI
+tests/
+  FFXIVSpanishPatcher.Tests/        unitarias e integración EXD sintética
+  FFXIVSpanishPatcher.App.Tests/    ViewModel, servicios y Avalonia headless
+tools/
+  XivSpanish.BlobBuilder/           sync/build del blob
 ```
 
-Flujo: `load translations → selección/categorías → SeString gate → abrir backend → agrupar páginas →
-broadcast → patch → contamination guard → package → verify`. Cada evento alimenta la consola de la
-GUI. **Drift de parche:** si un source key no casa con la versión del juego del usuario, se omite con
-warning; no debe tumbar la generación completa salvo que el paquete quede inutilizable.
+`vendor/` se sembró desde `FFXIV-Spanish`, pero ahora es código propio de este repositorio. No debe
+sobrescribirse mediante una resincronización masiva; las mejoras se portan manualmente y se prueban.
 
-## 5. GUI (Avalonia, mapeo al mockup)
+## Pipeline
 
-- MainWindow de dos columnas + status bar; FluentTheme dark + acento azul; consola monospace.
-- Izquierda: ruta + `Examinar…`; `Generar mod` (deshabilitado hasta ruta válida) + `Abrir carpeta de
-  salida`; consola de progreso + `Limpiar`.
-- Derecha: panel de información; grid de `CategoryViewModel` (IsChecked, Count, Tooltip,
-  enabled-por-manifest); toggle `Verificar integridad al finalizar`.
-- Status: nombre de salida `FFXIVSpanish-{yyyy-MM-dd_HH-mm-ss}.pmp`, carpeta, estado y acciones de
-  salida/log.
-- La app muestra versión propia, comprueba GitHub Releases y avisa si `ffxivgame.ver` difiere de
-  `data/recommended-game-version.txt`.
-- `Generar mod` corre el Pipeline en background; el progreso se marshala al hilo de UI.
+### Abstracciones
 
-## 6. Datos
-
-El corpus crudo son decenas de MB de JSONL; proyectado y comprimido, el blob actual ronda 8.5 MiB.
-Se versiona **solo el blob** compacto y la versión recomendada.
-
-**Blob (versionado): `data/translations.dat`** — Brotli-JSONL (proyectado a approved+gold), fuente de
-registro compacta que la App embebe como `EmbeddedResource`; .NET lo lee con `BrotliStream` nativo.
-
-**Versión recomendada (versionada): `data/recommended-game-version.txt`** — versión de FFXIV asociada
-al blob/release; la GUI la compara con `ffxivgame.ver` de la instalación local y avisa si difiere.
-
-**Corpus crudo (NO versionado, en `.gitignore`): `data/translations/jsonl/`** — se sincroniza
-localmente desde upstream solo para regenerar el blob; su historial línea-a-línea vive en upstream.
-
-```
-upstream jsonl → BlobBuilder sync → data/translations/jsonl/ (git-ignored)
-              → BlobBuilder build (approved+gold, brotli)
-              → data/translations.dat + data/recommended-game-version.txt
-              → EmbeddedResource → publish
+```text
+ITranslationSource      carga corpus embebido o fixtures
+IPatchBackend           resuelve sheets/rows y expone IBaseExdSource
+IPatchBackendFactory    abre cliente real o backend sintético
+IIntegrityVerifier      valida estructura y contenido del paquete
+PatchPipeline           orquesta y emite PipelineEvent
 ```
 
-CI (F7) NO reconstruye el blob: usa el `data/translations.dat` ya versionado tras el checkout.
+### Flujo
 
-## 7. Build y distribución
-
-```powershell
-dotnet publish src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj -c Release -r win-x64 `
-  --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+```mermaid
+flowchart LR
+  A["Cargar corpus"] --> B["Filtrar categorías"]
+  B --> C["SeString gate"]
+  C --> D["Resolver hojas, filas y páginas"]
+  D --> E["Leer EXD y aplicar replacements"]
+  E --> F["Guard de contaminación"]
+  F --> G["Empaquetar en temporal"]
+  G --> H["Verificar siempre"]
+  H --> I["Promover atómicamente"]
 ```
 
-Ejecutable self-contained single-file, runtime incluido, cero instalación. La publicación actual usa
-trimming (`PublishTrimmed=true`, `TrimMode=full`) y rootea `Lumina`/`Lumina.Excel` para conservar los
-metadatos que el pipeline consulta por reflexión. No se usa NativeAOT.
+`IPatchBackend.ResolveExd` devuelve `Resolved`, `MissingSheet` o `UnresolvedRow`. El pipeline sigue
+con las páginas válidas, emite sus avisos y devuelve estadísticas estructuradas.
 
-Linux/Mac: mismo comando con `-r linux-x64` / `osx-arm64` / `osx-x64`. En releases, macOS se empaqueta
-como `.app` con `Info.plist`, icono y firma ad-hoc.
+La baja coincidencia solo puede ignorarse si la GUI ha comparado dos versiones conocidas y el
+usuario ha confirmado `BestEffortVersionMismatch`. En modo estricto, el guard conserva su función de
+detectar una base contaminada o incompatible.
 
-## 8. Tests
+### Salidas
 
-- **Unit:** pipeline, detector de rutas/version, carga de traducciones, categorías, broadcast,
-  packageable statuses y edge-cases de SeString.
-- **Integración (fixture sintético):** construir EXH+EXD mínimo válido en código → `ExdPatcher` con
-  traducción de prueba → assert de la string nueva en el offset correcto + caso offset a espacio vacío
-  → empaquetado → assert de que el `.pmp` contiene `meta.json`/`default_mod.json` + EXD en la
-  ruta interna correcta → verificador pasa.
-- **GUI headless:** smoke de Avalonia, carga del blob embebido y validaciones de ViewModel.
+- `Ok`: `.pmp` verificado, sin omisiones.
+- `PackagedWithMisses`: `.pmp` verificado y utilizable, con cobertura parcial.
+- `NothingToPackage`: ninguna escritura; no se publica paquete vacío.
+- `Contaminated`: guard estricto.
+- `ValidationFailed`: el temporal no pasó integridad.
+- `GameDataError`: no se pudo abrir o leer la instalación.
+- `OutputError`: fallo al escribir o promover.
 
-## 9. Riesgos / pendientes actuales
+El resultado incluye `PatchStatistics`; la GUI no reconstruye métricas analizando texto.
 
-1. Validación manual contra juego real sigue siendo necesaria por release/plataforma; CI no puede
-   cubrir instalaciones reales ni Penumbra.
-2. Trimming + Lumina dependen de roots explícitos; cualquier cambio de publish debe probar binarios
-   publicados, no solo `dotnet test`.
-3. Los parches oficiales de FFXIV pueden invalidar sources/offsets; la app avisa por versión
-   recomendada, pero el usuario puede generar paquetes contra versiones distintas.
-4. macOS usa firma ad-hoc, no notarización; los usuarios pueden necesitar aprobación manual de
-   Gatekeeper.
+### Transacción de salida
 
-## 10. Plan por fases
+Cada ejecución usa un staging con GUID y un temporal hermano de la salida. El verificador se ejecuta
+siempre sobre ese temporal. Solo un paquete válido reemplaza de forma atómica el destino; cualquier
+fallo conserva la salida anterior. Staging y temporales se limpian en `finally`.
 
-| Fase | Contenido | Estado |
-|------|-----------|--------|
-| F0   | Scaffold + git init + sln + sembrado de `vendor/` Core/GameData (vía el extinto `sync-vendor.ps1`). Compila vendored. | hecho |
-| F0.5 | `CLAUDE.md` (→`@AGENTS.md`) + `AGENTS.md` + `docs/DESIGN.md`. | hecho |
-| F1   | Lib `Pipeline` (interfaces + orquestación + eventos) reusando GameData/Packaging; unit + integración sintética. Headless. | hecho |
-| F2   | `tools/XivSpanish.BlobBuilder` (sync+build, C#) + `EmbeddedTranslationSource` (blob brotli versionado, solo approved+gold). | hecho |
-| F3   | GUI Avalonia matching mockup, bindeada al Pipeline. | hecho |
-| F4   | `GamePathDetector` (registry + Steam vdf + rutas comunes) + integración SO (abrir carpeta, copiar log). | hecho |
-| F5   | Publish single-file self-contained + smoke headless de la GUI + pulido. Smoke contra juego real = manual. | hecho |
-| F6   | Validación Linux/Mac contra juego real por release/plataforma. | continuo/manual |
-| F7   | Workflows GitHub: CI (build+test) + Release matrix (win-x64/linux-x64/osx-arm64/osx-x64). | hecho |
+## GUI
 
-Workflows en `.github/workflows/`: `ci.yml` (push/PR → restore+build+test, incl. smoke headless)
-y `release.yml` (tag `vX.Y.Z` → publica los 4 RID self-contained single-file, empaqueta `.app` en
-macOS y adjunta los zips a un GitHub Release). El repo remoto actual es
-`JadeArkadian/FFXIV-Spanish-Patcher`.
+`MainWindow.axaml` es común a todos los RIDs. Tamaño de referencia `1240 × 820`, mínimo
+`1080 × 720`, tema oscuro azul noche. Las superficies usan degradados lineales y radiales nativos de
+Avalonia: no hay HTML, WebView ni una implementación visual distinta por plataforma.
+
+La tipografía de interfaz es Inter, suministrada por `Avalonia.Fonts.Inter`. Los titulares
+editoriales usan Noto Serif embebida bajo SIL OFL 1.1. De este modo la métrica, el peso y el
+interlineado son reproducibles en Windows, Linux y macOS aunque el sistema no tenga esas fuentes.
+
+La vista contiene:
+
+- cabecera con logo centrado, edición ARR e indicadores `Preparación → Generando → Resultado`;
+- comprobaciones de juego, versión, corpus y Penumbra;
+- categorías avanzadas en cinco columnas y dos filas;
+- aviso persistente y modal para version mismatch;
+- hito ARR e historial Markdown;
+- estado listo/progreso/resultado;
+- consola grande de ancho completo;
+- pie con salida, corpus y estado.
+
+Los indicadores de etapa no son botones. No hay cancelación porque el proceso es corto. No hay toggle
+de integridad. Cero categorías deshabilita la acción principal.
+
+### Consola
+
+`ConsoleLogTextBlock` deriva de `AvaloniaEdit.TextEditor` en modo solo lectura. El documento rope
+conserva el historial completo, pero el editor crea líneas visuales únicamente para el viewport.
+Un `DocumentColorizingTransformer` aplica los colores de hora, componente y nivel al construir cada
+línea visible. Así se mantienen selección continua, `Ctrl+A`, `Ctrl+C` y scroll fluido sin crear
+miles de controles ni un árbol de `Run` completo.
+
+Los eventos se acumulan en el dispatcher y cada lote se inserta como un único bloque de texto. El
+append conserva la selección y solo hace autoscroll si el usuario estaba abajo y no ha desplazado la
+vista desde que se programó. Ese seguimiento mueve únicamente el eje vertical, conserva la posición
+horizontal y no permite desplazarse bajo el final del documento. El pipeline sigue emitiendo una
+línea de resultado por cada página y todos los avisos normales; `--debug` añade trazas internas de
+broadcast y `miss`.
+
+### Markdown
+
+`TranslationMilestoneService` parsea `data/translation-milestones.md` con Markdig, valida una lista
+cerrada de nodos y rechaza HTML, imágenes y enlaces no HTTP(S). `MarkdownAvaloniaRenderer` crea
+controles nativos para conservar el diseño y evitar una superficie web.
+
+### Dalamud/Penumbra
+
+`DalamudPenumbraService` inspecciona raíces conocidas de XIVLauncher, XLCore y XIV on Mac. Solo
+considera Penumbra presente si encuentra un manifiesto identificable. Si
+`IsResumeGameAfterPluginLoad` no es `true`, la GUI ofrece corregirlo.
+
+La edición se hace con temporal en el mismo directorio, flush, detección SHA-256 de cambios
+concurrentes, reemplazo atómico y relectura. Todo fallo de esta integración externa es silencioso por
+contrato.
+
+## Datos
+
+`translations.dat` contiene solo filas empaquetables (`approved`/`gold`, target no vacío y source key
+útil). `recommended-game-version.txt` y `translation-milestones.md` se embeben como recursos.
+
+```text
+FFXIV-Spanish JSONL
+  → BlobBuilder sync (corpus crudo local, git-ignored)
+  → BlobBuilder build
+  → translations.dat + recommended-game-version.txt
+  → recurso de la aplicación
+```
+
+CI no reconstruye el corpus. Consume exactamente el blob versionado.
+
+## Build y dependencias
+
+El SDK está fijado por `global.json`. Todos los proyectos generan y versionan `packages.lock.json`;
+CI y release restauran con `--locked-mode`. El grafo común declara `win-x64`, `linux-x64` y
+`osx-arm64`, de modo que el mismo lock soporta toda la matriz y no depende del último RID restaurado.
+
+La publicación usa trimming completo y rootea `Lumina`/`Lumina.Excel`, porque se consulta metadata
+generada mediante reflexión. Cambiar dependencias o roots exige ejecutar los binarios publicados.
+
+RIDs de release:
+
+- `win-x64`: self-contained; `translations.dat` adyacente para reducir falsos positivos.
+- `linux-x64`: self-contained single-file.
+- `osx-arm64`: bundle `.app`, icono y firma ad-hoc.
+
+## Estrategia de pruebas
+
+- pipeline y outcomes con backend en memoria;
+- EXD sintético para parcheo, broadcast, aliases e integridad;
+- hojas/páginas ausentes, `misses`, mismatch y cero aplicadas;
+- promoción transaccional y preservación de salida;
+- detector de juego/versiones;
+- Dalamud/Penumbra y JSON concurrente/incorrecto;
+- Markdown válido e inseguro;
+- consola con 10.000 líneas y selección;
+- smoke headless de la ventana real;
+- native publish smoke para los tres RIDs.
+
+No se aceptan fixtures reales de FFXIV.
+
+## Riesgos residuales
+
+1. CI no sustituye una prueba manual con instalación real y Penumbra.
+2. Un paquete parcial puede traducir menos contenido; la interfaz debe mantener visibles los avisos.
+3. Los cambios de estructura EXD pueden requerir soporte nuevo aunque el *best effort* conserve el
+   resto.
+4. macOS usa firma ad-hoc, no notarización pública.
+5. Las herramientas de terceros pueden mover sus rutas/configuración; esa integración debe seguir
+   siendo acotada y silenciosa ante fallos.
+
+## Documentos relacionados
+
+- `COMPATIBILITY.md`: contrato de versiones y fallos.
+- `TRANSLATION_MILESTONES.md`: edición del historial Markdown.
+- `RELEASE_CHECKLIST.md`: cierre reproducible.
+- `RELEASE_SIGNING.md`: firma y verificación.

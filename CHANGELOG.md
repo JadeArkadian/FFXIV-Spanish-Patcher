@@ -2,6 +2,10 @@
 
 Resumen de todos los cambios relevantes del proyecto.
 
+## v0.3.0
+
+- ¡Nuevo Patcher!
+
 ## v0.2.5
 - Hotfix que impedia funcionar la aplicación en su ultima version
 - Upgrade de la versión de Avalonia
