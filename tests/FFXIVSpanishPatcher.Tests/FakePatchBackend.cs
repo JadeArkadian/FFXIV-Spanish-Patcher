@@ -46,7 +46,10 @@ internal sealed class FakePatchBackend(IBaseExdSource source) : IPatchBackend
 {
     public IBaseExdSource BaseSource { get; } = source;
 
-    public string? ResolveExdPath(TranslationSourceKey key) => key.ExdPath;
+    public ExdResolution ResolveExd(TranslationSourceKey key)
+        => string.IsNullOrWhiteSpace(key.ExdPath)
+            ? ExdResolution.UnresolvedRow()
+            : ExdResolution.Resolved(key.ExdPath);
 
     public void Dispose()
     {

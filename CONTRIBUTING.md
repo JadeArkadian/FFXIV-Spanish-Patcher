@@ -18,6 +18,33 @@ git lfs pull
 
 Without that, builds may embed the small LFS pointer text instead of the `.dat` payload, and translation loading will fail at runtime/test time.
 
+NuGet lock files are versioned. Restore and validate the exact dependency graph before submitting a
+change:
+
+```bash
+dotnet restore --locked-mode
+dotnet build -c Release --no-restore
+dotnet test -c Release --no-build
+git diff --check
+```
+
+If a package is intentionally updated, run an unlocked restore to regenerate every affected
+`packages.lock.json`, inspect the diff, then repeat the locked restore. A dependency update is not
+complete until the trimmed published application has been tested.
+
+### Translation milestone content
+
+The in-app translation history is authored in `data/translation-milestones.md`. Follow
+`docs/TRANSLATION_MILESTONES.md`; do not add a WebView or unvalidated HTML. Content changes must pass
+the Markdown tests and be visually checked in the real Avalonia dialog.
+
+### Pipeline compatibility changes
+
+Read `docs/COMPATIBILITY.md` before changing mismatch, omission, contamination or integrity
+behaviour. Missing sheets/pages/rows are recoverable when other content is useful. Zero writes,
+unconfirmed contamination, total read failure, output failure and integrity failure are fatal.
+Never add an option that disables final integrity verification.
+
 By contributing code, you confirm that:
 
 * You have the right to submit the contribution.

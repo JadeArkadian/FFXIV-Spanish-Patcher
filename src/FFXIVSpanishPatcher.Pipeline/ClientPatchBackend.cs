@@ -34,9 +34,28 @@ internal sealed class ClientPatchBackend(object gameData, ExdResolver resolver, 
 
     public IBaseExdSource BaseSource { get; } = baseSource;
 
-    public string? ResolveExdPath(TranslationSourceKey key)
-        => key.ExdPath
-           ?? (key.RowId.HasValue ? _resolver.Resolve(key.Sheet, key.RowId.Value, "en")?.GamePath : null);
+    public ExdResolution ResolveExd(TranslationSourceKey key)
+    {
+        if (!string.IsNullOrWhiteSpace(key.ExdPath))
+        {
+            return ExdResolution.Resolved(key.ExdPath);
+        }
+
+        if (!key.RowId.HasValue)
+        {
+            return ExdResolution.UnresolvedRow();
+        }
+
+        if (_resolver.ReadHeader(key.Sheet) is null)
+        {
+            return ExdResolution.MissingSheet();
+        }
+
+        var location = _resolver.Resolve(key.Sheet, key.RowId.Value, "en");
+        return location is null
+            ? ExdResolution.UnresolvedRow()
+            : ExdResolution.Resolved(location.GamePath);
+    }
 
     public void Dispose() => (_gameData as IDisposable)?.Dispose();
 }

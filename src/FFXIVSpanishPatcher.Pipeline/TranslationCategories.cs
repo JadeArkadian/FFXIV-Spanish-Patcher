@@ -68,6 +68,7 @@ public static class TranslationCategories
         ["OnlineStatus"] = "interfaz",
         ["Balloon"] = "interfaz",
         ["AkatsukiNoteString"] = "interfaz",
+        ["KTGTypeWordTextData"] = "interfaz",
         ["CreditListText"] = "interfaz",
         ["RetainerTaskRandom"] = "interfaz",
         ["ConfigKey"] = "interfaz",

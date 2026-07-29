@@ -3,6 +3,10 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <!-- One lock graph must support every release RID. Otherwise a locked restore succeeds only
+         for the RID that happened to regenerate packages.lock.json most recently. -->
+    <RuntimeIdentifiers>win-x64;linux-x64;osx-arm64</RuntimeIdentifiers>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <Version Condition="'$(Version)' == ''">0.0.0</Version>
     <InformationalVersion Condition="'$(InformationalVersion)' == ''">dev</InformationalVersion>

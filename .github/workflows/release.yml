@@ -1,8 +1,10 @@
 name: Release
 
-# Tag a commit (e.g. v1.2.3) to build self-contained single-file executables for Windows, Linux and
-# macOS and attach them to a GitHub Release. win/linux cross-publish from a Linux runner; the macOS
-# RID (Apple Silicon only) builds on a macOS runner so the .app bundle can be ad-hoc codesigned.
+# Tag a commit (e.g. v1.2.3) to build self-contained publishes for Windows, Linux and macOS and
+# attach them to a GitHub Release. Windows keeps only the translation corpus external so it does
+# not place that high-entropy Brotli blob inside the executable. win/linux cross-publish from a
+# Linux runner; the macOS RID (Apple Silicon only) builds on a macOS runner so the .app bundle can
+# be ad-hoc codesigned.
 on:
   push:
     tags: [ 'v*.*.*' ]
@@ -39,27 +41,31 @@ jobs:
       matrix:
         include:
           # nexus_file_id: "API Info" del fichero en la pestaña Files de nexusmods.com (mod 2513).
-          - { rid: win-x64,   os: ubuntu-latest, nexus_file_id: 7608014 }
-          - { rid: linux-x64, os: ubuntu-latest, nexus_file_id: 7651772 }
+          - { rid: win-x64,   os: ubuntu-latest, nexus_file_id: 7608014, external_translations: "true" }
+          - { rid: linux-x64, os: ubuntu-latest, nexus_file_id: 7651772, external_translations: "false" }
           # macos-latest pinned to macos-15: the "latest" label migrates to macOS 26 (beta) from
           # 2026-06-15, before it is a stable target for the ad-hoc codesign/publish steps below.
-          - { rid: osx-arm64, os: macos-15,  nexus_file_id: 7608017 }
+          - { rid: osx-arm64, os: macos-15,  nexus_file_id: 7608017, external_translations: "false" }
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           lfs: true
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
 
       - name: Publish ${{ matrix.rid }}
         run: >
+          dotnet restore src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj
+          --locked-mode
+          &&
           dotnet publish src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj
-          -c Release -r ${{ matrix.rid }} --self-contained
+          -c Release -r ${{ matrix.rid }} --self-contained --no-restore
           -p:PublishSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:ExternalTranslations=${{ matrix.external_translations }}
           -p:Version=${{ needs.validate-tag.outputs.version }}
           -p:InformationalVersion=${{ needs.validate-tag.outputs.tag }}
           -p:AssemblyVersion=${{ needs.validate-tag.outputs.version }}.0
@@ -68,6 +74,48 @@ jobs:
           -p:LatestReleaseApiUrl=https://api.github.com/repos/${{ github.repository }}/releases/latest
           -p:LatestReleasePageUrl=https://github.com/${{ github.repository }}/releases/latest
           -o publish/${{ matrix.rid }}
+
+      # Self-signed Authenticode: preserves a verifiable publisher identity without placing its
+      # private key in the repository. Windows will not treat this as a publicly trusted CA
+      # signature, so SHA-256 checksums below remain the release-verification mechanism.
+      - name: Self-sign Windows executable
+        if: matrix.rid == 'win-x64'
+        env:
+          WINDOWS_SELF_SIGNING_PFX_BASE64: ${{ secrets.WINDOWS_SELF_SIGNING_PFX_BASE64 }}
+          WINDOWS_SELF_SIGNING_PFX_PASSWORD: ${{ secrets.WINDOWS_SELF_SIGNING_PFX_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$WINDOWS_SELF_SIGNING_PFX_BASE64" || -z "$WINDOWS_SELF_SIGNING_PFX_PASSWORD" ]]; then
+            echo "::warning::Windows self-signing skipped: configure WINDOWS_SELF_SIGNING_PFX_BASE64 and WINDOWS_SELF_SIGNING_PFX_PASSWORD."
+            exit 0
+          fi
+
+          CERT_DIR="$(mktemp -d)"
+          trap 'rm -rf "$CERT_DIR"' EXIT
+          PFX="$CERT_DIR/FFXIVSpanishPatcher-self-signed.pfx"
+          CERT="$CERT_DIR/FFXIVSpanishPatcher-self-signed.pem"
+          EXE="publish/win-x64/FFXIVSpanishPatcher.exe"
+
+          printf '%s' "$WINDOWS_SELF_SIGNING_PFX_BASE64" | base64 --decode > "$PFX"
+          openssl pkcs12 -in "$PFX" -clcerts -nokeys -passin "pass:$WINDOWS_SELF_SIGNING_PFX_PASSWORD" -out "$CERT"
+          EXPECTED_FINGERPRINT="$(openssl x509 -in docs/security/FFXIVSpanishPatcher-self-signed.pem -noout -fingerprint -sha256)"
+          ACTUAL_FINGERPRINT="$(openssl x509 -in "$CERT" -noout -fingerprint -sha256)"
+          if [[ "$ACTUAL_FINGERPRINT" != "$EXPECTED_FINGERPRINT" ]]; then
+            echo "::error::Windows self-signing certificate does not match docs/security/FFXIVSpanishPatcher-self-signed.pem."
+            exit 1
+          fi
+          sudo apt-get update
+          sudo apt-get install --yes osslsigncode
+          osslsigncode sign \
+            -pkcs12 "$PFX" \
+            -pass "$WINDOWS_SELF_SIGNING_PFX_PASSWORD" \
+            -h sha256 \
+            -n "FFXIVSpanish Patcher" \
+            -i "https://ffxivspanish.carrd.co/" \
+            -in "$EXE" \
+            -out "$EXE.signed"
+          mv "$EXE.signed" "$EXE"
+          osslsigncode verify -in "$EXE" -CAfile "$CERT"
 
       - name: Package
         run: |
@@ -97,57 +145,23 @@ jobs:
             cp README.md "$OUT/README.md"
             ( cd "$OUT" && zip -r "../../$ASSET" . )
           fi
+          if command -v sha256sum >/dev/null; then
+            sha256sum "$ASSET" > "$ASSET.sha256"
+          else
+            shasum -a 256 "$ASSET" > "$ASSET.sha256"
+          fi
 
       - name: Attach to release
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
           name: ${{ needs.validate-tag.outputs.tag }}
           generate_release_notes: true
-          files: FFXIVSpanishPatcher-${{ needs.validate-tag.outputs.version }}-${{ matrix.rid }}.zip
-
-      # Nexus/Windows false-positive mitigation: keep the GitHub asset as single-file, but replace
-      # the local zip before the Nexus upload with a portable folder publish. This avoids the .NET
-      # single-file self-extraction pattern that VirusTotal/Zenbox flagged as suspicious.
-      - name: Build Nexus Mods portable package (Windows)
-        if: matrix.rid == 'win-x64' && matrix.nexus_file_id != ''
-        run: |
-          set -euo pipefail
-          VERSION="${{ needs.validate-tag.outputs.version }}"
-          RID="${{ matrix.rid }}"
-          OUT="publish/$RID-nexus"
-          ROOT="nexus/$RID/FFXIVSpanishPatcher"
-          ASSET="FFXIVSpanishPatcher-$VERSION-$RID.zip"
-          rm -rf "$OUT" "nexus/$RID" "$ASSET"
-          dotnet publish src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj \
-            -c Release -r "$RID" --self-contained \
-            -p:PublishSingleFile=false \
-            -p:IncludeNativeLibrariesForSelfExtract=false \
-            -p:ExternalTranslations=true \
-            -p:DebuggerSupport=false \
-            -p:EventSourceSupport=false \
-            -p:DebugType=none \
-            -p:DebugSymbols=false \
-            -p:Version="$VERSION" \
-            -p:InformationalVersion="${{ needs.validate-tag.outputs.tag }}" \
-            -p:AssemblyVersion="$VERSION.0" \
-            -p:FileVersion="$VERSION.0" \
-            -p:RepositorySlug="${{ github.repository }}" \
-            -p:LatestReleaseApiUrl="https://api.github.com/repos/${{ github.repository }}/releases/latest" \
-            -p:LatestReleasePageUrl="https://github.com/${{ github.repository }}/releases/latest" \
-            -o "$OUT"
-          mkdir -p "$ROOT"
-          cp -a "$OUT"/. "$ROOT"/
-          rm -f "$ROOT"/*.pdb
-          cp README.md "$ROOT/README.md"
-          (
-            cd "$ROOT"
-            find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -printf '%P\0' \
-              | sort -z \
-              | xargs -0 sha256sum > SHA256SUMS.txt
-          )
-          ( cd "nexus/$RID" && zip -r "../../$ASSET" "FFXIVSpanishPatcher" )
+          files: |
+            FFXIVSpanishPatcher-${{ needs.validate-tag.outputs.version }}-${{ matrix.rid }}.zip
+            FFXIVSpanishPatcher-${{ needs.validate-tag.outputs.version }}-${{ matrix.rid }}.zip.sha256
 
       # Sube el zip como nueva versión del fichero existente en Nexus Mods (Upload API v3, beta).
+      # Reutiliza exactamente el mismo ZIP ya adjuntado a GitHub, sin recompilar ni reempaquetar.
       # Requiere el secret NEXUSMODS_API_KEY (Site Preferences -> API Keys en nexusmods.com).
       - name: Prepare Nexus Mods description
         id: nexus-description
@@ -177,7 +191,7 @@ jobs:
 
       - name: Upload to Nexus Mods
         if: matrix.nexus_file_id != ''
-        uses: Nexus-Mods/upload-action@f6e1e2ea683dfe8f88cccf642c6e0e69ab66825e # v1.0.0-beta.8
+        uses: Nexus-Mods/upload-action@c96019556046053aa26044b44396cd38929daf23 # v1.0.0-beta.10
         with:
           api_key: ${{ secrets.NEXUSMODS_API_KEY }}
           file_id: ${{ matrix.nexus_file_id }}

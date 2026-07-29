@@ -85,14 +85,17 @@ public sealed class PatchPipelineTests : IDisposable
         Approved(262u, "Healing Magic Potency", "Potencia de magia curativa"),
     ];
 
-    private PatchRequest Request(IReadOnlyCollection<string>? categories = null, bool debugLogging = false) => new()
-    {
-        OutputPath = Path.Combine(_temp, "out.pmp"),
-        StagingPath = Path.Combine(_temp, "staging"),
-        Categories = categories,
-        DebugLogging = debugLogging,
-        VerifyIntegrity = true,
-    };
+    private PatchRequest Request(
+        IReadOnlyCollection<string>? categories = null,
+        bool debugLogging = false,
+        PatchCompatibilityMode compatibilityMode = PatchCompatibilityMode.Strict) => new()
+        {
+            OutputPath = Path.Combine(_temp, "out.pmp"),
+            StagingPath = Path.Combine(_temp, "staging"),
+            Categories = categories,
+            DebugLogging = debugLogging,
+            CompatibilityMode = compatibilityMode,
+        };
 
     [Fact]
     public void Run_PatchesSyntheticExd_AndProducesValidPmp()
@@ -100,7 +103,10 @@ public sealed class PatchPipelineTests : IDisposable
         var pipeline = new PatchPipeline(new ListTranslationSource(ApprovedManifest()), new FakePatchBackendFactory(BuildSource()));
         var events = new List<PipelineEvent>();
 
-        var result = pipeline.Run(Request(), new SyncProgress<PipelineEvent>(events.Add));
+        var result = pipeline.Run(
+            Request(),
+            new SyncProgress<PipelineEvent>(events.Add),
+            TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal(PatchOutcome.Ok, result.Outcome);
@@ -124,7 +130,7 @@ public sealed class PatchPipelineTests : IDisposable
         Assert.Contains("Potencia de magia curativa", patched);
         Assert.DoesNotContain("Independent Arms Mender", patched);
 
-        // A verifier OK event was emitted (the toggle path ran).
+        // Verification is mandatory and reports success before the output is promoted.
         Assert.Contains(events, e => e.Component == PipelineComponent.Verifier && e.Level == PipelineLevel.Ok);
         Assert.DoesNotContain(events, e => e.Level == PipelineLevel.Debug);
     }
@@ -143,7 +149,7 @@ public sealed class PatchPipelineTests : IDisposable
         var entries = new[] { Approved(sheet, 121u, "Column1", exdPath, source, target) };
         var pipeline = new PatchPipeline(new ListTranslationSource(entries), new FakePatchBackendFactory(baseSource));
 
-        var result = pipeline.Run(Request());
+        var result = pipeline.Run(Request(), cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal(PatchOutcome.Ok, result.Outcome);
@@ -166,13 +172,81 @@ public sealed class PatchPipelineTests : IDisposable
         var pipeline = new PatchPipeline(new ListTranslationSource(ApprovedManifest()), new FakePatchBackendFactory(BuildSource()));
         var events = new List<PipelineEvent>();
 
-        var result = pipeline.Run(Request(debugLogging: true), new SyncProgress<PipelineEvent>(events.Add));
+        var result = pipeline.Run(
+            Request(debugLogging: true),
+            new SyncProgress<PipelineEvent>(events.Add),
+            TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Contains(events, e =>
             e.Level == PipelineLevel.Debug
             && e.Message.Contains("broadcast", StringComparison.OrdinalIgnoreCase)
             && e.Message.Contains("duplicados", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Run_ManyCleanPages_ReportsEveryPatchedPage()
+    {
+        var entries = new List<TranslationEntry>();
+        var source = new FakeExdSource();
+        for (var index = 0; index < 120; index++)
+        {
+            var sheet = $"BulkSheet{index}";
+            var path = $"exd/bulksheet_{index}_0_en.exd";
+            var english = $"Source {index}";
+            entries.Add(Approved(sheet, 1u, string.Empty, path, english, $"Destino {index}"));
+            source
+                .AddPage(path, SyntheticExd.BuildExd([(1u, english)]))
+                .AddLayout(sheet, new ExdLayout(4, [0], 1));
+        }
+
+        var events = new List<PipelineEvent>();
+        var pipeline = new PatchPipeline(
+            new ListTranslationSource(entries),
+            new FakePatchBackendFactory(source));
+
+        var result = pipeline.Run(
+            Request(),
+            new SyncProgress<PipelineEvent>(events.Add),
+            TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        Assert.Equal(120, result.Statistics.PatchedPages);
+        Assert.Equal(120, events.Count(item =>
+            item.Level == PipelineLevel.Ok
+            && item.Message.StartsWith("BulkSheet", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public void Run_ManyMissingPages_ReportsEveryOmissionAndCompleteStatistics()
+    {
+        var entries = ApprovedManifest().ToList();
+        var source = BuildSource();
+        for (var index = 0; index < 100; index++)
+        {
+            var sheet = $"RemovedSheet{index}";
+            var path = $"exd/removedsheet_{index}_0_en.exd";
+            entries.Add(Approved(sheet, 1u, string.Empty, path, "Removed", "Eliminado"));
+            source.AddLayout(sheet, new ExdLayout(4, [0], 1));
+        }
+
+        var events = new List<PipelineEvent>();
+        var pipeline = new PatchPipeline(
+            new ListTranslationSource(entries),
+            new FakePatchBackendFactory(source));
+
+        var result = pipeline.Run(
+            Request(compatibilityMode: PatchCompatibilityMode.BestEffortVersionMismatch),
+            new SyncProgress<PipelineEvent>(events.Add),
+            TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        Assert.Equal(PatchOutcome.PackagedWithMisses, result.Outcome);
+        Assert.Equal(100, result.Statistics.MissingPages);
+        Assert.Equal(100, events.Count(item =>
+            item.Message.StartsWith("omitida página", StringComparison.Ordinal)));
+        Assert.Contains(events, item =>
+            item.Message.Contains("100 página(s) ausente(s)", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -184,7 +258,10 @@ public sealed class PatchPipelineTests : IDisposable
         var pipeline = new PatchPipeline(new ListTranslationSource(entries), new FakePatchBackendFactory(BuildSource()));
         var events = new List<PipelineEvent>();
 
-        var result = pipeline.Run(Request(), new SyncProgress<PipelineEvent>(events.Add));
+        var result = pipeline.Run(
+            Request(),
+            new SyncProgress<PipelineEvent>(events.Add),
+            TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal(PatchOutcome.PackagedWithMisses, result.Outcome);
@@ -200,7 +277,9 @@ public sealed class PatchPipelineTests : IDisposable
         // Addon maps to the "interfaz" domain; selecting only "items" leaves no candidates.
         var pipeline = new PatchPipeline(new ListTranslationSource(ApprovedManifest()), new FakePatchBackendFactory(BuildSource()));
 
-        var result = pipeline.Run(Request(categories: ["items"]));
+        var result = pipeline.Run(
+            Request(categories: ["items"]),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Equal(PatchOutcome.NothingToPackage, result.Outcome);
@@ -212,7 +291,9 @@ public sealed class PatchPipelineTests : IDisposable
     {
         var pipeline = new PatchPipeline(new ListTranslationSource(ApprovedManifest()), new FakePatchBackendFactory(BuildSource()));
 
-        var result = pipeline.Run(Request(categories: ["interfaz"]));
+        var result = pipeline.Run(
+            Request(categories: ["interfaz"]),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal(4, result.Applied);
@@ -227,7 +308,7 @@ public sealed class PatchPipelineTests : IDisposable
         };
         var pipeline = new PatchPipeline(new ListTranslationSource(entries), new FakePatchBackendFactory(BuildItemSource()));
 
-        var result = pipeline.Run(Request());
+        var result = pipeline.Run(Request(), cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal(PatchOutcome.Ok, result.Outcome);
@@ -256,12 +337,16 @@ public sealed class PatchPipelineTests : IDisposable
         var pipeline = new PatchPipeline(new ListTranslationSource(entries), new FakePatchBackendFactory(BuildSource()));
         var events = new List<PipelineEvent>();
 
-        var result = pipeline.Run(Request(), new SyncProgress<PipelineEvent>(events.Add));
+        var result = pipeline.Run(
+            Request(),
+            new SyncProgress<PipelineEvent>(events.Add),
+            TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
-        Assert.Equal(PatchOutcome.Ok, result.Outcome);
+        Assert.Equal(PatchOutcome.PackagedWithMisses, result.Outcome);
         Assert.Equal(4, result.Applied);
         Assert.Equal(1, result.Skipped);
+        Assert.Equal(1, result.Statistics.UnsafeSeStringEntries);
         Assert.Contains(events, e =>
             e.Level == PipelineLevel.Warning
             && e.Message.Contains("SeString gate", StringComparison.OrdinalIgnoreCase)
@@ -273,10 +358,219 @@ public sealed class PatchPipelineTests : IDisposable
     {
         var pipeline = new PatchPipeline(new ListTranslationSource(ApprovedManifest()), new ThrowingBackendFactory());
 
-        var result = pipeline.Run(Request());
+        var result = pipeline.Run(Request(), cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(PatchOutcome.GameDataError, result.Outcome);
         Assert.False(result.Success);
+    }
+
+    [Fact]
+    public void Run_WhenSheetDoesNotExist_PackagesReadableSheetsAndReportsCoverage()
+    {
+        var entries = ApprovedManifest()
+            .Append(Approved(
+                "RemovedSheet",
+                1u,
+                "Text",
+                "exd/removedsheet_0_en.exd",
+                "Old text",
+                "Texto antiguo"))
+            .ToList();
+        var pipeline = new PatchPipeline(
+            new ListTranslationSource(entries),
+            new FakePatchBackendFactory(BuildSource()));
+
+        var result = pipeline.Run(Request(), cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        Assert.Equal(PatchOutcome.PackagedWithMisses, result.Outcome);
+        Assert.Equal(1, result.Statistics.MissingSheets);
+        Assert.Equal(1, result.Statistics.MissingSheetEntries);
+        Assert.Equal(4, result.Applied);
+        Assert.True(File.Exists(result.OutputPath));
+    }
+
+    [Fact]
+    public void Run_WhenPageDoesNotExist_PackagesReadablePagesAndReportsCoverage()
+    {
+        var missingPath = "exd/removedpage_0_en.exd";
+        var entries = ApprovedManifest()
+            .Append(Approved("RemovedPage", 8u, "Text", missingPath, "Old text", "Texto antiguo"))
+            .ToList();
+        var source = BuildSource()
+            .AddLayout("RemovedPage", new ExdLayout(4, [0], 1));
+        var pipeline = new PatchPipeline(
+            new ListTranslationSource(entries),
+            new FakePatchBackendFactory(source));
+
+        var result = pipeline.Run(Request(), cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        Assert.Equal(PatchOutcome.PackagedWithMisses, result.Outcome);
+        Assert.Equal(1, result.Statistics.MissingPages);
+        Assert.Equal(1, result.Statistics.MissingPageEntries);
+        Assert.Equal(1, result.Statistics.SkippedPages);
+        Assert.Equal(4, result.Applied);
+    }
+
+    [Fact]
+    public void Run_WhenPageVariantIsUnsupported_CountsEveryAffectedEntry()
+    {
+        const string unsupportedPath = "exd/subrow_0_en.exd";
+        var entries = ApprovedManifest()
+            .Append(Approved("Subrow", 8u, "Text", unsupportedPath, "Old text", "Texto antiguo"))
+            .Append(Approved("Subrow", 9u, "Text", unsupportedPath, "Other text", "Otro texto"))
+            .ToList();
+        var source = BuildSource()
+            .AddPage(unsupportedPath, SyntheticExd.BuildExd([(8u, "Old text"), (9u, "Other text")]))
+            .AddLayout("Subrow", new ExdLayout(4, [0], 2));
+        var pipeline = new PatchPipeline(
+            new ListTranslationSource(entries),
+            new FakePatchBackendFactory(source));
+
+        var result = pipeline.Run(Request(), cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        Assert.Equal(PatchOutcome.PackagedWithMisses, result.Outcome);
+        Assert.Equal(1, result.Statistics.UnsupportedPages);
+        Assert.Equal(2, result.Statistics.UnsupportedPageEntries);
+        Assert.Equal(2, result.Statistics.SkippedEntries);
+    }
+
+    [Fact]
+    public void Run_LowMatchRate_IsFatalInStrictMode()
+    {
+        var entries = DriftedManifest();
+        var pipeline = new PatchPipeline(
+            new ListTranslationSource(entries),
+            new FakePatchBackendFactory(BuildSingleRowSource()));
+
+        var result = pipeline.Run(Request(), cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Equal(PatchOutcome.Contaminated, result.Outcome);
+        Assert.Equal(1, result.Applied);
+        Assert.Equal(60, result.Missed);
+        Assert.False(File.Exists(Path.Combine(_temp, "out.pmp")));
+    }
+
+    [Fact]
+    public void Run_LowMatchRate_ContinuesAfterExplicitVersionMismatchConfirmation()
+    {
+        var entries = DriftedManifest();
+        var pipeline = new PatchPipeline(
+            new ListTranslationSource(entries),
+            new FakePatchBackendFactory(BuildSingleRowSource()));
+
+        var result = pipeline.Run(
+            Request(compatibilityMode: PatchCompatibilityMode.BestEffortVersionMismatch),
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        Assert.Equal(PatchOutcome.PackagedWithMisses, result.Outcome);
+        Assert.Equal(1, result.Applied);
+        Assert.Equal(60, result.Missed);
+        Assert.True(File.Exists(result.OutputPath));
+    }
+
+    [Fact]
+    public void Run_WhenNothingCanBeApplied_DoesNotPublishEmptyPackage()
+    {
+        var entries = new[] { Approved(1u, "Not present", "No presente") };
+        var pipeline = new PatchPipeline(
+            new ListTranslationSource(entries),
+            new FakePatchBackendFactory(BuildSource()));
+
+        var result = pipeline.Run(Request(), cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Equal(PatchOutcome.NothingToPackage, result.Outcome);
+        Assert.Equal(0, result.Applied);
+        Assert.Equal(1, result.Missed);
+        Assert.False(File.Exists(Path.Combine(_temp, "out.pmp")));
+    }
+
+    [Fact]
+    public void Run_WhenIntegrityFails_PreservesPreviousPackageAndCleansTemporaryFiles()
+    {
+        var output = Path.Combine(_temp, "out.pmp");
+        var previous = Encoding.UTF8.GetBytes("previous verified package");
+        File.WriteAllBytes(output, previous);
+        var verifier = new FailingVerifier();
+        var pipeline = new PatchPipeline(
+            new ListTranslationSource(ApprovedManifest()),
+            new FakePatchBackendFactory(BuildSource()),
+            verifier);
+
+        var result = pipeline.Run(Request(), cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(PatchOutcome.ValidationFailed, result.Outcome);
+        Assert.False(result.Success);
+        Assert.True(verifier.WasCalled);
+        Assert.Equal(previous, File.ReadAllBytes(output));
+        Assert.Empty(Directory.EnumerateFiles(_temp, ".*.tmp", SearchOption.TopDirectoryOnly));
+        var staging = Path.Combine(_temp, "staging");
+        Assert.False(Directory.Exists(staging) && Directory.EnumerateFileSystemEntries(staging).Any());
+    }
+
+    [Fact]
+    public void Run_WhenIntegrityPasses_AtomicallyReplacesPreviousPackage()
+    {
+        var output = Path.Combine(_temp, "out.pmp");
+        var previous = Encoding.UTF8.GetBytes("previous verified package");
+        File.WriteAllBytes(output, previous);
+        var pipeline = new PatchPipeline(
+            new ListTranslationSource(ApprovedManifest()),
+            new FakePatchBackendFactory(BuildSource()));
+
+        var result = pipeline.Run(Request(), cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        Assert.NotEqual(previous, File.ReadAllBytes(output));
+        using var archive = ZipFile.OpenRead(output);
+        Assert.NotNull(archive.GetEntry("meta.json"));
+        Assert.Empty(Directory.EnumerateFiles(_temp, ".*.tmp", SearchOption.TopDirectoryOnly));
+    }
+
+    [Fact]
+    public void Run_WhenVerifierThrows_ReportsValidationFailureAndPreservesPreviousPackage()
+    {
+        var output = Path.Combine(_temp, "out.pmp");
+        var previous = Encoding.UTF8.GetBytes("previous verified package");
+        File.WriteAllBytes(output, previous);
+        var events = new List<PipelineEvent>();
+        var pipeline = new PatchPipeline(
+            new ListTranslationSource(ApprovedManifest()),
+            new FakePatchBackendFactory(BuildSource()),
+            new ThrowingVerifier());
+
+        var result = pipeline.Run(
+            Request(),
+            new SyncProgress<PipelineEvent>(events.Add),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(PatchOutcome.ValidationFailed, result.Outcome);
+        Assert.Equal(previous, File.ReadAllBytes(output));
+        Assert.Contains(events, item =>
+            item.Component == PipelineComponent.Verifier
+            && item.Level == PipelineLevel.Error
+            && item.Message.Contains("verificar", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static FakeExdSource BuildSingleRowSource()
+        => new FakeExdSource()
+            .AddPage(ExdPath, SyntheticExd.BuildExd([(1u, "Present")]))
+            .AddLayout("Addon", new ExdLayout(4, [0], 1));
+
+    private static IReadOnlyList<TranslationEntry> DriftedManifest()
+    {
+        var entries = new List<TranslationEntry> { Approved(1u, "Present", "Presente") };
+        for (var index = 0; index < 60; index++)
+        {
+            entries.Add(Approved(1u, $"Missing source {index}", $"Fuente ausente {index}"));
+        }
+
+        return entries;
     }
 
     private static string ReadEntryText(ZipArchive archive, string entryName)
@@ -294,6 +588,27 @@ public sealed class PatchPipelineTests : IDisposable
     {
         public IPatchBackend Open(PatchRequest request)
             => throw new DirectoryNotFoundException("no sqpack");
+    }
+
+    private sealed class FailingVerifier : IIntegrityVerifier
+    {
+        public bool WasCalled { get; private set; }
+
+        public IReadOnlyList<string> Verify(
+            string pmpPath,
+            IReadOnlyDictionary<string, string> declaredFiles)
+        {
+            WasCalled = true;
+            return ["integrity failure injected by test"];
+        }
+    }
+
+    private sealed class ThrowingVerifier : IIntegrityVerifier
+    {
+        public IReadOnlyList<string> Verify(
+            string pmpPath,
+            IReadOnlyDictionary<string, string> declaredFiles)
+            => throw new InvalidOperationException("verifier exception injected by test");
     }
 }
 

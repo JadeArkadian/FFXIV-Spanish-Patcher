@@ -4,7 +4,7 @@ using XivSpanish.GameData;
 namespace FFXIVSpanishPatcher.Pipeline;
 
 /// <summary>
-/// Post-build structural check of a generated <c>.pmp</c> ("Verificar integridad al finalizar").
+/// Mandatory post-build structural check of a generated <c>.pmp</c>.
 /// Returns the list of problems found; an empty list means the package is structurally sound.
 /// </summary>
 public interface IIntegrityVerifier
