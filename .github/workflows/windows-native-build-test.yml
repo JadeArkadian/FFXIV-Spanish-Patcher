@@ -33,6 +33,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           lfs: true
+          ref: ${{ env.TEST_TAG }}
 
       - name: Setup .NET
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
@@ -66,7 +67,6 @@ jobs:
           mkdir unsigned
           cp publish/win-x64/FFXIVSpanishPatcher.exe unsigned/
           cp publish/win-x64/translations.dat unsigned/
-          cp README.md unsigned/
           sha256sum unsigned/FFXIVSpanishPatcher.exe
 
       - name: Upload unsigned build
@@ -84,6 +84,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.TEST_TAG }}
 
       - name: Download Ubuntu cross-build
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
@@ -157,6 +159,7 @@ jobs:
           mkdir packages
 
           for BUILD in github-ubuntu-cross github-windows-native; do
+            cp README.md "staging/$BUILD/README.md"
             ASSET="FFXIVSpanishPatcher-${TEST_VERSION}-win-x64-${BUILD}-test.zip"
             (cd "staging/$BUILD" && zip -r "../../packages/$ASSET" .)
             sha256sum "packages/$ASSET" > "packages/$ASSET.sha256"
