@@ -24,23 +24,22 @@ traducibles exactas.
 
 | Métrica | Valor | Avance |
 | --- | ---: | --- |
-| Avance total por líneas | 506.651/809.030 (62,6%) | ![62,6%](https://geps.dev/progress/62.6?barColor=f1c232) |
-| Hojas OK | 2.874/6.986 (41,1%) | ![41,1%](https://geps.dev/progress/41.1?barColor=f0883e) |
+| Avance total por líneas | 509.686/809.030 (63,0%) | ![63,0%](https://geps.dev/progress/63?barColor=f1c232) |
+| Hojas OK | 2.936/6.986 (42,0%) | ![42,0%](https://geps.dev/progress/42?barColor=f0883e) |
 
-| Área | Líneas traducidas | Avance |
-| --- | ---: | --- |
-| UI / menús / sistema visible | 25.916/25.916 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
-| Objetos / economía / tiendas | 178.169/178.169 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
-| Combate / acciones / duties | 36.384/36.384 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
-| Mundo / NPCs / localizaciones | 89.535/89.535 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
-| Crafting / recolección / progreso | 7.376/7.376 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
-| Lore / diarios / colecciones | 20.921/20.921 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
-| Minijuegos / eventos / perfil | 7.420/7.420 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
-| Guion - quests | 83.220/263.547 (31,6%) | ![31,6%](https://geps.dev/progress/31.6?barColor=f0883e) |
-| Guion - cinemáticas | 1.518/26.426 (5,7%) | ![5,7%](https://geps.dev/progress/5.7?barColor=da3633) |
-| Guion - custom talk/NPC | 13.609/28.420 (47,9%) | ![47,9%](https://geps.dev/progress/47.9?barColor=f0883e) |
-| Guion - eventos explícitos | 1.469/1.469 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
-| Otros / revisión | 41.114/123.447 (33,3%) | ![33,3%](https://geps.dev/progress/33.3?barColor=f0883e) |
+El desglose por expansión agrupa misiones, cinemáticas y conversaciones con NPC. La interfaz, los
+objetos, el combate, los sistemas y el contenido narrativo que abarca varias expansiones se reúnen
+en **Elementos comunes**, sin contarlos de nuevo en cada expansión.
+
+| Icono | Contenido | Líneas traducidas | Avance |
+| :---: | --- | ---: | --- |
+| <img src="docs/assets/arr-icon.png" alt="A Realm Reborn" width="40"> | **A Realm Reborn** | 38.906/38.906 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
+| <img src="docs/assets/hw-icon.png" alt="Heavensward" width="40"> | **Heavensward** | 2.890/25.314 (11,4%) | ![11,4%](https://geps.dev/progress/11.4?barColor=da3633) |
+| <img src="docs/assets/stb-icon.png" alt="Stormblood" width="40"> | **Stormblood** | 1/31.692 (0,0%) | ![0,0%](https://geps.dev/progress/0?barColor=da3633) |
+| <img src="docs/assets/shb-icon.png" alt="Shadowbringers" width="40"> | **Shadowbringers** | 28/44.274 (0,1%) | ![0,1%](https://geps.dev/progress/0.1?barColor=da3633) |
+| <img src="docs/assets/ew-icon.png" alt="Endwalker" width="40"> | **Endwalker** | 20/47.170 (0,0%) | ![0,0%](https://geps.dev/progress/0?barColor=da3633) |
+| <img src="docs/assets/dt-icon.png" alt="Dawntrail" width="40"> | **Dawntrail** | 1.174/41.536 (2,8%) | ![2,8%](https://geps.dev/progress/2.8?barColor=da3633) |
+| <img src="docs/assets/ec-icon.png" alt="Elementos comunes" width="40"> | **Elementos comunes** | 466.667/580.138 (80,4%) | ![80,4%](https://geps.dev/progress/80.4?barColor=f1c232) |
 
 ## Descargar
 
