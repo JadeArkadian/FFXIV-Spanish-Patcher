@@ -2,9 +2,9 @@ name: Release
 
 # Tag a commit (e.g. v1.2.3) to build self-contained publishes for Windows, Linux and macOS and
 # attach them to a GitHub Release. Windows keeps only the translation corpus external so it does
-# not place that high-entropy Brotli blob inside the executable. win/linux cross-publish from a
-# Linux runner; the macOS RID (Apple Silicon only) builds on a macOS runner so the .app bundle can
-# be ad-hoc codesigned.
+# not place that high-entropy Brotli blob inside the executable. Windows publishes natively on a
+# Windows runner, Linux on Ubuntu, and the macOS RID (Apple Silicon only) on macOS so the .app
+# bundle can be ad-hoc codesigned.
 on:
   push:
     tags: [ 'v*.*.*' ]
@@ -33,15 +33,15 @@ jobs:
 
   publish:
     needs: validate-tag
-    # win/linux cross-publish from Linux; osx-arm64 builds on a macOS runner so the bundle can be
-    # ad-hoc codesigned (mandatory for arm64 to run at all, and removes the "damaged" Gatekeeper error).
+    # Each RID publishes on its native operating system. The macOS bundle remains ad-hoc signed
+    # (mandatory for arm64 to run at all, and removes the "damaged" Gatekeeper error).
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
           # nexus_file_id: "API Info" del fichero en la pestaña Files de nexusmods.com (mod 2513).
-          - { rid: win-x64,   os: ubuntu-latest, nexus_file_id: 7608014, external_translations: "true" }
+          - { rid: win-x64,   os: windows-latest, nexus_file_id: 7608014, external_translations: "true" }
           - { rid: linux-x64, os: ubuntu-latest, nexus_file_id: 7651772, external_translations: "false" }
           # macos-latest pinned to macos-15: the "latest" label migrates to macOS 26 (beta) from
           # 2026-06-15, before it is a stable target for the ad-hoc codesign/publish steps below.
@@ -57,6 +57,7 @@ jobs:
           global-json-file: global.json
 
       - name: Publish ${{ matrix.rid }}
+        shell: bash
         run: >
           dotnet restore src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj
           --locked-mode
@@ -80,44 +81,122 @@ jobs:
       # signature, so SHA-256 checksums below remain the release-verification mechanism.
       - name: Self-sign Windows executable
         if: matrix.rid == 'win-x64'
+        shell: pwsh
         env:
           WINDOWS_SELF_SIGNING_PFX_BASE64: ${{ secrets.WINDOWS_SELF_SIGNING_PFX_BASE64 }}
           WINDOWS_SELF_SIGNING_PFX_PASSWORD: ${{ secrets.WINDOWS_SELF_SIGNING_PFX_PASSWORD }}
         run: |
-          set -euo pipefail
-          if [[ -z "$WINDOWS_SELF_SIGNING_PFX_BASE64" || -z "$WINDOWS_SELF_SIGNING_PFX_PASSWORD" ]]; then
-            echo "::warning::Windows self-signing skipped: configure WINDOWS_SELF_SIGNING_PFX_BASE64 and WINDOWS_SELF_SIGNING_PFX_PASSWORD."
+          $ErrorActionPreference = "Stop"
+
+          if (
+            [string]::IsNullOrWhiteSpace($env:WINDOWS_SELF_SIGNING_PFX_BASE64) -or
+            [string]::IsNullOrWhiteSpace($env:WINDOWS_SELF_SIGNING_PFX_PASSWORD)
+          ) {
+            Write-Warning "Windows self-signing skipped: configure WINDOWS_SELF_SIGNING_PFX_BASE64 and WINDOWS_SELF_SIGNING_PFX_PASSWORD."
             exit 0
-          fi
+          }
 
-          CERT_DIR="$(mktemp -d)"
-          trap 'rm -rf "$CERT_DIR"' EXIT
-          PFX="$CERT_DIR/FFXIVSpanishPatcher-self-signed.pfx"
-          CERT="$CERT_DIR/FFXIVSpanishPatcher-self-signed.pem"
-          EXE="publish/win-x64/FFXIVSpanishPatcher.exe"
+          $certificateDirectory = Join-Path $env:RUNNER_TEMP "ffxivspanish-signing-$([guid]::NewGuid())"
+          New-Item -ItemType Directory -Path $certificateDirectory | Out-Null
 
-          printf '%s' "$WINDOWS_SELF_SIGNING_PFX_BASE64" | base64 --decode > "$PFX"
-          openssl pkcs12 -in "$PFX" -clcerts -nokeys -passin "pass:$WINDOWS_SELF_SIGNING_PFX_PASSWORD" -out "$CERT"
-          EXPECTED_FINGERPRINT="$(openssl x509 -in docs/security/FFXIVSpanishPatcher-self-signed.pem -noout -fingerprint -sha256)"
-          ACTUAL_FINGERPRINT="$(openssl x509 -in "$CERT" -noout -fingerprint -sha256)"
-          if [[ "$ACTUAL_FINGERPRINT" != "$EXPECTED_FINGERPRINT" ]]; then
-            echo "::error::Windows self-signing certificate does not match docs/security/FFXIVSpanishPatcher-self-signed.pem."
-            exit 1
-          fi
-          sudo apt-get update
-          sudo apt-get install --yes osslsigncode
-          osslsigncode sign \
-            -pkcs12 "$PFX" \
-            -pass "$WINDOWS_SELF_SIGNING_PFX_PASSWORD" \
-            -h sha256 \
-            -n "FFXIVSpanish Patcher" \
-            -i "https://ffxivspanish.carrd.co/" \
-            -in "$EXE" \
-            -out "$EXE.signed"
-          mv "$EXE.signed" "$EXE"
-          osslsigncode verify -in "$EXE" -CAfile "$CERT"
+          try {
+            $pfx = Join-Path $certificateDirectory "FFXIVSpanishPatcher-self-signed.pfx"
+            $exe = "publish/win-x64/FFXIVSpanishPatcher.exe"
+            [IO.File]::WriteAllBytes(
+              $pfx,
+              [Convert]::FromBase64String($env:WINDOWS_SELF_SIGNING_PFX_BASE64)
+            )
 
-      - name: Package
+            $flags = [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::EphemeralKeySet
+            $pfxCertificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new(
+              $pfx,
+              $env:WINDOWS_SELF_SIGNING_PFX_PASSWORD,
+              $flags
+            )
+            $documentedCertificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]::CreateFromPemFile(
+              (Resolve-Path "docs/security/FFXIVSpanishPatcher-self-signed.pem").Path
+            )
+
+            $expectedFingerprint = $documentedCertificate.GetCertHashString(
+              [System.Security.Cryptography.HashAlgorithmName]::SHA256
+            )
+            $actualFingerprint = $pfxCertificate.GetCertHashString(
+              [System.Security.Cryptography.HashAlgorithmName]::SHA256
+            )
+            if ($actualFingerprint -ne $expectedFingerprint) {
+              throw "Windows signing certificate does not match documented public certificate."
+            }
+
+            $signTool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" `
+              -Filter signtool.exe -Recurse |
+              Where-Object FullName -Match '\\x64\\signtool\.exe$' |
+              Sort-Object FullName -Descending |
+              Select-Object -First 1
+            if ($null -eq $signTool) {
+              throw "signtool.exe was not found on windows-latest."
+            }
+
+            & $signTool.FullName sign `
+              /f $pfx `
+              /p $env:WINDOWS_SELF_SIGNING_PFX_PASSWORD `
+              /fd SHA256 `
+              /d "FFXIVSpanish Patcher" `
+              /du "https://ffxivspanish.carrd.co/" `
+              $exe
+            if ($LASTEXITCODE -ne 0) {
+              throw "signtool.exe failed to sign the Windows executable."
+            }
+
+            # Trust only on this ephemeral runner while verifying the self-signed chain.
+            $rootStore = [System.Security.Cryptography.X509Certificates.X509Store]::new(
+              [System.Security.Cryptography.X509Certificates.StoreName]::Root,
+              [System.Security.Cryptography.X509Certificates.StoreLocation]::CurrentUser
+            )
+            $rootStore.Open(
+              [System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite
+            )
+            try {
+              $rootStore.Add($documentedCertificate)
+              & $signTool.FullName verify /pa /v $exe
+              if ($LASTEXITCODE -ne 0) {
+                throw "signtool.exe could not verify the signed Windows executable."
+              }
+            }
+            finally {
+              $rootStore.Remove($documentedCertificate)
+              $rootStore.Close()
+            }
+          }
+          finally {
+            if ($null -ne $pfxCertificate) {
+              $pfxCertificate.Dispose()
+            }
+            if ($null -ne $documentedCertificate) {
+              $documentedCertificate.Dispose()
+            }
+            if (Test-Path $certificateDirectory) {
+              Remove-Item -Recurse -Force $certificateDirectory
+            }
+          }
+
+      - name: Package Windows
+        if: matrix.rid == 'win-x64'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $version = "${{ needs.validate-tag.outputs.version }}"
+          $out = "publish/win-x64"
+          $asset = "FFXIVSpanishPatcher-$version-win-x64.zip"
+
+          Get-ChildItem $out -Filter "*.pdb" -File | Remove-Item -Force
+          Copy-Item README.md "$out/README.md"
+          Compress-Archive -Path "$out/*" -DestinationPath $asset -CompressionLevel Optimal
+
+          $hash = (Get-FileHash $asset -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $asset" | Set-Content "$asset.sha256" -Encoding ascii
+
+      - name: Package Linux or macOS
+        if: matrix.rid != 'win-x64'
         run: |
           set -euo pipefail
           VERSION="${{ needs.validate-tag.outputs.version }}"

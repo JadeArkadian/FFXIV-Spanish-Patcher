@@ -201,7 +201,7 @@ No commitear fixtures de FFXIV reales. Si un test necesita EXD, construirlo en c
 
 Los tags validos son `vX.Y.Z` con cada numero `0..999`. El workflow:
 
-- publica `win-x64` y `linux-x64` desde Ubuntu;
+- publica `win-x64` nativamente desde Windows y `linux-x64` desde Ubuntu;
 - publica `osx-arm64` desde macOS;
 - monta `.app` en macOS, incluye `icon.icns` y firma ad-hoc;
 - adjunta zips a GitHub Release;
