@@ -18,7 +18,7 @@ todo el procesamiento vive en el pipeline y en las bibliotecas propias bajo `ven
 | --- | --- |
 | GUI | .NET 10, Avalonia UI y MVVM |
 | Paridad | Una sola vista XAML y el mismo diseño en Windows, Linux y macOS |
-| Distribución | Self-contained; single-file salvo paquete portable especial para Nexus |
+| Distribución | Self-contained y single-file por RID; Nexus reutiliza el mismo ZIP de GitHub |
 | Traducciones | Blob Brotli-JSONL embebido; en Windows puede ir adyacente por mitigación AV |
 | Datos FFXIV | Extracción lean desde la instalación del usuario |
 | Integridad | Obligatoria; no existe opción para desactivarla |

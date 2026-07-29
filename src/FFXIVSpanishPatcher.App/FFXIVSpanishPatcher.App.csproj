@@ -27,8 +27,8 @@
     <RepositorySlug Condition="'$(RepositorySlug)' == ''">JadeArkadian/FFXIV-Spanish-Patcher</RepositorySlug>
     <LatestReleaseApiUrl Condition="'$(LatestReleaseApiUrl)' == ''">https://api.github.com/repos/$(RepositorySlug)/releases/latest</LatestReleaseApiUrl>
     <LatestReleasePageUrl Condition="'$(LatestReleasePageUrl)' == ''">https://github.com/$(RepositorySlug)/releases/latest</LatestReleasePageUrl>
-    <!-- Nexus can ship the Brotli blob beside the app so static PE scanners do not treat the
-         high-entropy translation corpus as an executable payload. Other builds keep it embedded. -->
+    <!-- Windows releases can ship the Brotli blob beside the app so static PE scanners do not
+         treat the high-entropy translation corpus as an executable payload. -->
     <ExternalTranslations Condition="'$(ExternalTranslations)' == ''">false</ExternalTranslations>
   </PropertyGroup>
 
