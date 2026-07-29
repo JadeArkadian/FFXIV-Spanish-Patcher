@@ -259,6 +259,11 @@ public sealed class PatchPipeline
                     {
                         missedAbsentSource++;
                     }
+
+                    // Per-miss reason: the summary line only carries row ids, which is not enough to
+                    // tell a drifted source from a rejected payload. Debug-gated, so the default log
+                    // stays quiet.
+                    Debug($"miss {page.Sheet}/{miss.RowId}: {miss.Reason} | source: {Preview(miss.Source)}");
                 }
 
                 writer.AddPatchedExd(exdPath, result.Bytes);
@@ -374,6 +379,13 @@ public sealed class PatchPipeline
         }
 
         return columns;
+    }
+
+    /// <summary>Single-line, length-capped source preview for diagnostic logs.</summary>
+    private static string Preview(string source)
+    {
+        var flat = source.Replace("\r", " ").Replace("\n", " ");
+        return flat.Length <= 160 ? flat : flat[..160] + "…";
     }
 
     private static string PageResultMessage(string sheet, IReadOnlyList<MissedReplacement> missed)
