@@ -1,5 +1,5 @@
 <!-- Build-time tool that regenerates data/translations.dat. Cross-platform (dotnet run), no Python
-     or pip deps: it reuses the trimmed TranslationEntry model and .NET's built-in BrotliStream.
+     or pip deps: it reuses the trimmed TranslationEntry model and ZstdSharp.Port.
      In the solution so `dotnet build` compiles it, but CI/release do NOT run it (the .dat is
      versioned); run it by hand when translations change. -->
 <Project Sdk="Microsoft.NET.Sdk">
@@ -13,6 +13,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="ZstdSharp.Port" Version="0.8.8" />
     <ProjectReference Include="..\..\vendor\XivSpanish.Core\XivSpanish.Core.csproj" />
   </ItemGroup>
 </Project>

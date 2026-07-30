@@ -261,12 +261,18 @@
         "resolved": "3.119.4",
         "contentHash": "XOpbx/4CReO2wYsq2s6rbvdauc6dntG4Zv499sHGTJ87bwZaFXszFkwql3+FIZMc8kUPeaj3Mx2ezIJmo8a1Kg=="
       },
+      "ZstdSharp.Port": {
+        "type": "Transitive",
+        "resolved": "0.8.8",
+        "contentHash": "UIDFkA5DC3en3tOJ3Mof11yBx9kUQLsaeo/oFdvN6Bbkr9E9+VCqfIadHci8cu+I51K2Sl7XYWVl2R/mA75NBQ=="
+      },
       "ffxivspanishpatcher.pipeline": {
         "type": "Project",
         "dependencies": {
           "XivSpanish.Core": "[0.0.0, )",
           "XivSpanish.GameData": "[0.0.0, )",
-          "XivSpanish.Packaging": "[0.0.0, )"
+          "XivSpanish.Packaging": "[0.0.0, )",
+          "ZstdSharp.Port": "[0.8.8, )"
         }
       },
       "xivspanish.core": {

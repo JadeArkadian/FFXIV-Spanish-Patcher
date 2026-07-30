@@ -14,10 +14,10 @@
     <RepositoryUrl>https://github.com/JadeArkadian/FFXIV-Spanish-Patcher</RepositoryUrl>
     <!-- Windows .exe file icon. -->
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
-    <!-- Single-file publish tuning: embed symbols (no loose .pdb), compress the bundle, and drop
-         non-English satellite assemblies, for a smaller single executable. -->
+    <!-- Single-file publish tuning: embed symbols (no loose .pdb), leave the bundle uncompressed
+         to reduce AV false positives, and drop non-English satellite assemblies. -->
     <DebugType>embedded</DebugType>
-    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
     <PublishTrimmed>true</PublishTrimmed>
     <TrimMode>full</TrimMode>
     <!-- Lumina is rooted below because the pipeline intentionally reflects over generated sheet
@@ -27,8 +27,7 @@
     <RepositorySlug Condition="'$(RepositorySlug)' == ''">JadeArkadian/FFXIV-Spanish-Patcher</RepositorySlug>
     <LatestReleaseApiUrl Condition="'$(LatestReleaseApiUrl)' == ''">https://api.github.com/repos/$(RepositorySlug)/releases/latest</LatestReleaseApiUrl>
     <LatestReleasePageUrl Condition="'$(LatestReleasePageUrl)' == ''">https://github.com/$(RepositorySlug)/releases/latest</LatestReleasePageUrl>
-    <!-- Windows releases can ship the Brotli blob beside the app so static PE scanners do not
-         treat the high-entropy translation corpus as an executable payload. -->
+    <!-- Diagnostic/local publishes can still opt into an external Zstandard corpus. Releases embed it. -->
     <ExternalTranslations Condition="'$(ExternalTranslations)' == ''">false</ExternalTranslations>
   </PropertyGroup>
 

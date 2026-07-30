@@ -1,7 +1,7 @@
-using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
 using XivSpanish.Translation;
+using ZstdSharp;
 
 namespace XivSpanish.BlobBuilder;
 
@@ -12,10 +12,10 @@ namespace XivSpanish.BlobBuilder;
 /// FFXIV-Spanish repo into <c>data/translations/jsonl</c> (git-ignored); <c>--build</c> also runs
 /// build.</item>
 /// <item><c>build  [--source DIR] [--output FILE]</c> — filter to packageable rows, project them to
-/// the fields the runtime reads, and Brotli-compress into <c>data/translations.dat</c>.</item>
+/// the fields the runtime reads, and Zstandard-compress into <c>data/translations.dat</c>.</item>
 /// </list>
-/// Cross-platform and dependency-free: it reuses the trimmed <see cref="TranslationEntry"/> model
-/// (so re-serializing IS the field projection) and the built-in <see cref="BrotliStream"/>.
+/// Cross-platform: it reuses the trimmed <see cref="TranslationEntry"/> model
+/// (so re-serializing IS the field projection) and ZstdSharp.Port.
 /// </summary>
 internal static class Program
 {
@@ -55,7 +55,7 @@ internal static class Program
         Console.Error.WriteLine(
             "usage: blob-builder <command>\n" +
             "  sync   [--upstream DIR] [--build]   copy raw corpus from upstream FFXIV-Spanish\n" +
-            "  build  [--source DIR] [--output FILE] [--game-version FILE]  regenerate data/translations.dat (Brotli)");
+            "  build  [--source DIR] [--output FILE] [--game-version FILE]  regenerate data/translations.dat (Zstandard)");
         return 2;
     }
 
@@ -171,14 +171,11 @@ internal static class Program
             }
         }
 
-        // One newline-delimited JSONL stream (UTF-8, no BOM), Brotli-compressed (max ratio) in one shot.
+        // One newline-delimited JSONL stream (UTF-8, no BOM), Zstandard-compressed at level 19.
         var payload = Encoding.UTF8.GetBytes(string.Join('\n', lines) + "\n");
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(output))!);
-        using (var fs = File.Create(output))
-        using (var brotli = new BrotliStream(fs, CompressionLevel.SmallestSize))
-        {
-            brotli.Write(payload);
-        }
+        using var compressor = new Compressor(level: 19);
+        File.WriteAllBytes(output, compressor.Wrap(payload).ToArray());
 
         var recommendedVersion = ReadOptionalGameVersion(gameVersionFile);
         if (recommendedVersion is not null)

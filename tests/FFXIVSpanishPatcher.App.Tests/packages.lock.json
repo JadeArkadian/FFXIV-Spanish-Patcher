@@ -423,6 +423,11 @@
           "xunit.v3.runner.common": "[3.2.2]"
         }
       },
+      "ZstdSharp.Port": {
+        "type": "Transitive",
+        "resolved": "0.8.8",
+        "contentHash": "UIDFkA5DC3en3tOJ3Mof11yBx9kUQLsaeo/oFdvN6Bbkr9E9+VCqfIadHci8cu+I51K2Sl7XYWVl2R/mA75NBQ=="
+      },
       "FFXIVSpanishPatcher": {
         "type": "Project",
         "dependencies": {
@@ -442,7 +447,8 @@
         "dependencies": {
           "XivSpanish.Core": "[0.0.0, )",
           "XivSpanish.GameData": "[0.0.0, )",
-          "XivSpanish.Packaging": "[0.0.0, )"
+          "XivSpanish.Packaging": "[0.0.0, )",
+          "ZstdSharp.Port": "[0.8.8, )"
         }
       },
       "xivspanish.core": {

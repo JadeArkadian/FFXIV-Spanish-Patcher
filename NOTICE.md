@@ -41,6 +41,7 @@ Markdig is distributed under the BSD 2-Clause License. AvaloniaEdit provides the
 selectable log surface and is distributed under the MIT License. Avalonia, CommunityToolkit.Mvvm,
 Lumina, Lumina.Excel, Tmds.DBus.Protocol, xUnit and other development/runtime dependencies remain
 subject to their respective licenses and copyright notices as distributed by their authors.
+ZstdSharp.Port provides the managed Zstandard codec and is distributed under the MIT License.
 
 The interface embeds Noto Serif for consistent editorial headings across Windows, Linux and macOS.
 Noto Serif is copyright The Noto Project Authors and is distributed under the SIL Open Font License

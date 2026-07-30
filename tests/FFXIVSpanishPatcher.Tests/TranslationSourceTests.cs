@@ -1,9 +1,9 @@
-using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
 using FFXIVSpanishPatcher.Pipeline;
 using XivSpanish.Translation;
 using Xunit;
+using ZstdSharp;
 
 namespace FFXIVSpanishPatcher.Tests;
 
@@ -55,21 +55,15 @@ public sealed class TranslationSourceTests : IDisposable
     }
 
     [Fact]
-    public void EmbeddedTranslationSource_LoadsBrotliJsonl()
+    public void EmbeddedTranslationSource_LoadsZstandardJsonl()
     {
-        // Mirrors the XivSpanish.BlobBuilder blob format: Brotli of newline-delimited TranslationEntry JSON.
+        // Mirrors the XivSpanish.BlobBuilder blob format: Zstandard of newline-delimited TranslationEntry JSON.
         var jsonl = string.Join('\n',
             JsonSerializer.Serialize(new TranslationEntry { Source = "A", Target = "a", Status = TranslationEntryStatus.Approved }),
             JsonSerializer.Serialize(new TranslationEntry { Source = "B", Target = "b", Status = TranslationEntryStatus.Approved }));
 
-        using var buffer = new MemoryStream();
-        using (var brotli = new BrotliStream(buffer, CompressionLevel.Optimal, leaveOpen: true))
-        using (var writer = new StreamWriter(brotli, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)))
-        {
-            writer.Write(jsonl);
-        }
-
-        var blob = buffer.ToArray();
+        using var compressor = new Compressor();
+        var blob = compressor.Wrap(Encoding.UTF8.GetBytes(jsonl)).ToArray();
         var loaded = new EmbeddedTranslationSource(() => new MemoryStream(blob)).Load();
 
         Assert.Equal(2, loaded.Count);
@@ -78,19 +72,18 @@ public sealed class TranslationSourceTests : IDisposable
     }
 
     [Fact]
-    public void EmbeddedTranslationSource_FromFileLoadsBrotliJsonl()
+    public void EmbeddedTranslationSource_FromFileLoadsZstandardJsonl()
     {
         var path = Path.Combine(_temp, "translations.dat");
-        using (var output = File.Create(path))
-        using (var brotli = new BrotliStream(output, CompressionLevel.Optimal))
-        using (var writer = new StreamWriter(brotli, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)))
+        using (var compressor = new Compressor())
         {
-            writer.Write(JsonSerializer.Serialize(new TranslationEntry
+            var json = JsonSerializer.Serialize(new TranslationEntry
             {
                 Source = "External",
                 Target = "Lateral",
                 Status = TranslationEntryStatus.Approved,
-            }));
+            });
+            File.WriteAllBytes(path, compressor.Wrap(Encoding.UTF8.GetBytes(json)).ToArray());
         }
 
         var loaded = EmbeddedTranslationSource.FromFile(path).Load();

@@ -2,6 +2,13 @@
 
 Resumen de todos los cambios relevantes del proyecto.
 
+## Próxima versión
+
+- Sustituida la compresión Brotli del corpus por Zstandard y restaurada su distribución embebida dentro
+  del ejecutable single-file en Windows.
+- Desactivada la compresión interna del bundle single-file como mitigación adicional de falsos
+  positivos antivirus.
+
 ## v0.3.0
 
 - ¡Nuevo hito alcanzado! ¡TODO el contenido de A Realm Reborn está totalmente traducido! 🥳🥳🥳
