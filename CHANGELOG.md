@@ -2,11 +2,18 @@
 
 Resumen de todos los cambios relevantes del proyecto.
 
-## Próxima versión
+## v0.3.1
 
-- Sustituida la compresión Brotli del corpus por Zstandard y restaurada su distribución embebida dentro
-  del ejecutable single-file en Windows.
-- Desactivada la compresión interna del bundle single-file como mitigación adicional de falsos
+- Revisión exhaustiva trilingüe (inglés, francés y alemán) de las **105.113 filas aprobadas** de
+  misiones y diálogos: **314 lotes completados y 9.628 correcciones directas**, además de barridos
+  globales de coherencia, gramática, género, puntuación y terminología.
+- Primeros bloques de cinemáticas de *Heavensward* traducidos (`VoiceMan 03000-03300`): el progreso
+  de la expansión sube del **11,4 % al 18,9 %**.
+- Sustituida la compresión Brotli del corpus por Zstandard y restaurada su distribución embebida
+  dentro del ejecutable single-file en Windows; ya no es necesario distribuir `translations.dat`
+  por separado.
+- La versión de Windows vuelve a compilarse, firmarse y empaquetarse en un runner nativo de Windows.
+  También se ha desactivado la compresión interna del bundle single-file para mitigar falsos
   positivos antivirus.
 
 ## v0.3.0
