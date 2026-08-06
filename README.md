@@ -24,8 +24,8 @@ traducibles exactas.
 
 | Métrica | Valor | Avance |
 | --- | ---: | --- |
-| Avance total por líneas | 509.661/809.000 (63,0%) | ![63,0%](https://geps.dev/progress/63?barColor=f1c232) |
-| Hojas OK | 2.936/6.986 (42,0%) | ![42,0%](https://geps.dev/progress/42?barColor=f0883e) |
+| Avance total por líneas | 511.552/808.997 (63,2%) | ![63,2%](https://geps.dev/progress/63.2?barColor=f1c232) |
+| Hojas OK | 2.945/6.986 (42,2%) | ![42,2%](https://geps.dev/progress/42.2?barColor=f0883e) |
 
 El desglose por expansión agrupa misiones, cinemáticas y conversaciones con NPC. La interfaz, los
 objetos, el combate, los sistemas y el contenido narrativo que abarca varias expansiones se reúnen
@@ -34,7 +34,7 @@ en **Elementos comunes**, sin contarlos de nuevo en cada expansión.
 | Icono | Contenido | Líneas traducidas | Avance |
 | :---: | --- | ---: | --- |
 | <img src="docs/assets/arr-icon.png" alt="A Realm Reborn" width="40"> | **A Realm Reborn** | 38.906/38.906 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
-| <img src="docs/assets/hw-icon.png" alt="Heavensward" width="40"> | **Heavensward** | 2.890/25.314 (11,4%) | ![11,4%](https://geps.dev/progress/11.4?barColor=da3633) |
+| <img src="docs/assets/hw-icon.png" alt="Heavensward" width="40"> | **Heavensward** | 4.781/25.311 (18,9%) | ![18,9%](https://geps.dev/progress/18.9?barColor=da3633) |
 | <img src="docs/assets/stb-icon.png" alt="Stormblood" width="40"> | **Stormblood** | 2/31.692 (0,0%) | ![0,0%](https://geps.dev/progress/0?barColor=da3633) |
 | <img src="docs/assets/shb-icon.png" alt="Shadowbringers" width="40"> | **Shadowbringers** | 28/44.274 (0,1%) | ![0,1%](https://geps.dev/progress/0.1?barColor=da3633) |
 | <img src="docs/assets/ew-icon.png" alt="Endwalker" width="40"> | **Endwalker** | 21/47.170 (0,0%) | ![0,0%](https://geps.dev/progress/0?barColor=da3633) |
