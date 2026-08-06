@@ -12,7 +12,7 @@ Resumen de todos los cambios relevantes del proyecto.
 - Sustituida la compresión Brotli del corpus por Zstandard y restaurada su distribución embebida
   dentro del ejecutable single-file en Windows; ya no es necesario distribuir `translations.dat`
   por separado.
-- La versión de Windows vuelve a compilarse, firmarse y empaquetarse en un runner nativo de Windows.
+- La versión de Windows vuelve a compilarse y empaquetarse en un runner nativo de Windows.
   También se ha desactivado la compresión interna del bundle single-file para mitigar falsos
   positivos antivirus.
 
