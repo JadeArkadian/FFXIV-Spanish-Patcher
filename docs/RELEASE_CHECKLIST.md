@@ -54,7 +54,8 @@ Publicar `win-x64`, `linux-x64` y `osx-arm64` con las mismas propiedades que el 
 
 - [ ] Trimming completo.
 - [ ] Sin PDB sueltos.
-- [ ] Windows: publish nativo en `windows-latest`, EXE self-contained y `translations.dat` adyacente.
+- [ ] Windows: publish nativo en `windows-latest`, EXE self-contained single-file con Zstandard embebido.
+- [ ] Windows: bundle single-file sin compresión interna (`EnableCompressionInSingleFile=false`).
 - [ ] Windows: analizar el EXE ya firmado con Microsoft Defender antes de distribuirlo.
 - [ ] Linux: single-file self-contained.
 - [ ] macOS: `.app`, icono y firma ad-hoc.

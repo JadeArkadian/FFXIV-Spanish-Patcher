@@ -10,7 +10,7 @@ By submitting a contribution through a pull request, issue, patch, commit, or an
 
 Unless explicitly stated otherwise, contributions to the application source code, build scripts, project files, and technical documentation are provided under the MIT License used by this repository.
 
-This repository uses Git LFS for `data/translations.dat`, the Brotli-compressed translation blob embedded by the app. Before building, testing, or publishing from a fresh clone, make sure Git LFS has downloaded the real blob:
+This repository uses Git LFS for `data/translations.dat`, the Zstandard-compressed translation blob embedded by the app. Before building, testing, or publishing from a fresh clone, make sure Git LFS has downloaded the real blob:
 
 ```bash
 git lfs pull

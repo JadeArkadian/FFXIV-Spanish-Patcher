@@ -19,7 +19,7 @@ todo el procesamiento vive en el pipeline y en las bibliotecas propias bajo `ven
 | GUI | .NET 10, Avalonia UI y MVVM |
 | Paridad | Una sola vista XAML y el mismo diseño en Windows, Linux y macOS |
 | Distribución | Self-contained y single-file por RID; Nexus reutiliza el mismo ZIP de GitHub |
-| Traducciones | Blob Brotli-JSONL embebido; en Windows puede ir adyacente por mitigación AV |
+| Traducciones | Blob Zstandard-JSONL embebido en el ejecutable single-file |
 | Datos FFXIV | Extracción lean desde la instalación del usuario |
 | Integridad | Obligatoria; no existe opción para desactivarla |
 | Version mismatch | Confirmación explícita y *best effort* auditable |
@@ -186,7 +186,7 @@ generada mediante reflexión. Cambiar dependencias o roots exige ejecutar los bi
 
 RIDs de release:
 
-- `win-x64`: self-contained; `translations.dat` adyacente para reducir falsos positivos.
+- `win-x64`: self-contained single-file con `translations.dat` Zstandard embebido.
 - `linux-x64`: self-contained single-file.
 - `osx-arm64`: bundle `.app`, icono y firma ad-hoc.
 

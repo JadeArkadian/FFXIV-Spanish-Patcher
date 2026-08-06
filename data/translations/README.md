@@ -2,18 +2,18 @@
 
 La traducción que se embebe en el ejecutable.
 
-- **`data/translations.dat`** (versionado): blob Brotli-JSONL con las filas **empaquetables**
+- **`data/translations.dat`** (versionado): blob Zstandard-JSONL con las filas **empaquetables**
   (`status ∈ {approved, gold}` + target no vacío + sourceKey completo); las demás no se aplican y se
   excluyen. Además cada fila está **proyectada** a los campos que el runtime lee (`source`, `target`,
   `status`, `sourceKey`); los metadatos de procedencia (`hash`, `id`, `category`, `notes`…) se omiten.
-  Se comprime con **Brotli** (q11; .NET lo lee con `BrotliStream` nativo). Es la **fuente de registro**
+  Se comprime con **Zstandard** (nivel 19; .NET lo lee mediante `ZstdSharp.Port`). Es la **fuente de registro**
   compacta que este repo distribuye y que la App embebe como recurso. Tamaño actual: ~8.5 MiB
   (`8928043` bytes el 2026-07-03).
   Este fichero vive en **Git LFS** (`*.dat filter=lfs`) porque se regenera al menos una vez por
   release y su historial binario crecería rápido dentro del repo normal. Cualquier workflow o clon
   que vaya a compilar/publicar debe traer el objeto LFS real (`actions/checkout` con `lfs: true`, o
   `git lfs pull` localmente). Si se embebe el puntero LFS de texto en vez del blob real,
-  `BrotliStream` fallará con datos inválidos al cargar traducciones.
+  `DecompressionStream` fallará con datos inválidos al cargar traducciones.
 - **`data/recommended-game-version.txt`** (versionado): versión de FFXIV asociada al blob/release.
   La App la embebe como recurso y avisa si la instalación local (`ffxivgame.ver`) no coincide. Valor
   actual: `2026.06.18.0000.0000`.
@@ -26,7 +26,7 @@ Flujo:
 ```
 upstream FFXIV-Spanish/data/translations/jsonl
   -> XivSpanish.BlobBuilder sync   (copia local del corpus crudo, git-ignored)
-  -> XivSpanish.BlobBuilder build  (filtra approved+gold, proyecta y comprime brotli)
+  -> XivSpanish.BlobBuilder build  (filtra approved+gold, proyecta y comprime Zstandard)
   -> data/translations.dat + data/recommended-game-version.txt
   -> EmbeddedResource en FFXIVSpanishPatcher.App (F3)
   -> publish

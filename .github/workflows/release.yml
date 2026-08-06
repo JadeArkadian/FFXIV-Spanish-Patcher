@@ -3,8 +3,8 @@ name: Release
 # Tag a commit (e.g. v1.2.3) to build self-contained publishes for Windows, Linux and macOS and
 # attach them to a GitHub Release. Windows keeps only the translation corpus external so it does
 # not place that high-entropy Brotli blob inside the executable. Windows publishes natively on a
-# Windows runner, Linux on Ubuntu, and the macOS RID (Apple Silicon only) on macOS so the .app
-# bundle can be ad-hoc codesigned.
+# Windows runner, then Windows signing runs non-interactively on Ubuntu. Linux publishes on Ubuntu,
+# and the macOS RID (Apple Silicon only) publishes on macOS so the .app can be ad-hoc codesigned.
 on:
   push:
     tags: [ 'v*.*.*' ]
@@ -41,7 +41,7 @@ jobs:
       matrix:
         include:
           # nexus_file_id: "API Info" del fichero en la pestaña Files de nexusmods.com (mod 2513).
-          - { rid: win-x64,   os: windows-latest, nexus_file_id: 7608014, external_translations: "true" }
+          - { rid: win-x64,   os: windows-latest, nexus_file_id: 7608014, external_translations: "false" }
           - { rid: linux-x64, os: ubuntu-latest, nexus_file_id: 7651772, external_translations: "false" }
           # macos-latest pinned to macos-15: the "latest" label migrates to macOS 26 (beta) from
           # 2026-06-15, before it is a stable target for the ad-hoc codesign/publish steps below.
@@ -76,124 +76,16 @@ jobs:
           -p:LatestReleasePageUrl=https://github.com/${{ github.repository }}/releases/latest
           -o publish/${{ matrix.rid }}
 
-      # Self-signed Authenticode: preserves a verifiable publisher identity without placing its
-      # private key in the repository. Windows will not treat this as a publicly trusted CA
-      # signature, so SHA-256 checksums below remain the release-verification mechanism.
-      - name: Self-sign Windows executable
+      # Keep the Windows publish native, then pass it to a Linux job for non-interactive signing.
+      - name: Upload unsigned Windows publish
         if: matrix.rid == 'win-x64'
-        shell: pwsh
-        env:
-          WINDOWS_SELF_SIGNING_PFX_BASE64: ${{ secrets.WINDOWS_SELF_SIGNING_PFX_BASE64 }}
-          WINDOWS_SELF_SIGNING_PFX_PASSWORD: ${{ secrets.WINDOWS_SELF_SIGNING_PFX_PASSWORD }}
-        run: |
-          $ErrorActionPreference = "Stop"
-
-          if (
-            [string]::IsNullOrWhiteSpace($env:WINDOWS_SELF_SIGNING_PFX_BASE64) -or
-            [string]::IsNullOrWhiteSpace($env:WINDOWS_SELF_SIGNING_PFX_PASSWORD)
-          ) {
-            Write-Warning "Windows self-signing skipped: configure WINDOWS_SELF_SIGNING_PFX_BASE64 and WINDOWS_SELF_SIGNING_PFX_PASSWORD."
-            exit 0
-          }
-
-          $certificateDirectory = Join-Path $env:RUNNER_TEMP "ffxivspanish-signing-$([guid]::NewGuid())"
-          New-Item -ItemType Directory -Path $certificateDirectory | Out-Null
-
-          try {
-            $pfx = Join-Path $certificateDirectory "FFXIVSpanishPatcher-self-signed.pfx"
-            $exe = "publish/win-x64/FFXIVSpanishPatcher.exe"
-            [IO.File]::WriteAllBytes(
-              $pfx,
-              [Convert]::FromBase64String($env:WINDOWS_SELF_SIGNING_PFX_BASE64)
-            )
-
-            $flags = [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::EphemeralKeySet
-            $pfxCertificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new(
-              $pfx,
-              $env:WINDOWS_SELF_SIGNING_PFX_PASSWORD,
-              $flags
-            )
-            $documentedCertificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]::CreateFromPemFile(
-              (Resolve-Path "docs/security/FFXIVSpanishPatcher-self-signed.pem").Path
-            )
-
-            $expectedFingerprint = $documentedCertificate.GetCertHashString(
-              [System.Security.Cryptography.HashAlgorithmName]::SHA256
-            )
-            $actualFingerprint = $pfxCertificate.GetCertHashString(
-              [System.Security.Cryptography.HashAlgorithmName]::SHA256
-            )
-            if ($actualFingerprint -ne $expectedFingerprint) {
-              throw "Windows signing certificate does not match documented public certificate."
-            }
-
-            $signTool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" `
-              -Filter signtool.exe -Recurse |
-              Where-Object FullName -Match '\\x64\\signtool\.exe$' |
-              Sort-Object FullName -Descending |
-              Select-Object -First 1
-            if ($null -eq $signTool) {
-              throw "signtool.exe was not found on windows-latest."
-            }
-
-            & $signTool.FullName sign `
-              /f $pfx `
-              /p $env:WINDOWS_SELF_SIGNING_PFX_PASSWORD `
-              /fd SHA256 `
-              /d "FFXIVSpanish Patcher" `
-              /du "https://ffxivspanish.carrd.co/" `
-              $exe
-            if ($LASTEXITCODE -ne 0) {
-              throw "signtool.exe failed to sign the Windows executable."
-            }
-
-            # Trust only on this ephemeral runner while verifying the self-signed chain.
-            $rootStore = [System.Security.Cryptography.X509Certificates.X509Store]::new(
-              [System.Security.Cryptography.X509Certificates.StoreName]::Root,
-              [System.Security.Cryptography.X509Certificates.StoreLocation]::CurrentUser
-            )
-            $rootStore.Open(
-              [System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite
-            )
-            try {
-              $rootStore.Add($documentedCertificate)
-              & $signTool.FullName verify /pa /v $exe
-              if ($LASTEXITCODE -ne 0) {
-                throw "signtool.exe could not verify the signed Windows executable."
-              }
-            }
-            finally {
-              $rootStore.Remove($documentedCertificate)
-              $rootStore.Close()
-            }
-          }
-          finally {
-            if ($null -ne $pfxCertificate) {
-              $pfxCertificate.Dispose()
-            }
-            if ($null -ne $documentedCertificate) {
-              $documentedCertificate.Dispose()
-            }
-            if (Test-Path $certificateDirectory) {
-              Remove-Item -Recurse -Force $certificateDirectory
-            }
-          }
-
-      - name: Package Windows
-        if: matrix.rid == 'win-x64'
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = "Stop"
-          $version = "${{ needs.validate-tag.outputs.version }}"
-          $out = "publish/win-x64"
-          $asset = "FFXIVSpanishPatcher-$version-win-x64.zip"
-
-          Get-ChildItem $out -Filter "*.pdb" -File | Remove-Item -Force
-          Copy-Item README.md "$out/README.md"
-          Compress-Archive -Path "$out/*" -DestinationPath $asset -CompressionLevel Optimal
-
-          $hash = (Get-FileHash $asset -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash  $asset" | Set-Content "$asset.sha256" -Encoding ascii
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: unsigned-windows-publish
+          path: publish/win-x64/
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
 
       - name: Package Linux or macOS
         if: matrix.rid != 'win-x64'
@@ -231,6 +123,7 @@ jobs:
           fi
 
       - name: Attach to release
+        if: matrix.rid != 'win-x64'
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
           name: ${{ needs.validate-tag.outputs.tag }}
@@ -244,7 +137,7 @@ jobs:
       # Requiere el secret NEXUSMODS_API_KEY (Site Preferences -> API Keys en nexusmods.com).
       - name: Prepare Nexus Mods description
         id: nexus-description
-        if: matrix.nexus_file_id != ''
+        if: matrix.rid != 'win-x64' && matrix.nexus_file_id != ''
         shell: bash
         run: |
           VERSION="${{ needs.validate-tag.outputs.version }}"
@@ -269,7 +162,7 @@ jobs:
           echo "description=$DESCRIPTION" >> "$GITHUB_OUTPUT"
 
       - name: Upload to Nexus Mods
-        if: matrix.nexus_file_id != ''
+        if: matrix.rid != 'win-x64' && matrix.nexus_file_id != ''
         uses: Nexus-Mods/upload-action@c96019556046053aa26044b44396cd38929daf23 # v1.0.0-beta.10
         with:
           api_key: ${{ secrets.NEXUSMODS_API_KEY }}
@@ -278,4 +171,99 @@ jobs:
           version: ${{ needs.validate-tag.outputs.version }}
           display_name: FFXIVSpanishPatcher ${{ needs.validate-tag.outputs.version }} (${{ matrix.rid }})
           description: ${{ steps.nexus-description.outputs.description }}
+          archive_existing_version: true
+
+  sign-windows:
+    needs: [validate-tag, publish]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Download native Windows publish
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: unsigned-windows-publish
+          path: publish/win-x64
+
+      # Self-signed Authenticode: preserves a verifiable publisher identity without placing its
+      # private key in the repository. Windows will not treat this as a publicly trusted CA
+      # signature, so SHA-256 checksums below remain the release-verification mechanism.
+      - name: Self-sign and verify Windows executable on Linux
+        timeout-minutes: 5
+        env:
+          WINDOWS_SELF_SIGNING_PFX_BASE64: ${{ secrets.WINDOWS_SELF_SIGNING_PFX_BASE64 }}
+          WINDOWS_SELF_SIGNING_PFX_PASSWORD: ${{ secrets.WINDOWS_SELF_SIGNING_PFX_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$WINDOWS_SELF_SIGNING_PFX_BASE64" || -z "$WINDOWS_SELF_SIGNING_PFX_PASSWORD" ]]; then
+            echo "::warning::Windows self-signing skipped: configure WINDOWS_SELF_SIGNING_PFX_BASE64 and WINDOWS_SELF_SIGNING_PFX_PASSWORD."
+            exit 0
+          fi
+
+          CERT_DIR="$(mktemp -d)"
+          trap 'rm -rf "$CERT_DIR"' EXIT
+          PFX="$CERT_DIR/FFXIVSpanishPatcher-self-signed.pfx"
+          CERT="$CERT_DIR/FFXIVSpanishPatcher-self-signed.pem"
+          EXE="publish/win-x64/FFXIVSpanishPatcher.exe"
+
+          printf '%s' "$WINDOWS_SELF_SIGNING_PFX_BASE64" | base64 --decode > "$PFX"
+          openssl pkcs12 -in "$PFX" -clcerts -nokeys \
+            -passin "pass:$WINDOWS_SELF_SIGNING_PFX_PASSWORD" -out "$CERT"
+
+          EXPECTED_FINGERPRINT="$(openssl x509 \
+            -in docs/security/FFXIVSpanishPatcher-self-signed.pem \
+            -noout -fingerprint -sha256)"
+          ACTUAL_FINGERPRINT="$(openssl x509 -in "$CERT" -noout -fingerprint -sha256)"
+          if [[ "$ACTUAL_FINGERPRINT" != "$EXPECTED_FINGERPRINT" ]]; then
+            echo "::error::Windows signing certificate does not match documented public certificate."
+            exit 1
+          fi
+
+          sudo apt-get update
+          sudo apt-get install --yes osslsigncode
+          osslsigncode sign \
+            -pkcs12 "$PFX" \
+            -pass "$WINDOWS_SELF_SIGNING_PFX_PASSWORD" \
+            -h sha256 \
+            -n "FFXIVSpanish Patcher" \
+            -i "https://ffxivspanish.carrd.co/" \
+            -in "$EXE" \
+            -out "$EXE.signed"
+          mv "$EXE.signed" "$EXE"
+          osslsigncode verify -in "$EXE" -CAfile "$CERT"
+
+      - name: Package Windows
+        run: |
+          set -euo pipefail
+          VERSION="${{ needs.validate-tag.outputs.version }}"
+          OUT="publish/win-x64"
+          ASSET="FFXIVSpanishPatcher-$VERSION-win-x64.zip"
+
+          rm -f "$OUT"/*.pdb
+          cp README.md "$OUT/README.md"
+          ( cd "$OUT" && zip -r "../../$ASSET" . )
+          sha256sum "$ASSET" > "$ASSET.sha256"
+
+      - name: Attach Windows to release
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        with:
+          name: ${{ needs.validate-tag.outputs.tag }}
+          generate_release_notes: true
+          files: |
+            FFXIVSpanishPatcher-${{ needs.validate-tag.outputs.version }}-win-x64.zip
+            FFXIVSpanishPatcher-${{ needs.validate-tag.outputs.version }}-win-x64.zip.sha256
+
+      - name: Upload Windows to Nexus Mods
+        uses: Nexus-Mods/upload-action@c96019556046053aa26044b44396cd38929daf23 # v1.0.0-beta.10
+        with:
+          api_key: ${{ secrets.NEXUSMODS_API_KEY }}
+          file_id: 7608014
+          filename: FFXIVSpanishPatcher-${{ needs.validate-tag.outputs.version }}-win-x64.zip
+          version: ${{ needs.validate-tag.outputs.version }}
+          display_name: FFXIVSpanishPatcher ${{ needs.validate-tag.outputs.version }} (win-x64)
+          description: >-
+            Versión ${{ needs.validate-tag.outputs.version }} para Windows 11. Si la descarga aún no
+            está disponible en Nexus (validación manual pendiente), puedes bajarla ya desde GitHub:
+            https://github.com/${{ github.repository }}/releases/latest
           archive_existing_version: true

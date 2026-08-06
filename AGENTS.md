@@ -41,7 +41,7 @@ vendorizado propio bajo `vendor/`.
   contamination guard y gate SeString de manifest.
 - `tools/XivSpanish.BlobBuilder` - tool C# `sync`/`build` para regenerar traducciones embebidas y
   `data/recommended-game-version.txt`.
-- `data/translations.dat` - blob Brotli-JSONL versionado con filas empaquetables.
+- `data/translations.dat` - blob Zstandard-JSONL versionado con filas empaquetables.
 - `data/recommended-game-version.txt` - version de FFXIV para la que se construyo el blob/release.
 - `data/translation-milestones.md` - historial Markdown embebido que muestra la GUI.
 - `data/translations/jsonl/` - corpus crudo local, git-ignored; no se versiona.
@@ -70,9 +70,9 @@ La procedencia historica vive en `vendor/VENDORED.md`.
 
 1. GUI = **.NET 10 + Avalonia UI**, no WPF.
 2. Distribucion = ejecutables self-contained single-file por RID; no instalador obligatorio.
-3. Traducciones = embebidas por defecto. La release Windows mantiene `translations.dat` adyacente
-   como mitigacion de falsos positivos AV. Actualizar traducciones implica regenerar blob y publicar
-   nueva release.
+3. Traducciones = blob Zstandard embebido en el ejecutable single-file en todas las plataformas.
+   `ExternalTranslations` queda solo como opcion diagnostica/local. Actualizar traducciones implica
+   regenerar blob y publicar nueva release.
 4. Datos del juego = extraccion lean desde la instalacion del usuario. No redistribuir archivos de FFXIV.
 5. Corpus empaquetable = `status in {approved, gold}` + `target` no vacio + `sourceKey` util.
 6. SeString = validar compatibilidad. Por defecto, filas incompatibles se omiten con warning; solo
@@ -123,11 +123,11 @@ publish real.
 
 ## Traducciones embebidas
 
-`data/translations.dat` es Brotli-JSONL proyectado. El builder:
+`data/translations.dat` es Zstandard-JSONL proyectado. El builder:
 
 - filtra a filas empaquetables (`approved` + `gold`, target no vacio, sourceKey con sheet/row);
 - proyecta al modelo runtime (`source`, `target`, `status`, `sourceKey`);
-- comprime con `BrotliStream`;
+- comprime con Zstandard mediante `ZstdSharp.Port`;
 - escribe `data/recommended-game-version.txt` cuando tiene fuente de version.
 
 Estado observado el 2026-07-29:
@@ -214,8 +214,8 @@ Los tags validos son `vX.Y.Z` con cada numero `0..999`. El workflow:
 - No anadir traduccion automatica sin decision humana explicita; el corpus debe estar curado/revisado.
 - No convertir `vendor/` en submodule ni resync masivo.
 - No quitar trimming/Lumina roots/update metadata sin probar publish.
-- No cambiar el modelo de distribucion del corpus: embebido por defecto y lateral solo en los
-  paquetes Windows que lo declaran mediante `ExternalTranslations`.
+- No cambiar el modelo de distribucion del corpus: Zstandard embebido por defecto;
+  `ExternalTranslations` es solo una opcion diagnostica/local.
 - No hacer cambios legales/licencia a la ligera; revisar `LICENSE.md`, `NOTICE.md`, `CONTRIBUTING.md`
   y `AI_USAGE.md`.
 

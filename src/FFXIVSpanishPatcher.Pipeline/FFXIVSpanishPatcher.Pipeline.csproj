@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="ZstdSharp.Port" Version="0.8.8" />
     <ProjectReference Include="..\..\vendor\XivSpanish.Core\XivSpanish.Core.csproj" />
     <ProjectReference Include="..\..\vendor\XivSpanish.GameData\XivSpanish.GameData.csproj" />
     <ProjectReference Include="..\..\vendor\XivSpanish.Packaging\XivSpanish.Packaging.csproj" />
