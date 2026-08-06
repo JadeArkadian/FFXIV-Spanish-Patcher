@@ -24,7 +24,7 @@ traducibles exactas.
 
 | Métrica | Valor | Avance |
 | --- | ---: | --- |
-| Avance total por líneas | 511.552/808.997 (63,2%) | ![63,2%](https://geps.dev/progress/63.2?barColor=f1c232) |
+| Avance total por líneas | 516.881/808.997 (63,9%) | ![63,9%](https://geps.dev/progress/63.9?barColor=f1c232) |
 | Hojas OK | 2.945/6.986 (42,2%) | ![42,2%](https://geps.dev/progress/42.2?barColor=f0883e) |
 
 El desglose por expansión agrupa misiones, cinemáticas y conversaciones con NPC. La interfaz, los
@@ -40,7 +40,7 @@ en **Elementos comunes**, sin contarlos de nuevo en cada expansión.
 | <img src="docs/assets/ew-icon.png" alt="Endwalker" width="40"> | **Endwalker** | 21/47.170 (0,0%) | ![0,0%](https://geps.dev/progress/0?barColor=da3633) |
 | <img src="docs/assets/dt-icon.png" alt="Dawntrail" width="40"> | **Dawntrail** | 1.174/41.536 (2,8%) | ![2,8%](https://geps.dev/progress/2.8?barColor=da3633) |
 | <img src="docs/assets/ec-icon.png" alt="Evercold" width="40"> | **Evercold** | — (progreso desconocido) | ![0,0%](https://geps.dev/progress/0?barColor=da3633) |
-| — | **Elementos comunes** | 466.640/580.108 (80,4%) | ![80,4%](https://geps.dev/progress/80.4?barColor=7ee787) |
+| — | **Elementos comunes** | 471.969/580.108 (81,4%) | ![81,4%](https://geps.dev/progress/81.4?barColor=7ee787) |
 
 Evercold todavía no se ha publicado. Se muestra al 0 % hasta que exista contenido con el que medir
 su progreso real.
