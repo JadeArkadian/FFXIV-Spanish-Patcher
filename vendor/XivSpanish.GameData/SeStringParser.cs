@@ -212,7 +212,8 @@ public static class SeStringParser
     /// Decodes the SeString integer that prefixes a 0xFF string run, giving the run body length in
     /// bytes and the index where the body starts. Encoding (matches the client/Lumina):
     /// <list type="bullet">
-    ///   <item>A byte <c>0x01..0xEF</c> is an inline value: length = <c>byte - 1</c>.</item>
+    ///   <item>A type byte <c>0x01..0xCF</c> is an inline value: length = <c>byte - 1</c>.</item>
+    ///   <item><c>0xD0..0xEF</c> are expression types, not inline integer values.</item>
     ///   <item><c>0xF0..0xFE</c> is a marker whose low nibble (of <c>marker + 1</c>) is a bitmask of
     ///   which of up to four big-endian value bytes follow (bit3→byte&lt;&lt;24 … bit0→byte).</item>
     /// </list>
@@ -228,7 +229,7 @@ public static class SeStringParser
         }
 
         var marker = bytes[index];
-        if (marker is >= 0x01 and <= 0xEF)
+        if (marker is >= 0x01 and <= 0xCF)
         {
             length = marker - 1;
             bodyStart = index + 1;

@@ -83,6 +83,20 @@ flowchart LR
 `IPatchBackend.ResolveExd` devuelve `Resolved`, `MissingSheet` o `UnresolvedRow`. El pipeline sigue
 con las páginas válidas, emite sus avisos y devuelve estadísticas estructuradas.
 
+### Contrato binario SeString
+
+Las longitudes de cuerpos macro y runs usan enteros compactos del cliente:
+
+- Los bytes de tipo `0x01..0xCF` son enteros inline. Como almacenan `longitud + 1`, `0xCF`
+  representa la longitud inline máxima: 206 bytes.
+- `0xD0..0xEF` son tipos de expresión, no longitudes. Nunca deben emitirse como prefijo.
+- Desde 207 bytes se usa la forma extendida `0xF0..0xFE`; por ejemplo, 207 se codifica `F0 CF`.
+
+`SeStringTree` recalcula de dentro hacia fuera todos los prefijos afectados. No se acortan
+traducciones para evitar esta frontera. Las pruebas deben fijar bytes esperados en 206/207 y cubrir
+un EXD sintético completo: validar solo encode y decode con el mismo codec puede ocultar un error
+autoconsistente que el cliente interpretaría como una expresión.
+
 La baja coincidencia solo puede ignorarse si la GUI ha comparado dos versiones conocidas y el
 usuario ha confirmado `BestEffortVersionMismatch`. En modo estricto, el guard conserva su función de
 detectar una base contaminada o incompatible.

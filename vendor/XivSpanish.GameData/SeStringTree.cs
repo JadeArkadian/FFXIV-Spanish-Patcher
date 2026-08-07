@@ -162,7 +162,7 @@ public static class SeStringTree
                 else
                 {
                     // Not a delimitable macro chunk: this 0x02 is a macro EXPRESSION byte (the packint
-                    // integer encoding reuses 0x01..0xEF inline values, so an If/Switch condition can
+                    // integer encoding reuses 0x01..0xCF inline values, so an If/Switch condition can
                     // legitimately contain 0x02 — e.g. `e1 e8 03 02` in Addon row 2513). Emit it as a
                     // single opaque RawByte and keep parsing, so the 0xFF runs that follow are modeled
                     // structurally instead of being swallowed by an opaque scan-to-0x03 (which truncated
@@ -328,8 +328,10 @@ public static class SeStringTree
     }
 
     /// <summary>
-    /// Decodes the run length prefix. <c>0x01..0xEF</c> is inline (value = byte − 1); <c>0xF0..0xFE</c>
-    /// is a marker whose low nibble (of marker+1) is a bitmask of big-endian value bytes that follow.
+    /// Decodes the run length prefix. Type bytes <c>0x01..0xCF</c> are inline
+    /// (value = byte − 1); <c>0xD0..0xEF</c> are expression types and must not be consumed as
+    /// lengths; <c>0xF0..0xFE</c> is a marker whose low nibble (of marker+1) is a bitmask of
+    /// big-endian value bytes that follow.
     /// </summary>
     internal static bool TryReadRunLength(byte[] bytes, int index, out int length, out int bodyStart, out byte marker)
     {
@@ -342,7 +344,7 @@ public static class SeStringTree
         }
 
         marker = bytes[index];
-        if (marker is >= 0x01 and <= 0xEF)
+        if (marker is >= 0x01 and <= 0xCF)
         {
             length = marker - 1;
             bodyStart = index + 1;
@@ -367,13 +369,14 @@ public static class SeStringTree
     }
 
     // Re-encodes a run length, preserving the original marker form when the value still fits (so an
-    // unchanged run round-trips byte-identically), widening to the smallest contiguous-low marker
-    // (0xF0/0xF2/0xF6/0xFE) otherwise.
+    // unchanged run round-trips byte-identically). The inline form stops at type byte 0xCF
+    // (length 206); 0xD0..0xEF are expression types, so length 207 and above must use an extended
+    // 0xF0..0xFE marker.
     private static byte[] EncodeRunLength(int value, byte originalMarker)
     {
-        if (originalMarker is >= 0x01 and <= 0xEF)
+        if (originalMarker is >= 0x01 and <= 0xCF)
         {
-            if (value is >= 0 and <= 0xEE)
+            if (value is >= 0 and <= 0xCE)
             {
                 return [(byte)(value + 1)];
             }
@@ -383,7 +386,7 @@ public static class SeStringTree
             return EmitMarker(value, originalMarker);
         }
 
-        if (value <= 0xEE) { return [(byte)(value + 1)]; }
+        if (value <= 0xCE) { return [(byte)(value + 1)]; }
         if (value <= 0xFF) { return EmitMarker(value, 0xF0); }
         if (value <= 0xFFFF) { return EmitMarker(value, 0xF2); }
         if (value <= 0xFFFFFF) { return EmitMarker(value, 0xF6); }
