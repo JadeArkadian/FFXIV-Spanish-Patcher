@@ -2,6 +2,12 @@
 
 Resumen de todos los cambios relevantes del proyecto.
 
+## v0.3.2
+
+- Corregido el crash al abrir «Cambiar de Mundo» desde un aetheryte. El serializador SeString ahora
+  usa la codificación extendida correcta cuando un cuerpo macro o run supera 206 bytes, sin acortar
+  ni omitir la traducción española del panel.
+
 ## v0.3.1
 
 - Revisión exhaustiva trilingüe (inglés, francés y alemán) de las **105.113 filas aprobadas** de
