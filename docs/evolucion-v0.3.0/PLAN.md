@@ -233,7 +233,7 @@ Versiones verificadas para esta rama:
 
 | Componente | Versión |
 | --- | --- |
-| SDK .NET | `10.0.302` (`latestFeature`) |
+| SDK .NET | `10.0.302` (`disable`) |
 | Avalonia | `12.1.1` |
 | CommunityToolkit.Mvvm | `8.4.2` |
 | Markdig | `1.3.2` |
