@@ -2,6 +2,25 @@
 
 Resumen de todos los cambios relevantes del proyecto.
 
+## v0.3.3
+
+- Actualizado el corpus con **17.648 líneas nuevas aprobadas** y **545 hojas completadas**. El
+  progreso global alcanza **534.529/808.960 líneas traducibles (66,1 %)** y
+  **3.490/6.986 hojas completadas (50,0 %)**.
+- Gran avance de *Heavensward*: pasa del **18,9 % al 78,5 %**, con
+  **19.907/25.274 líneas traducidas**.
+- Traducidos amplios bloques de la historia principal de *Heavensward* (`HeaVna` y `HeaVnz`),
+  incluido el avance parcial del lote actual hasta `HeaVnz913`.
+- Traducidas las cadenas de misiones tribales de los **Vanu Vanu**, los **gnath** y los
+  **moguris** de *Heavensward*.
+- Completado el lote de subtítulos de cinemáticas de *Heavensward* iniciado en v0.3.1:
+  **17 hojas y 2.536 filas** de `VoiceMan 03000-03501`, ya sin filas pendientes de revisión.
+- Añadidos diálogos regionales y de NPC de Ishgard, Coerthas, Dravania, Idíllshire, Mar de Nubes
+  y la Diadema, además de cazas, Firmamento, Bozja, trovadores errantes, entregas personalizadas e
+  Isla Santuario.
+- Nuevos barridos de calidad y coherencia del corpus: tratamientos de personajes, género,
+  terminología, puntuación y payloads SeString revisados junto con cada lote.
+
 ## v0.3.2
 
 - Corregido el crash al abrir «Cambiar de Mundo» desde un aetheryte. El serializador SeString ahora
