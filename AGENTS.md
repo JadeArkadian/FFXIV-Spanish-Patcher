@@ -114,7 +114,7 @@ dotnet publish src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj -c Rel
 dotnet publish src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj -c Release -r linux-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
 ```
 
-El proyecto usa `global.json` con SDK `10.0.302` y `rollForward: latestFeature`. Los
+El proyecto usa `global.json` con SDK `10.0.302` fijado mediante `rollForward: disable`. Los
 `packages.lock.json` estan versionados; CI y releases restauran con `--locked-mode`.
 
 La app publica con trimming activado (`PublishTrimmed=true`, `TrimMode=full`) y rootea `Lumina` /
