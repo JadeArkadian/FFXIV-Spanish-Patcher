@@ -1,5 +1,27 @@
 # Hitos de traducción
 
+## v0.3.4 — Heavensward
+
+Todo el contenido de **Heavensward** está traducido y revisado: **25.274/25.274 líneas (100 %)**
+entre historia principal, misiones secundarias, tribales, cinemáticas y conversaciones con NPC de la
+expansión. Se suman además todos los eventos estacionales y colaboraciones del juego.
+
+| Área | Estado |
+| --- | --- |
+| Historia principal de Heavensward | Completa y revisada |
+| Misiones secundarias de Heavensward | Completas y revisadas |
+| Misiones tribales de Heavensward | Completas y revisadas |
+| Cinemáticas de Heavensward | Completas y revisadas |
+| Diálogo ambiental de Heavensward | Completo y revisado |
+
+El avance global alcanza **545.824/808.960 líneas traducibles (67,5 %)** y **3.710/6.986 hojas
+completadas (53,1 %)**.
+
+### Qué viene después
+
+- Traducción de *Stormblood*.
+- Revisión continua de terminología y coherencia entre expansiones.
+
 ## v0.3.0 — A Realm Reborn
 
 La historia principal, las misiones secundarias y el diálogo ambiental de **A Realm Reborn** están

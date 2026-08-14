@@ -64,6 +64,8 @@
   <!-- App assets (window/taskbar icon) bundled as Avalonia resources. -->
   <ItemGroup>
     <AvaloniaResource Include="Assets\**" />
+    <AvaloniaResource Include="..\..\docs\assets\arr-icon.png" Link="Assets\arr-icon.png" />
+    <AvaloniaResource Include="..\..\docs\assets\hw-icon.png" Link="Assets\hw-icon.png" />
     <AvaloniaResource Include="..\..\docs\assets\logo-git.png" Link="Assets\logo-git.png" />
   </ItemGroup>
 

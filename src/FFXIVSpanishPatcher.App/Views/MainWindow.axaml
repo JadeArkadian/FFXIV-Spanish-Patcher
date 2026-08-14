@@ -237,7 +237,7 @@
                   <RotateTransform Angle="45"/>
                 </Border.RenderTransform>
               </Border>
-              <TextBlock Text="Edición A Realm Reborn"
+              <TextBlock Text="Edición Heavensward"
                          Foreground="{StaticResource Gold}"
                          FontSize="13"
                          FontWeight="SemiBold"/>
@@ -623,13 +623,25 @@
                                FontSize="10" FontWeight="Bold"/>
                   </StackPanel>
                 </Border>
-                <TextBlock Text="Eorzea habla castellano."
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Border Width="42" Height="42" Padding="4" CornerRadius="10"
+                          Background="#24121E30" BorderBrush="#4A8EA4BF" BorderThickness="1">
+                    <Image x:Name="MilestoneArrIcon" Source="/Assets/arr-icon.png"
+                           ToolTip.Tip="A Realm Reborn" Stretch="Uniform"/>
+                  </Border>
+                  <Border Width="42" Height="42" Padding="4" CornerRadius="10"
+                          Background="#24121E30" BorderBrush="#4AF0BD58" BorderThickness="1">
+                    <Image x:Name="MilestoneHeavenswardIcon" Source="/Assets/hw-icon.png"
+                           ToolTip.Tip="Heavensward" Stretch="Uniform"/>
+                  </Border>
+                </StackPanel>
+                <TextBlock x:Name="MilestoneTitle" Text="Heavensward ya está completo."
                            Foreground="{StaticResource Text}"
                            FontFamily="{StaticResource DisplayFont}"
                            FontSize="27"
                            FontWeight="Normal"
                            LetterSpacing="-0.3"/>
-                <TextBlock Text="Historia, misiones secundarias y diálogo ambiental de A Realm Reborn, reunidos en un paquete generado desde tu propia instalación."
+                <TextBlock Text="Todo su contenido está traducido y revisado: historia, misiones, cinemáticas y diálogos. Se une a A Realm Reborn en tu mod."
                            Foreground="{StaticResource Muted}"
                            FontSize="11.5"
                            LineHeight="16"
@@ -639,7 +651,7 @@
                   <TextBlock Text="{Binding AppVersionLabel, StringFormat='Corpus {0}'}"
                              Foreground="#728AA8"
                              FontSize="9.5"/>
-                  <TextBlock Text="Auditoría ARR superada"
+                  <TextBlock Text="ARR y Heavensward al 100 %"
                              Foreground="#728AA8"
                              FontSize="9.5"/>
                   <TextBlock Text="Sin archivos originales"

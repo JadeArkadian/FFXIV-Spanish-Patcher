@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Media.Imaging;
+using Avalonia.VisualTree;
 using FFXIVSpanishPatcher.App.Services;
 using FFXIVSpanishPatcher.App.ViewModels;
 using FFXIVSpanishPatcher.App.Views;
@@ -112,6 +113,17 @@ public class MainWindowSmokeTests
 
         // The control tree built and the virtualized console resolved.
         Assert.NotNull(window.FindControl<ConsoleLogTextBlock>("ConsoleText"));
+        Assert.Contains(
+            window.GetVisualDescendants().OfType<TextBlock>(),
+            textBlock => textBlock.Text == "Edición Heavensward");
+        Assert.DoesNotContain(
+            window.GetVisualDescendants().OfType<TextBlock>(),
+            textBlock => textBlock.Text == "Edición A Realm Reborn");
+        Assert.Equal(
+            "Heavensward ya está completo.",
+            window.FindControl<TextBlock>("MilestoneTitle")?.Text);
+        Assert.NotNull(window.FindControl<Image>("MilestoneArrIcon")?.Source);
+        Assert.NotNull(window.FindControl<Image>("MilestoneHeavenswardIcon")?.Source);
         AssertVerticallyAligned(
             window,
             "GameCheckContent",
