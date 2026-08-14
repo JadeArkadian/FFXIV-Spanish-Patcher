@@ -2,6 +2,30 @@
 
 Resumen de todos los cambios relevantes del proyecto.
 
+## v0.3.4
+
+- ¡Nuevo hito alcanzado! ¡TODO el contenido de *Heavensward* está totalmente traducido! ⚔️🥳
+  **25.274/25.274 líneas (100,0%)** entre historia principal, secundarias, tribales, cinemáticas y
+  conversaciones de NPC de la expansión.
+- Cerrada la historia principal de *Heavensward*: **472/472 hojas** de MSQ completadas, incluido el
+  tramo final `HeaVnb`, `HeaVnc`, `HeaVnd`, `HeaVne`, `HeaVnf`, `HeaVng`, `HeaVnm`, `HeaVnr` y
+  `HeaVny`.
+- Traducidos **todos los eventos estacionales y colaboraciones**: Heavensturn, Valentione, Little
+  Ladies' Day, Hatching-tide, Moonfire Faire, The Rising, All Saints' Wake y Starlight
+  (**4.144 filas**), más el cierre de los eventos pendientes de *Heavensward* (`FesXms`, `FesAnv`,
+  `FesPdy`, **625 filas**).
+- Nuevo lote de diálogos de contenido: Palacio de los Muertos, Cielo Empíreo, Eureka Orthos, marcas
+  élite de *Dawntrail*, NPC de mago azul, Isla Santuario, revanchas del Arcadion, trovador errante de
+  *Dawntrail* y entregas personalizadas de Anden y Margrat.
+- Corpus actualizado a la versión de juego **2026.08.05.0000.0000**, con el delta del parche
+  incorporado y el nuevo banner de reputación traducido.
+- Barridos de coherencia y terminología: nombre de la Agencia de Viajes de Tural unificado en todo el
+  corpus y ratificadas 147 acuñaciones goberas; el corpus queda sin filas pendientes de revisión.
+- Progreso global: **545.824/808.960 líneas traducibles (67,5%)** y **3.710/6.986 hojas completadas
+  (53,1%)**, frente al 66,1% y 50,0% de v0.3.3.
+- Actualizado el SDK de .NET a 10.0.303 (runtime 10.0.11), que corrige la vulnerabilidad de
+  denegación de servicio CVE-2026-62901 del runtime con el que se compilan los ejecutables.
+
 ## v0.3.3
 
 - Actualizado el corpus con **17.648 líneas nuevas aprobadas** y **545 hojas completadas**. El

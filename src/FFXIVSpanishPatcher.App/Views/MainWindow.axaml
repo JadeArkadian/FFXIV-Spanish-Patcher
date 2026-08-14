@@ -237,7 +237,7 @@
                   <RotateTransform Angle="45"/>
                 </Border.RenderTransform>
               </Border>
-              <TextBlock Text="Edición A Realm Reborn"
+              <TextBlock Text="Edición Heavensward"
                          Foreground="{StaticResource Gold}"
                          FontSize="13"
                          FontWeight="SemiBold"/>
