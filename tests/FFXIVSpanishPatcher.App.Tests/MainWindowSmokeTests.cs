@@ -119,6 +119,11 @@ public class MainWindowSmokeTests
         Assert.DoesNotContain(
             window.GetVisualDescendants().OfType<TextBlock>(),
             textBlock => textBlock.Text == "Edición A Realm Reborn");
+        Assert.Equal(
+            "Heavensward ya está completo.",
+            window.FindControl<TextBlock>("MilestoneTitle")?.Text);
+        Assert.NotNull(window.FindControl<Image>("MilestoneArrIcon")?.Source);
+        Assert.NotNull(window.FindControl<Image>("MilestoneHeavenswardIcon")?.Source);
         AssertVerticallyAligned(
             window,
             "GameCheckContent",
