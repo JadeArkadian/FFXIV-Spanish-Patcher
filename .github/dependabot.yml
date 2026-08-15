@@ -1,16 +1,44 @@
-# To get started with Dependabot version updates, you'll need to specify which
-# package ecosystems to update and where the package manifests are located.
-# Please see the documentation for all configuration options:
-# https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
-
 version: 2
 updates:
-  - package-ecosystem: "dotnet-sdk" 
-    directory: "/" 
+  - package-ecosystem: "dotnet-sdk"
+    directory: "/"
     schedule:
       interval: "weekly"
-  - package-ecosystem: "nuget" 
-    directory: "/" 
-    schedule:
-      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Europe/Madrid"
 
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Europe/Madrid"
+    # Estos paquetes comparten compatibilidad de runtime. Las actualizaciones
+    # mayores quedan aisladas para revisión; las rutinarias llegan juntas.
+    groups:
+      avalonia-linux-runtime:
+        patterns:
+          - "Avalonia*"
+          - "Tmds.DBus.Protocol"
+        update-types:
+          - "minor"
+          - "patch"
+      test-stack:
+        patterns:
+          - "Microsoft.NET.Test.Sdk"
+          - "xunit*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Las acciones usan SHA inmutable. Dependabot actualiza SHA y comentario de
+  # versión de la misma línea.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Europe/Madrid"
