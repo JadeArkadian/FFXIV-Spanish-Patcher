@@ -11,7 +11,7 @@ using Xunit;
 // [AvaloniaFact] tests in parallel xUnit workers races window/control-template construction
 // (e.g. Path/StreamGeometry icon parsing) against "Unable to locate IPlatformRenderInterface".
 // Forcing sequential execution eliminates the flake.
-[assembly: CollectionBehavior(DisableTestParallelization = true)]
+[assembly: ParallelizationAttribute(ParallelizationMode.None)]
 
 namespace FFXIVSpanishPatcher.App.Tests;
 
