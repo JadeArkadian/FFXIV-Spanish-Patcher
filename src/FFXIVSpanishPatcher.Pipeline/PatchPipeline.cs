@@ -345,15 +345,11 @@ public sealed class PatchPipeline
                             page.ManifestEntryCount);
                         continue;
                     }
-                    var payloadSignatures = BroadcastPlanner.BuildPayloadSignatures(
-                        broadcastColumns,
-                        page.ToReplacements());
-
                     var broadcasted = 0;
                     var payloadBroadcasted = 0;
                     foreach (var column in broadcastColumns)
                     {
-                        var decision = BroadcastPlanner.Decide(broadcast, page.Sheet, column, payloadSignatures);
+                        var decision = BroadcastPlanner.Decide(broadcast, page.Sheet, column);
                         if (decision is null)
                         {
                             continue;
@@ -365,10 +361,23 @@ public sealed class PatchPipeline
                                 Conflict))
                         {
                             broadcasted++;
-                            if (decision.Kind == BroadcastKind.Payload)
-                            {
-                                payloadBroadcasted++;
-                            }
+                        }
+                    }
+
+                    // Payload-bearing duplicates cannot be matched by tokenized source (the corpus is
+                    // run-aware, the base re-tokenization is flat), so they are broadcast by raw byte
+                    // identity: every base row byte-identical to an explicitly-translated payload row
+                    // receives that row's reviewed replacement. This closes the gap that left duplicate
+                    // payload rows (e.g. Addon 196, a byte-identical twin of the translated row 111)
+                    // showing vanilla English.
+                    foreach (var sibling in BroadcastPlanner.PlanPayloadSiblings(
+                                 broadcastColumns,
+                                 page.ToReplacements()))
+                    {
+                        if (page.Add(sibling.RowId, sibling.Replacement, Conflict))
+                        {
+                            broadcasted++;
+                            payloadBroadcasted++;
                         }
                     }
 

@@ -21,12 +21,6 @@ public sealed record BroadcastDecision(
     string? ReplacementField,
     BroadcastKind Kind);
 
-public readonly record struct PayloadBroadcastSignature(
-    string Field,
-    string Source,
-    string Target,
-    string RawHash);
-
 public sealed class BroadcastCatalog
 {
     private readonly Dictionary<string, Dictionary<string, Dictionary<string, string?>>> _targets =
@@ -62,6 +56,7 @@ public sealed class BroadcastCatalog
         }
         else if (existingTarget is not null && existingTarget != target)
         {
+            // Same source, different target: ambiguous. Null disables broadcast for this source.
             bySource[source] = null;
         }
     }
@@ -110,83 +105,125 @@ public sealed record BroadcastTarget(string Target, string Field);
 
 public static class BroadcastPlanner
 {
-    public static IReadOnlySet<PayloadBroadcastSignature> BuildPayloadSignatures(
+    /// <summary>
+    /// Broadcast decision for a payload-bearing duplicate row: apply the representative row's
+    /// reviewed <see cref="Replacement"/> (its corpus source and target) to <see cref="RowId"/>.
+    /// </summary>
+    public sealed record PayloadSiblingDecision(uint RowId, StringReplacement Replacement);
+
+    /// <summary>
+    /// Plans payload broadcast for byte-identical duplicate rows the manifest does not list.
+    /// <para>
+    /// Payload-bearing (run/macro) strings cannot be broadcast by matching tokenized source text
+    /// the way plain rows are (see <see cref="Decide"/>): the corpus stores a run-aware
+    /// tokenization (e.g. <c>Return to &lt;EnNoun&gt;&lt;Run&gt;PlaceName&lt;RunEnd&gt;…</c>) while
+    /// the packager re-tokenizes the base EXD with the flat tokenizer (e.g.
+    /// <c>Return to &lt;EnNoun&gt;&lt;Raw&gt;&lt;Payload03&gt;…</c>), so the two source strings never
+    /// compare equal and the catalog/source-string join silently drops every run-bearing duplicate.
+    /// </para>
+    /// <para>
+    /// The reliable identity here is the raw byte hash, not the tokenized text: the corpus dedup
+    /// collapses BYTE-IDENTICAL rows onto the lowest row id, so a duplicate row shares the
+    /// representative's exact bytes. This method keys on <c>(Field, RawHash)</c>: for every base row
+    /// that carries a payload column and IS explicitly translated, it records the reviewed corpus
+    /// replacement; then, for every base row with the same field and identical raw bytes that is NOT
+    /// explicitly listed, it emits that same reviewed replacement. Reusing the representative's own
+    /// source/target (which already patches the representative's identical bytes) is safe by
+    /// construction and never re-derives a target from the divergent flat tokenization.
+    /// </para>
+    /// <para>
+    /// The <c>(Field, RawHash)</c> gate preserves the invariant that payload is broadcast only to
+    /// rows whose bytes match an approved row exactly; if two explicitly-translated rows share the
+    /// same field and raw bytes but disagree on the target, the signature is disabled (null) so no
+    /// ambiguous payload is broadcast.
+    /// </para>
+    /// </summary>
+    public static IReadOnlyList<PayloadSiblingDecision> PlanPayloadSiblings(
         IEnumerable<BroadcastColumn> columns,
         IReadOnlyDictionary<uint, IReadOnlyList<StringReplacement>> explicitReplacements)
     {
-        var byRow = columns
-            .Where(column => column.HasPayload && column.Field.Length > 0)
-            .GroupBy(column => column.RowId)
-            .ToDictionary(group => group.Key, group => group.ToArray());
+        var columnList = columns as IReadOnlyList<BroadcastColumn> ?? columns.ToList();
 
-        var signatures = new HashSet<PayloadBroadcastSignature>();
-        foreach (var (rowId, replacements) in explicitReplacements)
+        // (Field, RawHash) -> reviewed replacement to broadcast; null once the target is ambiguous.
+        var bySignature = new Dictionary<(string Field, string RawHash), StringReplacement?>();
+        foreach (var column in columnList)
         {
-            if (!byRow.TryGetValue(rowId, out var rowColumns))
+            if (!column.HasPayload
+                || column.Field.Length == 0
+                || !explicitReplacements.TryGetValue(column.RowId, out var replacements))
             {
                 continue;
             }
 
             foreach (var replacement in replacements)
             {
-                if (string.IsNullOrWhiteSpace(replacement.Field)
+                if (replacement.Field != column.Field
                     || !SeStringCompatibilityValidator.Validate(replacement.Source, replacement.Target).IsCompatible)
                 {
                     continue;
                 }
 
-                foreach (var column in rowColumns)
+                var key = (column.Field, column.RawHash);
+                if (!bySignature.TryGetValue(key, out var existing))
                 {
-                    if (column.Field == replacement.Field && column.Source == replacement.Source)
-                    {
-                        signatures.Add(new PayloadBroadcastSignature(
-                            column.Field,
-                            replacement.Source,
-                            replacement.Target,
-                            column.RawHash));
-                    }
+                    bySignature[key] = replacement;
+                }
+                else if (existing is not null && existing.Target != replacement.Target)
+                {
+                    bySignature[key] = null;
                 }
             }
         }
 
-        return signatures;
+        if (bySignature.Count == 0)
+        {
+            return [];
+        }
+
+        var decisions = new List<PayloadSiblingDecision>();
+        foreach (var column in columnList)
+        {
+            if (!column.HasPayload
+                || column.Field.Length == 0
+                || explicitReplacements.ContainsKey(column.RowId))
+            {
+                continue;
+            }
+
+            if (bySignature.TryGetValue((column.Field, column.RawHash), out var replacement)
+                && replacement is not null)
+            {
+                decisions.Add(new PayloadSiblingDecision(column.RowId, replacement));
+            }
+        }
+
+        return decisions;
     }
 
+    /// <summary>
+    /// Plans plain-text broadcast for a base-EXD column. Payload-bearing columns are never
+    /// broadcast here — their tokenized source diverges from the corpus, so they are handled by
+    /// <see cref="PlanPayloadSiblings"/> (byte-identity broadcast) instead.
+    /// </summary>
     public static BroadcastDecision? Decide(
         BroadcastCatalog catalog,
         string sheet,
-        BroadcastColumn column,
-        IReadOnlySet<PayloadBroadcastSignature> payloadSignatures)
+        BroadcastColumn column)
     {
-        var resolved = catalog.Resolve(
-            sheet,
-            column.Field,
-            column.Source,
-            allowAnyField: !column.HasPayload);
+        if (column.HasPayload)
+        {
+            return null;
+        }
+
+        var resolved = catalog.Resolve(sheet, column.Field, column.Source, allowAnyField: true);
         if (resolved is null)
         {
             return null;
         }
 
-        if (!column.HasPayload)
-        {
-            return new BroadcastDecision(
-                resolved.Target,
-                string.IsNullOrEmpty(resolved.Field) ? null : resolved.Field,
-                BroadcastKind.Plain);
-        }
-
-        if (column.Field.Length == 0
-            || !SeStringCompatibilityValidator.Validate(column.Source, resolved.Target).IsCompatible
-            || !payloadSignatures.Contains(new PayloadBroadcastSignature(
-                column.Field,
-                column.Source,
-                resolved.Target,
-                column.RawHash)))
-        {
-            return null;
-        }
-
-        return new BroadcastDecision(resolved.Target, column.Field, BroadcastKind.Payload);
+        return new BroadcastDecision(
+            resolved.Target,
+            string.IsNullOrEmpty(resolved.Field) ? null : resolved.Field,
+            BroadcastKind.Plain);
     }
 }
