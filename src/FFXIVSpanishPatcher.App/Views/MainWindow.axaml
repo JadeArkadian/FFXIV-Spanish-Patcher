@@ -529,7 +529,7 @@
                               Spacing="5">
                       <Grid ColumnDefinitions="*,Auto,Auto">
                         <StackPanel Spacing="1">
-                          <TextBlock Text="Categorías activadas al importar en Penumbra" Foreground="{StaticResource Muted}" FontSize="10"/>
+                          <TextBlock Text="Categorías activadas en primera importación de Penumbra" Foreground="{StaticResource Muted}" FontSize="10"/>
                           <TextBlock Text="El paquete siempre incluye traducción completa." Foreground="#6F86A2" FontSize="9"/>
                         </StackPanel>
                         <Button Grid.Column="1" Classes="text" Content="Todas"

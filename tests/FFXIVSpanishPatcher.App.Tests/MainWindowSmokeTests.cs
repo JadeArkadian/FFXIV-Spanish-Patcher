@@ -168,9 +168,10 @@ public class MainWindowSmokeTests
         window.Show();
 
         var texts = window.GetVisualDescendants().OfType<TextBlock>().Select(textBlock => textBlock.Text).ToArray();
-        Assert.Contains("Categorías activadas al importar en Penumbra", texts);
+        Assert.Contains("Categorías activadas en primera importación de Penumbra", texts);
         Assert.Contains("El paquete siempre incluye traducción completa.", texts);
         Assert.DoesNotContain("Elige qué grupos incluir", texts);
+        Assert.DoesNotContain("Categorías activadas al importar en Penumbra", texts);
 
         window.Close();
     }

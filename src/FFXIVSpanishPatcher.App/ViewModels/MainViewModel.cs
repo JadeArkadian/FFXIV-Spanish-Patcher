@@ -107,7 +107,7 @@ public partial class MainViewModel : ObservableObject
     public int SelectedCategoryCount => Categories.Count(category => category.IsEnabled && category.IsSelected);
     public bool HasSelectedCategories => SelectedCategoryCount > 0;
     public string CategorySummary =>
-        $"{SelectedCategoryCount} de {AvailableCategoryCount} categorías activadas al importar";
+        $"{SelectedCategoryCount} de {AvailableCategoryCount} categorías activadas en primera importación";
     public bool ShowCategorySelectionError => TranslationsReady && !HasSelectedCategories;
     public bool IsAdvancedClosed => !IsAdvancedOpen;
 
@@ -521,7 +521,7 @@ public partial class MainViewModel : ObservableObject
                           + $"\n\nVersión del patcher: v{_buildInfo.PackageVersion}"
                           + $"\nVersión de FFXIV: {InstalledGameVersion ?? "desconocida"}"
                           + $"\n\nCategorías incluidas:\n{includedDomains}"
-                          + $"\n\nCategorías activadas al importar en Penumbra:\n{enabledByDefaultDomains}";
+                          + $"\n\nCategorías activadas en primera importación de Penumbra:\n{enabledByDefaultDomains}";
         return new PackageMeta
         {
             Version = version,
