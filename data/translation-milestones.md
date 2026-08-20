@@ -1,5 +1,26 @@
 # Hitos de traducción
 
+## v0.4.0 — Empieza Stormblood
+
+Con **A Realm Reborn** y **Heavensward** ya completos, esta edición abre la traducción de
+**Stormblood**: **13.112/31.689 líneas (41,4 %)** de la expansión, frente al 0 % con el que partía.
+
+| Área | Estado |
+| --- | --- |
+| Historia principal de Stormblood | En curso (primer gran tramo, hasta el Trono del Alba) |
+| Misiones secundarias de Stormblood | Completas y revisadas |
+| Misiones tribales de Stormblood | Kojin y ananta completas |
+| Cinemáticas de Stormblood | Completas y revisadas |
+| Diálogo ambiental de Stormblood | Completo y revisado (regiones y Eureka) |
+
+El avance global alcanza **559.353/808.958 líneas traducibles (69,1 %)** y **3.989/6.986 hojas
+completadas (57,1 %)**.
+
+### Qué viene después
+
+- Cerrar la historia principal de *Stormblood* y su contenido restante.
+- Revisión continua de terminología y coherencia entre expansiones.
+
 ## v0.3.4 — Heavensward
 
 Todo el contenido de **Heavensward** está traducido y revisado: **25.274/25.274 líneas (100 %)**
@@ -19,7 +40,6 @@ completadas (53,1 %)**.
 
 ### Qué viene después
 
-- Traducción de *Stormblood*.
 - Revisión continua de terminología y coherencia entre expansiones.
 
 ## v0.3.0 — A Realm Reborn

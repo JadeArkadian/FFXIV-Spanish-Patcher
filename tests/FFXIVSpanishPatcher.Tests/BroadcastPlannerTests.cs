@@ -6,71 +6,137 @@ namespace FFXIVSpanishPatcher.Tests;
 
 public sealed class BroadcastPlannerTests
 {
-    private const string PayloadSource = "Once common.<NewLine>Exchange at salvagers.";
-    private const string PayloadTarget = "Antes era comun.<NewLine>Se intercambia en recuperadores.";
+    // Run-aware corpus tokenization of Addon row 111 ("Return to ...Aetheryte...?").
+    private const string PayloadSource =
+        "Return to <EnNoun><Run>PlaceName<RunEnd><Run#2><Sheet><Run#3>Aetheryte<RunEnd#2><Raw><Raw#2>\t<MacroEnd><RunEnd#3><Raw#3><MacroEnd#2>?";
+
+    private const string PayloadTarget =
+        "¿Volver a <EnNoun><Run>PlaceName<RunEnd><Run#2><Sheet><Run#3>Aetheryte<RunEnd#2><Raw><Raw#2>\t<MacroEnd><RunEnd#3><Raw#3><MacroEnd#2>?";
+
+    // What the packager reads back from the base EXD: the FLAT tokenizer collapses the run/macro
+    // structure, so this never string-equals the run-aware corpus source above. The byte-identity
+    // broadcast must not depend on these two comparing equal.
+    private const string FlatSource = "Return to <EnNoun><Raw><Payload03>?";
 
     [Fact]
-    public void Decide_AllowsPayloadBroadcast_WhenExplicitRowHasSameRawSignature()
+    public void PlanPayloadSiblings_BroadcastsToByteIdenticalDuplicate_DespiteTokenizationDivergence()
     {
-        var catalog = new BroadcastCatalog();
-        catalog.Add("Item", "Description", PayloadSource, PayloadTarget);
+        // Row 111 is the translated representative; row 196 is its byte-identical twin (same
+        // RawHash) that the corpus dedup collapsed away, so it is absent from the manifest. Before
+        // the fix the source-string join dropped it (the flat base source never matches the
+        // run-aware corpus source) and it shipped in vanilla English.
         var columns = new[]
         {
-            new BroadcastColumn(5729, "Description", PayloadSource, HasPayload: true, RawHash: "RAW-A"),
-            new BroadcastColumn(5730, "Description", PayloadSource, HasPayload: true, RawHash: "RAW-A"),
+            new BroadcastColumn(111, "Text", FlatSource, HasPayload: true, RawHash: "RAW-A"),
+            new BroadcastColumn(196, "Text", FlatSource, HasPayload: true, RawHash: "RAW-A"),
         };
-        var signatures = BroadcastPlanner.BuildPayloadSignatures(
+
+        var decisions = BroadcastPlanner.PlanPayloadSiblings(
             columns,
             new Dictionary<uint, IReadOnlyList<StringReplacement>>
             {
-                [5729] = [new StringReplacement(PayloadSource, PayloadTarget, "Description")],
+                [111] = [new StringReplacement(PayloadSource, PayloadTarget, "Text")],
             });
 
-        var decision = BroadcastPlanner.Decide(catalog, "Item", columns[1], signatures);
-
-        Assert.NotNull(decision);
-        Assert.Equal(BroadcastKind.Payload, decision!.Kind);
-        Assert.Equal(PayloadTarget, decision.Target);
-        Assert.Equal("Description", decision.ReplacementField);
+        var decision = Assert.Single(decisions);
+        Assert.Equal(196u, decision.RowId);
+        // The reviewed corpus source/target are reused verbatim — never re-derived from FlatSource.
+        Assert.Equal(PayloadSource, decision.Replacement.Source);
+        Assert.Equal(PayloadTarget, decision.Replacement.Target);
+        Assert.Equal("Text", decision.Replacement.Field);
     }
 
     [Fact]
-    public void Decide_BlocksPayloadBroadcast_WhenRawSignatureDiffers()
+    public void PlanPayloadSiblings_DoesNotBroadcast_WhenRawBytesDiffer()
     {
-        var catalog = new BroadcastCatalog();
-        catalog.Add("Item", "Description", PayloadSource, PayloadTarget);
         var columns = new[]
         {
-            new BroadcastColumn(5729, "Description", PayloadSource, HasPayload: true, RawHash: "RAW-A"),
-            new BroadcastColumn(5730, "Description", PayloadSource, HasPayload: true, RawHash: "RAW-B"),
+            new BroadcastColumn(111, "Text", FlatSource, HasPayload: true, RawHash: "RAW-A"),
+            new BroadcastColumn(196, "Text", FlatSource, HasPayload: true, RawHash: "RAW-B"),
         };
-        var signatures = BroadcastPlanner.BuildPayloadSignatures(
+
+        var decisions = BroadcastPlanner.PlanPayloadSiblings(
             columns,
             new Dictionary<uint, IReadOnlyList<StringReplacement>>
             {
-                [5729] = [new StringReplacement(PayloadSource, PayloadTarget, "Description")],
+                [111] = [new StringReplacement(PayloadSource, PayloadTarget, "Text")],
             });
 
-        var decision = BroadcastPlanner.Decide(catalog, "Item", columns[1], signatures);
-
-        Assert.Null(decision);
+        Assert.Empty(decisions);
     }
 
     [Fact]
-    public void Decide_DoesNotUseAnyFieldFallbackForPayloadRows()
+    public void PlanPayloadSiblings_SkipsRepresentativeRowItself()
     {
+        var columns = new[]
+        {
+            new BroadcastColumn(111, "Text", FlatSource, HasPayload: true, RawHash: "RAW-A"),
+        };
+
+        var decisions = BroadcastPlanner.PlanPayloadSiblings(
+            columns,
+            new Dictionary<uint, IReadOnlyList<StringReplacement>>
+            {
+                [111] = [new StringReplacement(PayloadSource, PayloadTarget, "Text")],
+            });
+
+        Assert.Empty(decisions);
+    }
+
+    [Fact]
+    public void PlanPayloadSiblings_SkipsWhenTargetNotSeStringCompatible()
+    {
+        // A target that drops the payload structure must never be broadcast onto a duplicate.
+        const string brokenTarget = "Volver al aeterito?";
+        var columns = new[]
+        {
+            new BroadcastColumn(111, "Text", FlatSource, HasPayload: true, RawHash: "RAW-A"),
+            new BroadcastColumn(196, "Text", FlatSource, HasPayload: true, RawHash: "RAW-A"),
+        };
+
+        var decisions = BroadcastPlanner.PlanPayloadSiblings(
+            columns,
+            new Dictionary<uint, IReadOnlyList<StringReplacement>>
+            {
+                [111] = [new StringReplacement(PayloadSource, brokenTarget, "Text")],
+            });
+
+        Assert.Empty(decisions);
+    }
+
+    [Fact]
+    public void PlanPayloadSiblings_DisablesBroadcast_WhenByteIdenticalRowsDisagreeOnTarget()
+    {
+        // Two explicitly-translated rows share field + raw bytes but map to different targets:
+        // the broadcast for that signature is ambiguous and must be disabled entirely.
+        var columns = new[]
+        {
+            new BroadcastColumn(111, "Text", FlatSource, HasPayload: true, RawHash: "RAW-A"),
+            new BroadcastColumn(120, "Text", FlatSource, HasPayload: true, RawHash: "RAW-A"),
+            new BroadcastColumn(196, "Text", FlatSource, HasPayload: true, RawHash: "RAW-A"),
+        };
+
+        var decisions = BroadcastPlanner.PlanPayloadSiblings(
+            columns,
+            new Dictionary<uint, IReadOnlyList<StringReplacement>>
+            {
+                [111] = [new StringReplacement(PayloadSource, PayloadTarget, "Text")],
+                [120] = [new StringReplacement(PayloadSource, PayloadTarget + " ", "Text")],
+            });
+
+        Assert.Empty(decisions);
+    }
+
+    [Fact]
+    public void Decide_ReturnsNull_ForPayloadColumns()
+    {
+        // Payload columns are owned by PlanPayloadSiblings; the source-string catalog never
+        // broadcasts them (its key is the run-aware corpus source, not the flat base source).
         var catalog = new BroadcastCatalog();
-        catalog.Add("Item", string.Empty, PayloadSource, PayloadTarget);
+        catalog.Add("Item", "Description", PayloadSource, PayloadTarget);
         var column = new BroadcastColumn(5730, "Description", PayloadSource, HasPayload: true, RawHash: "RAW-A");
 
-        var decision = BroadcastPlanner.Decide(
-            catalog,
-            "Item",
-            column,
-            new HashSet<PayloadBroadcastSignature>
-            {
-                new("Description", PayloadSource, PayloadTarget, "RAW-A"),
-            });
+        var decision = BroadcastPlanner.Decide(catalog, "Item", column);
 
         Assert.Null(decision);
     }
@@ -82,7 +148,7 @@ public sealed class BroadcastPlannerTests
         catalog.Add("Addon", string.Empty, "Healing Magic Potency", "Potencia de magia curativa");
         var column = new BroadcastColumn(3256, "Text", "Healing Magic Potency", HasPayload: false, RawHash: "RAW-A");
 
-        var decision = BroadcastPlanner.Decide(catalog, "Addon", column, new HashSet<PayloadBroadcastSignature>());
+        var decision = BroadcastPlanner.Decide(catalog, "Addon", column);
 
         Assert.NotNull(decision);
         Assert.Equal(BroadcastKind.Plain, decision!.Kind);
@@ -98,7 +164,7 @@ public sealed class BroadcastPlannerTests
         catalog.Add("ENpcResident", "Title", "Gatekeep", "Portero");
         var column = new BroadcastColumn(100, "Title", "Gatekeep", HasPayload: false, RawHash: "RAW-A");
 
-        var decision = BroadcastPlanner.Decide(catalog, "ENpcResident", column, new HashSet<PayloadBroadcastSignature>());
+        var decision = BroadcastPlanner.Decide(catalog, "ENpcResident", column);
 
         Assert.Null(decision);
     }
@@ -173,7 +239,7 @@ public sealed class BroadcastPlannerTests
             ],
             new Dictionary<uint, IReadOnlyList<StringReplacement>>
             {
-                [3418] = [new StringReplacement("Thormoen's subligar", "subligaculo de Thormoen", "Singular")],
+                [3418] = [new StringReplacement("Thormoen's subligar", "subligáculo de Thormoen", "Singular")],
             });
 
         Assert.Empty(decisions);

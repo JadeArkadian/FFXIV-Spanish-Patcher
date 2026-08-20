@@ -115,15 +115,16 @@ public class MainWindowSmokeTests
         Assert.NotNull(window.FindControl<ConsoleLogTextBlock>("ConsoleText"));
         Assert.Contains(
             window.GetVisualDescendants().OfType<TextBlock>(),
-            textBlock => textBlock.Text == "Edición Heavensward");
+            textBlock => textBlock.Text == "Edición Stormblood");
         Assert.DoesNotContain(
             window.GetVisualDescendants().OfType<TextBlock>(),
-            textBlock => textBlock.Text == "Edición A Realm Reborn");
+            textBlock => textBlock.Text == "Edición Heavensward");
         Assert.Equal(
-            "Heavensward ya está completo.",
+            "Empieza Stormblood.",
             window.FindControl<TextBlock>("MilestoneTitle")?.Text);
         Assert.NotNull(window.FindControl<Image>("MilestoneArrIcon")?.Source);
         Assert.NotNull(window.FindControl<Image>("MilestoneHeavenswardIcon")?.Source);
+        Assert.NotNull(window.FindControl<Image>("MilestoneStormbloodIcon")?.Source);
         AssertVerticallyAligned(
             window,
             "GameCheckContent",
@@ -169,8 +170,8 @@ public class MainWindowSmokeTests
         }
         var window = new MainWindow
         {
-            Width = 1080,
-            Height = 720,
+            Width = 1415,
+            Height = 945,
             DataContext = viewModel,
         };
 
@@ -179,8 +180,8 @@ public class MainWindowSmokeTests
         var frame = window.CaptureRenderedFrame();
 
         Assert.NotNull(frame);
-        Assert.True(frame.PixelSize.Width >= 1080 * scale);
-        Assert.True(frame.PixelSize.Height >= 720 * scale);
+        Assert.True(frame.PixelSize.Width >= 1415 * scale);
+        Assert.True(frame.PixelSize.Height >= 945 * scale);
         AssertInsideWindow(window, window.FindControl<Border>("SetupPanel"));
         AssertInsideWindow(window, window.FindControl<Border>("ConsolePanel"));
         AssertInsideWindow(window, window.FindControl<Button>("PrimaryAction"));
