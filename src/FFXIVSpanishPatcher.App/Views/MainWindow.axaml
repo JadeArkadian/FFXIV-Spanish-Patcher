@@ -6,10 +6,10 @@
         x:DataType="vm:MainViewModel"
         Icon="/Assets/icon.ico"
         Title="{Binding WindowTitle}"
-        Width="1240"
-        Height="820"
-        MinWidth="1080"
-        MinHeight="720"
+        Width="1415"
+        Height="945"
+        MinWidth="1415"
+        MinHeight="945"
         Background="{StaticResource AppBackground}"
         FontFamily="fonts:Inter#Inter">
 
@@ -237,11 +237,11 @@
                   <RotateTransform Angle="45"/>
                 </Border.RenderTransform>
               </Border>
-              <TextBlock Text="Edición Heavensward"
+              <TextBlock Text="Edición Stormblood"
                          Foreground="{StaticResource Gold}"
                          FontSize="13"
                          FontWeight="SemiBold"/>
-              <TextBlock Text="· Traducción completa y revisada"
+              <TextBlock Text="· Traducción en curso sobre ARR y Heavensward completos"
                          Foreground="#C8D5E6"
                          FontSize="13"/>
             </StackPanel>
@@ -634,14 +634,19 @@
                     <Image x:Name="MilestoneHeavenswardIcon" Source="/Assets/hw-icon.png"
                            ToolTip.Tip="Heavensward" Stretch="Uniform"/>
                   </Border>
+                  <Border Width="42" Height="42" Padding="4" CornerRadius="10"
+                          Background="#24121E30" BorderBrush="#4AD46A4A" BorderThickness="1">
+                    <Image x:Name="MilestoneStormbloodIcon" Source="/Assets/stb-icon.png"
+                           ToolTip.Tip="Stormblood" Stretch="Uniform"/>
+                  </Border>
                 </StackPanel>
-                <TextBlock x:Name="MilestoneTitle" Text="Heavensward ya está completo."
+                <TextBlock x:Name="MilestoneTitle" Text="Empieza Stormblood."
                            Foreground="{StaticResource Text}"
                            FontFamily="{StaticResource DisplayFont}"
                            FontSize="27"
                            FontWeight="Normal"
                            LetterSpacing="-0.3"/>
-                <TextBlock Text="Todo su contenido está traducido y revisado: historia, misiones, cinemáticas y diálogos. Se une a A Realm Reborn en tu mod."
+                <TextBlock Text="Con A Realm Reborn y Heavensward ya completos, esta edición abre la traducción de Stormblood: historia principal, secundarias, tribales, cinemáticas y diálogos de la expansión."
                            Foreground="{StaticResource Muted}"
                            FontSize="11.5"
                            LineHeight="16"
@@ -651,7 +656,7 @@
                   <TextBlock Text="{Binding AppVersionLabel, StringFormat='Corpus {0}'}"
                              Foreground="#728AA8"
                              FontSize="9.5"/>
-                  <TextBlock Text="ARR y Heavensward al 100 %"
+                  <TextBlock Text="ARR y Heavensward al 100 % · Stormblood al 41 %"
                              Foreground="#728AA8"
                              FontSize="9.5"/>
                   <TextBlock Text="Sin archivos originales"
