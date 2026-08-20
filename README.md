@@ -99,7 +99,8 @@ nada, no se crea un paquete vacío. Consulta la consola para conocer la cobertur
 1. Abre `FFXIVSpanishPatcher`.
 2. Si detecta la instalación de FFXIV, la ruta aparecerá automáticamente.
 3. Si no la detecta, pulsa **Examinar** y selecciona la carpeta del juego.
-4. Abre **Opciones avanzadas y categorías** si no quieres incluirlo todo. Debe quedar al menos una
+4. Abre **Opciones avanzadas y categorías** para decidir qué categorías quedarán activadas al
+   importar en Penumbra. El paquete siempre incluye traducción completa; debe quedar al menos una
    categoría marcada.
 5. Pulsa **Crear traducción para Penumbra**.
 6. Si la versión difiere, revisa el aviso y decide si quieres generar *best effort*.
@@ -124,7 +125,7 @@ Documentos/FFXIVSpanish Patcher/Output
 
 1. Abre Penumbra dentro del juego.
 2. Importa el `.pmp` generado por el parcheador.
-3. Activa el mod.
+3. Activa el mod en colección **Base/Default** y marca las categorías que quieras aplicar.
 4. En los ajustes de Dalamud, activa **Wait for plugins before game loads**.
 5. Reinicia el juego.
 
@@ -172,8 +173,8 @@ Una captura y el lugar exacto donde aparece el texto ayudan mucho.
 ### He cargado el mod en Penumbra pero no veo cambios
 
 En los ajustes de Dalamud, marca **Wait for plugins before game loads** y reinicia el juego. En
-Penumbra, comprueba también que el paquete esté instalado, activo y habilitado para el personaje o
-colección que estás usando.
+Penumbra, comprueba también que el paquete esté instalado, activo en colección **Base/Default** y
+que las categorías necesarias estén marcadas.
 
 Si no se hacen estos pasos, Penumbra puede cargar tarde y los textos no se aplicarán.
 

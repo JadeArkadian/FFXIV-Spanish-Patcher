@@ -528,7 +528,10 @@
                               IsVisible="{Binding IsAdvancedOpen}"
                               Spacing="5">
                       <Grid ColumnDefinitions="*,Auto,Auto">
-                        <TextBlock Text="Elige qué grupos incluir" Foreground="{StaticResource Muted}" FontSize="10"/>
+                        <StackPanel Spacing="1">
+                          <TextBlock Text="Categorías activadas al importar en Penumbra" Foreground="{StaticResource Muted}" FontSize="10"/>
+                          <TextBlock Text="El paquete siempre incluye traducción completa." Foreground="#6F86A2" FontSize="9"/>
+                        </StackPanel>
                         <Button Grid.Column="1" Classes="text" Content="Todas"
                                 Command="{Binding SelectAllCategoriesCommand}"/>
                         <Button Grid.Column="2" Classes="text" Content="Ninguna"

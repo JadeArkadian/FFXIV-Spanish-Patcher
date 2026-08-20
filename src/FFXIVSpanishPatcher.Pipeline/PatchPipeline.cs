@@ -68,13 +68,20 @@ public sealed class PatchPipeline
 
         Report(PipelineComponent.Patcher, "Cargando traducciones (FFXIVSpanish)", PipelineLevel.Ok, entries.Count);
 
-        var selection = TranslationCategories.BuildSelection(request.Categories);
         var unsafeSeStringEntries = new HashSet<TranslationEntry>();
-        bool IsPackageableForSelection(TranslationEntry e)
-            => Packageable(e, request.Statuses) is null && TranslationCategories.IsSelected(e, selection);
+        bool IsPackageableEntry(TranslationEntry e)
+            => Packageable(e, request.Statuses) is null;
         bool IsCandidate(TranslationEntry e)
-            => IsPackageableForSelection(e) && !unsafeSeStringEntries.Contains(e);
-        var candidateEntries = entries.Count(IsPackageableForSelection);
+            => IsPackageableEntry(e) && !unsafeSeStringEntries.Contains(e);
+        var candidateEntries = entries.Count(IsPackageableEntry);
+        var categoryStatistics = TranslationCategoryCatalog.All.ToDictionary(
+            category => category.Domain,
+            _ => new MutableCategoryStatistics(),
+            StringComparer.OrdinalIgnoreCase);
+        foreach (var entry in entries.Where(IsPackageableEntry))
+        {
+            categoryStatistics[TranslationCategoryCatalog.DomainOf(entry)].CandidateEntries++;
+        }
 
         var appliedWrites = 0;
         var rowMisses = 0;
@@ -100,11 +107,15 @@ public sealed class PatchPipeline
             UnsupportedPages: unsupportedPages,
             UnsupportedPageEntries: unsupportedPageEntries,
             PatchedPages: patchedPages,
-            SkippedPages: skippedPages);
+            SkippedPages: skippedPages,
+            Categories: categoryStatistics.ToDictionary(
+                pair => pair.Key,
+                pair => pair.Value.Snapshot(),
+                StringComparer.OrdinalIgnoreCase));
 
         // 2. SeString gate over the build candidates. Unsafe rows are skipped by default; a few bad
         // corpus rows must not abort an otherwise valid package.
-        var gate = ManifestSeStringGate.Check(entries.Where(IsPackageableForSelection));
+        var gate = ManifestSeStringGate.Check(entries.Where(IsPackageableEntry));
         if (gate.Count > 0)
         {
             if (request.ForceSeString)
@@ -122,6 +133,7 @@ public sealed class PatchPipeline
                 foreach (var violation in gate)
                 {
                     unsafeSeStringEntries.Add(violation.Entry);
+                    categoryStatistics[TranslationCategoryCatalog.DomainOf(violation.Entry)].UnsafeSeStringEntries++;
                     Report(
                         PipelineComponent.Patcher,
                         $"omitida fila insegura: {violation.Describe()}",
@@ -169,11 +181,13 @@ public sealed class PatchPipeline
                 }
 
                 var key = entry.SourceKey!;
+                var category = categoryStatistics[TranslationCategoryCatalog.DomainOf(entry)];
                 var resolution = backend.ResolveExd(key);
                 if (resolution.Kind == ExdResolutionKind.MissingSheet)
                 {
                     missingSheets.Add(key.Sheet);
                     missingSheetEntries++;
+                    category.MissingSheetEntries++;
                     Increment(missingBySheet, key.Sheet);
                     continue;
                 }
@@ -181,15 +195,25 @@ public sealed class PatchPipeline
                 if (resolution.Kind != ExdResolutionKind.Resolved || resolution.Path is null)
                 {
                     unresolvedRows++;
+                    category.UnresolvedRows++;
                     Increment(unresolvedBySheet, key.Sheet);
                     continue;
                 }
 
                 var exdPath = resolution.Path;
+                var domain = TranslationCategoryCatalog.DomainOf(entry);
                 if (!pages.TryGetValue(exdPath, out var page))
                 {
-                    page = new PagePatch(key.Sheet);
+                    page = new PagePatch(key.Sheet, domain);
                     pages[exdPath] = page;
+                }
+                else if (!string.Equals(page.Domain, domain, StringComparison.OrdinalIgnoreCase))
+                {
+                    Report(
+                        PipelineComponent.Patcher,
+                        $"página {exdPath} pertenece a varias categorías ({page.Domain}, {domain}); corrige la taxonomía antes de generar.",
+                        PipelineLevel.Error);
+                    return PatchResult.Failure(PatchOutcome.ValidationFailed, Statistics());
                 }
 
                 page.AddManifest(
@@ -225,8 +249,7 @@ public sealed class PatchPipeline
             // 5. Broadcast table: approved target per sheet+field+source (ambiguous source -> null).
             var broadcast = BuildBroadcastCatalog(
                 entries.Where(e => !unsafeSeStringEntries.Contains(e)).ToList(),
-                request.Statuses,
-                selection);
+                request.Statuses);
 
             // 6. Patch each page into an isolated per-run staging tree.
             var runStaging = Path.Combine(request.StagingPath, Guid.NewGuid().ToString("N"));
@@ -236,10 +259,11 @@ public sealed class PatchPipeline
             try
             {
                 temporaryOutput = SiblingTemporaryPath(request.OutputPath);
-                var writer = new PackageWriter(runStaging);
+                var writer = new PenumbraModTreeWriter(runStaging);
                 foreach (var (exdPath, page) in pages)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
+                    var category = categoryStatistics[page.Domain];
 
                     ExdLayout? layout;
                     byte[]? raw;
@@ -254,6 +278,8 @@ public sealed class PatchPipeline
                         missingPages.Add(exdPath);
                         missingPageEntries += page.ManifestEntryCount;
                         skippedPages++;
+                        category.MissingPageEntries += page.ManifestEntryCount;
+                        category.SkippedPages++;
                         Report(
                             PipelineComponent.Patcher,
                             $"omitida página {exdPath}: no se pudo leer ({exception.Message})",
@@ -267,6 +293,8 @@ public sealed class PatchPipeline
                         missingSheets.Add(page.Sheet);
                         missingSheetEntries += page.ManifestEntryCount;
                         skippedPages++;
+                        category.MissingSheetEntries += page.ManifestEntryCount;
+                        category.SkippedPages++;
                         Report(
                             PipelineComponent.Patcher,
                             $"omitida hoja {page.Sheet}: falta su layout EXH ({page.ManifestEntryCount} entrada(s))",
@@ -280,6 +308,8 @@ public sealed class PatchPipeline
                         missingPages.Add(exdPath);
                         missingPageEntries += page.ManifestEntryCount;
                         skippedPages++;
+                        category.MissingPageEntries += page.ManifestEntryCount;
+                        category.SkippedPages++;
                         Report(
                             PipelineComponent.Patcher,
                             $"omitida página {exdPath}: no existe en esta versión ({page.ManifestEntryCount} entrada(s))",
@@ -293,6 +323,8 @@ public sealed class PatchPipeline
                         unsupportedPages++;
                         unsupportedPageEntries += page.ManifestEntryCount;
                         skippedPages++;
+                        category.UnsupportedPageEntries += page.ManifestEntryCount;
+                        category.SkippedPages++;
                         Report(
                             PipelineComponent.Patcher,
                             $"omitida página {exdPath}: {page.Sheet} es subrow variant 2 (no soportado)",
@@ -314,6 +346,8 @@ public sealed class PatchPipeline
                         missingPages.Add(exdPath);
                         missingPageEntries += page.ManifestEntryCount;
                         skippedPages++;
+                        category.MissingPageEntries += page.ManifestEntryCount;
+                        category.SkippedPages++;
                         Report(
                             PipelineComponent.Patcher,
                             $"omitida página {exdPath}: no se pudo leer su esquema ({exception.Message})",
@@ -338,6 +372,8 @@ public sealed class PatchPipeline
                         unsupportedPages++;
                         unsupportedPageEntries += page.ManifestEntryCount;
                         skippedPages++;
+                        category.UnsupportedPageEntries += page.ManifestEntryCount;
+                        category.SkippedPages++;
                         Report(
                             PipelineComponent.Patcher,
                             $"omitida página {exdPath}: {exception.Message}",
@@ -425,6 +461,8 @@ public sealed class PatchPipeline
                         unsupportedPages++;
                         unsupportedPageEntries += page.ManifestEntryCount;
                         skippedPages++;
+                        category.UnsupportedPageEntries += page.ManifestEntryCount;
+                        category.SkippedPages++;
                         Report(
                             PipelineComponent.Patcher,
                             $"omitida página {exdPath}: {exception.Message}",
@@ -435,6 +473,8 @@ public sealed class PatchPipeline
 
                     appliedWrites += result.Applied;
                     rowMisses += result.Missed.Count;
+                    category.AppliedWrites += result.Applied;
+                    category.RowMisses += result.Missed.Count;
                     foreach (var miss in result.Missed)
                     {
                         if (miss.Reason == ContaminationGuard.AbsentSourceReason)
@@ -447,11 +487,13 @@ public sealed class PatchPipeline
 
                     if (result.Applied > 0)
                     {
-                        writer.AddPatchedExd(exdPath, result.Bytes);
+                        writer.AddPatchedExd(exdPath, result.Bytes, page.Domain);
+                        category.PatchedPages++;
                     }
                     else
                     {
                         skippedPages++;
+                        category.SkippedPages++;
                     }
 
                     Report(
@@ -499,9 +541,24 @@ public sealed class PatchPipeline
                         PipelineLevel.Warning);
                 }
 
-                // 8. Build beside the destination, verify every time, then promote atomically.
+                // 8. Write and verify the v4 tree, archive it, verify the ZIP, then promote atomically.
+                writer.WriteTree(request.Meta, request.Categories);
+                var treeProblems = new ModTreeVerifier().Verify(writer.StagingPath, writer.DeclaredFiles);
+                if (treeProblems.Count > 0)
+                {
+                    foreach (var problem in treeProblems)
+                    {
+                        Report(PipelineComponent.Verifier, problem, PipelineLevel.Error);
+                    }
+
+                    Report(PipelineComponent.Pipeline,
+                        "La integridad del árbol v4 falló. El paquete anterior, si existía, se conserva.",
+                        PipelineLevel.Error);
+                    return PatchResult.Failure(PatchOutcome.ValidationFailed, Statistics(writer.FileCount));
+                }
+
                 Report(PipelineComponent.Packager, "Generando .pmp temporal...");
-                var output = writer.Package(request.Meta, temporaryOutput);
+                var output = PmpArchiveWriter.Create(writer.StagingPath, temporaryOutput);
                 Report(PipelineComponent.Packager,
                     "Comprimiendo y empaquetando archivos", PipelineLevel.Ok, writer.FileCount);
 
@@ -588,12 +645,12 @@ public sealed class PatchPipeline
     }
 
     private static BroadcastCatalog BuildBroadcastCatalog(
-        IReadOnlyList<TranslationEntry> entries, IReadOnlySet<string> statuses, IReadOnlySet<string>? selection)
+        IReadOnlyList<TranslationEntry> entries, IReadOnlySet<string> statuses)
     {
         var broadcast = new BroadcastCatalog();
         foreach (var entry in entries)
         {
-            if (Packageable(entry, statuses) is not null || !TranslationCategories.IsSelected(entry, selection))
+            if (Packageable(entry, statuses) is not null)
             {
                 continue;
             }
@@ -721,11 +778,12 @@ public sealed class PatchPipeline
     }
 
     /// <summary>Replacements grouped for one EXD page, deduped per (field, source).</summary>
-    private sealed class PagePatch(string sheet)
+    private sealed class PagePatch(string sheet, string domain)
     {
         private readonly Dictionary<uint, List<StringReplacement>> _rows = new();
 
         public string Sheet { get; } = sheet;
+        public string Domain { get; } = domain;
         public int ManifestEntryCount { get; private set; }
 
         public bool AddManifest(uint rowId, StringReplacement replacement, Action<string>? onConflict = null)
@@ -762,5 +820,32 @@ public sealed class PatchPipeline
 
         public IReadOnlyDictionary<uint, IReadOnlyList<StringReplacement>> ToReplacements()
             => _rows.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<StringReplacement>)pair.Value);
+    }
+
+    private sealed class MutableCategoryStatistics
+    {
+        public int CandidateEntries { get; set; }
+        public int AppliedWrites { get; set; }
+        public int RowMisses { get; set; }
+        public int MissingSheetEntries { get; set; }
+        public int MissingPageEntries { get; set; }
+        public int UnresolvedRows { get; set; }
+        public int UnsafeSeStringEntries { get; set; }
+        public int UnsupportedPageEntries { get; set; }
+        public int PatchedPages { get; set; }
+        public int SkippedPages { get; set; }
+
+        public CategoryPatchStatistics Snapshot()
+            => new(
+                CandidateEntries,
+                AppliedWrites,
+                RowMisses,
+                MissingSheetEntries,
+                MissingPageEntries,
+                UnresolvedRows,
+                UnsafeSeStringEntries,
+                UnsupportedPageEntries,
+                PatchedPages,
+                SkippedPages);
     }
 }

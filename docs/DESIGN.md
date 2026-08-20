@@ -62,7 +62,8 @@ sobrescribirse mediante una resincronización masiva; las mejoras se portan manu
 ITranslationSource      carga corpus embebido o fixtures
 IPatchBackend           resuelve sheets/rows y expone IBaseExdSource
 IPatchBackendFactory    abre cliente real o backend sintético
-IIntegrityVerifier      valida estructura y contenido del paquete
+ModTreeVerifier          valida árbol Penumbra v4 antes de archivarlo
+IIntegrityVerifier       reabre ZIP y valida estructura y contenido
 PatchPipeline           orquesta y emite PipelineEvent
 ```
 
@@ -70,18 +71,33 @@ PatchPipeline           orquesta y emite PipelineEvent
 
 ```mermaid
 flowchart LR
-  A["Cargar corpus"] --> B["Filtrar categorías"]
+  A["Cargar corpus"] --> B["Generar todas categorías"]
   B --> C["SeString gate"]
   C --> D["Resolver hojas, filas y páginas"]
   D --> E["Leer EXD y aplicar replacements"]
   E --> F["Guard de contaminación"]
-  F --> G["Empaquetar en temporal"]
-  G --> H["Verificar siempre"]
-  H --> I["Promover atómicamente"]
+  F --> G["Escribir árbol v4 temporal"]
+  G --> H["Verificar árbol"]
+  H --> I["Comprimir y verificar ZIP"]
+  I --> J["Promover atómicamente"]
 ```
 
 `IPatchBackend.ResolveExd` devuelve `Resolved`, `MissingSheet` o `UnresolvedRow`. El pipeline sigue
 con las páginas válidas, emite sus avisos y devuelve estadísticas estructuradas.
+
+### Paquete Penumbra v4 y categorías
+
+El `.pmp` contiene siempre todas las páginas EXD que se hayan podido parchear. `meta.json` usa
+`FileVersion: 4`, sin `default_mod.json` ni `group_*.json`, y define un único grupo Multi estable:
+`Categorías de traducción`. Sus diez opciones agrupan los redirects por dominio. La selección de
+Avalonia solo calcula `DefaultSettings`, es decir, qué casillas aparecen activadas al importar en
+Penumbra; no excluye datos del paquete.
+
+Cada payload se escribe bajo `files/categories/{orden}-{dominio}/exd/...`. Antes de crear el ZIP,
+`ModTreeVerifier` reabre `meta.json` y todos los archivos del árbol: exige v4, grupo/opciones/orden
+estables, bitfield válido, redirects seguros y únicos, payload existente sin symlinks u huérfanos y
+cabecera `EXDF`. `IntegrityVerifier` repite la comprobación relevante tras reabrir el ZIP. Cualquier
+fallo conserva la salida anterior.
 
 ### Contrato binario SeString
 

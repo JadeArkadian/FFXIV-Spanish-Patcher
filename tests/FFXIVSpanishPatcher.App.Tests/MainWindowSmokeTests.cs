@@ -148,6 +148,33 @@ public class MainWindowSmokeTests
         }
     }
 
+    [AvaloniaFact]
+    public void MainWindow_ExplainsThatCategoriesOnlySetPenumbraDefaults()
+    {
+        var viewModel = new MainViewModel(
+            new NoopShell(),
+            new ListTranslationSource([]),
+            NullUpdateCheckService.Instance)
+        {
+            TranslationsReady = true,
+            IsAdvancedOpen = true,
+        };
+        foreach (var category in CategoryCatalog.All)
+        {
+            viewModel.Categories.Add(new CategoryViewModel(category, count: 1));
+        }
+
+        var window = new MainWindow { DataContext = viewModel };
+        window.Show();
+
+        var texts = window.GetVisualDescendants().OfType<TextBlock>().Select(textBlock => textBlock.Text).ToArray();
+        Assert.Contains("Categorías activadas al importar en Penumbra", texts);
+        Assert.Contains("El paquete siempre incluye traducción completa.", texts);
+        Assert.DoesNotContain("Elige qué grupos incluir", texts);
+
+        window.Close();
+    }
+
     [AvaloniaTheory]
     [InlineData(1.0)]
     [InlineData(1.25)]

@@ -9,7 +9,7 @@ public enum PatchOutcome
     /// <summary>Package built but some replacements were missed (still a usable .pmp).</summary>
     PackagedWithMisses,
 
-    /// <summary>No packageable entries for the selection. Nothing was written.</summary>
+    /// <summary>No packageable entries exist. Nothing was written.</summary>
     NothingToPackage,
 
     /// <summary>Base EXD looks contaminated / already translated. Aborted before writing.</summary>
@@ -28,7 +28,20 @@ public enum PatchOutcome
     OutputError,
 }
 
-/// <summary>Auditable coverage of one run. Counts refer only to selected packageable entries.</summary>
+/// <summary>Auditable coverage of one emitted Penumbra package.</summary>
+public sealed record CategoryPatchStatistics(
+    int CandidateEntries = 0,
+    int AppliedWrites = 0,
+    int RowMisses = 0,
+    int MissingSheetEntries = 0,
+    int MissingPageEntries = 0,
+    int UnresolvedRows = 0,
+    int UnsafeSeStringEntries = 0,
+    int UnsupportedPageEntries = 0,
+    int PatchedPages = 0,
+    int SkippedPages = 0);
+
+/// <summary>Auditable coverage of one emitted Penumbra package.</summary>
 public sealed record PatchStatistics(
     int CandidateEntries = 0,
     int AppliedWrites = 0,
@@ -42,8 +55,15 @@ public sealed record PatchStatistics(
     int UnsupportedPages = 0,
     int UnsupportedPageEntries = 0,
     int PatchedPages = 0,
-    int SkippedPages = 0)
+    int SkippedPages = 0,
+    IReadOnlyDictionary<string, CategoryPatchStatistics>? Categories = null)
 {
+    private static readonly IReadOnlyDictionary<string, CategoryPatchStatistics> EmptyCategories =
+        new Dictionary<string, CategoryPatchStatistics>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Per-option coverage, keyed by stable Penumbra category domain.</summary>
+    public IReadOnlyDictionary<string, CategoryPatchStatistics> CategoryStatistics => Categories ?? EmptyCategories;
+
     /// <summary>True when the verified package has less coverage than the selected manifest.</summary>
     public bool HasOmissions =>
         RowMisses > 0
