@@ -2,6 +2,35 @@
 
 Resumen de todos los cambios relevantes del proyecto.
 
+## v0.4.0
+
+- *Stormblood* entra en juego: la expansión pasa del **0,0 % al 41,4 %**, con
+  **13.112/31.689 líneas traducidas** entre historia principal, secundarias, tribales,
+  cinemáticas y conversaciones de NPC.
+- Traducido el primer gran tramo de la historia principal de *Stormblood* (**70 hojas**,
+  **3.000 filas**): la Marca de Rhalgr, los Confines, los Picos, el viaje a Kugane, el Mar Rubí y
+  la Confederación, Sui-no-Sato, Susano, Yanxia y la Casa de los Fieros, la infiltración en el
+  castillo de Doma, la Estepa de Azim, Reunión, los Mol y el Trono del Alba.
+- Completadas las **11 hojas** de misiones secundarias de *Stormblood* (**469 filas**) y las
+  **40 hojas** de las tribus **kojin** y **ananta** (**1.821 filas**).
+- Completadas **todas las conversaciones regionales y de Eureka de *Stormblood***:
+  **119/119 hojas** y **4.392/4.392 filas (100,0%)**
+- Nuevo lote de eventos estacionales pasados.
+- Traducidas **11 hojas** de misiones secundarias variadas
+- Corregido un fallo del empaquetador que dejaba sin traducir filas idénticas byte a byte: los
+  payloads traducidos ahora se propagan a todas sus gemelas deduplicadas.
+- Barridos globales de coherencia
+- Cambios varios
+- Progreso global: **559.353/808.958 líneas traducibles (69,1%)** y **3.989/6.986 hojas completadas
+  (57,1%)**, frente al 67,5% y 53,1% de v0.3.4. En total, **+13.529 líneas** y **+279 hojas**.
+- Actualizado el SDK de .NET a 10.0.400 y las dependencias de pruebas (xUnit runner 4.0.0,
+  Microsoft.NET.Test.Sdk 18.9.0).
+
+  ## v0.3.5
+
+- Actualizado patcher a la versión 2026.08.11.0000.0000 de FFXIV para que no os salga el warning por usar versiones diferentes
+- Sin más cambios reales respecto a la v0.3.4
+
 ## v0.3.4
 
 - ¡Nuevo hito alcanzado! ¡TODO el contenido de *Heavensward* está totalmente traducido! ⚔️🥳
