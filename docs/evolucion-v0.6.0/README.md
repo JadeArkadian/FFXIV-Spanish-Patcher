@@ -21,6 +21,10 @@ otros agentes pueden ejecutar sin depender de la conversación original.
 3. [`PLAN-v0.5.0.md`](PLAN-v0.5.0.md): prerrequisito de empaquetado por categorías.
 4. [`PLAN-v0.6.0.md`](PLAN-v0.6.0.md): plugin Dalamud completo, distribución y convivencia.
 5. [`SMOKE-TESTS-v0.5.0.md`](SMOKE-TESTS-v0.5.0.md): pruebas humanas de formato, importación y texto.
+6. [`SMOKE-TESTS-v0.6.0-ETAPA-1.md`](SMOKE-TESTS-v0.6.0-ETAPA-1.md),
+   [`SMOKE-TESTS-v0.6.0-ETAPA-2.md`](SMOKE-TESTS-v0.6.0-ETAPA-2.md) y
+   [`SMOKE-TESTS-v0.6.0-ETAPA-3.md`](SMOKE-TESTS-v0.6.0-ETAPA-3.md): validación humana incremental
+   de carga, estado interno y disponibilidad de Penumbra.
 
 ## Punto de partida verificado
 

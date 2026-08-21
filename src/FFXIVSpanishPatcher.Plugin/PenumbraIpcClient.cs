@@ -1,0 +1,278 @@
+using Dalamud.Plugin;
+using Dalamud.Plugin.Ipc;
+using Dalamud.Plugin.Ipc.Exceptions;
+using Dalamud.Plugin.Services;
+
+namespace FFXIVSpanishPatcher.Plugin;
+
+public interface IPenumbraApiTransport : IDisposable
+{
+    event Action? Initialized;
+
+    event Action? Disposed;
+
+    event Action<bool>? EnabledChanged;
+
+    event Action<string, bool>? ModDirectoryChanged;
+
+    (int Breaking, int Features) GetApiVersion();
+
+    bool GetEnabledState();
+
+    string GetModDirectory();
+}
+
+public interface IPenumbraDirectoryProbe
+{
+    bool Exists(string path);
+}
+
+public interface IPluginDiagnosticLogger
+{
+    void Information(string message);
+
+    void Warning(string message, Exception? exception = null);
+}
+
+/// <summary>Typed Penumbra API v5 client that turns unavailable IPC into recoverable state.</summary>
+public sealed class PenumbraIpcClient : IPenumbraIpcClient
+{
+    public const int RequiredBreakingVersion = 5;
+    public const int RequiredFeatureVersion = 15;
+
+    private readonly IPenumbraApiTransport _transport;
+    private readonly IPenumbraDirectoryProbe _directoryProbe;
+    private readonly IPluginDiagnosticLogger _log;
+    private bool _disposed;
+
+    public PenumbraIpcClient(
+        IPenumbraApiTransport transport,
+        IPenumbraDirectoryProbe directoryProbe,
+        IPluginDiagnosticLogger log)
+    {
+        _transport = transport;
+        _directoryProbe = directoryProbe;
+        _log = log;
+        _transport.Initialized += OnInitialized;
+        _transport.Disposed += OnDisposed;
+        _transport.EnabledChanged += OnEnabledChanged;
+        _transport.ModDirectoryChanged += OnModDirectoryChanged;
+    }
+
+    public event Action<PenumbraAvailability>? AvailabilityChanged;
+
+    public Task<PenumbraAvailability> GetAvailabilityAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(EvaluateAvailability());
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        if (_disposed)
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        _disposed = true;
+        _transport.Initialized -= OnInitialized;
+        _transport.Disposed -= OnDisposed;
+        _transport.EnabledChanged -= OnEnabledChanged;
+        _transport.ModDirectoryChanged -= OnModDirectoryChanged;
+        _transport.Dispose();
+        return ValueTask.CompletedTask;
+    }
+
+    private PenumbraAvailability EvaluateAvailability()
+    {
+        try
+        {
+            var (breaking, features) = _transport.GetApiVersion();
+            if (breaking != RequiredBreakingVersion)
+            {
+                return new PenumbraAvailability(
+                    PenumbraAvailabilityStatus.IncompatibleBreakingVersion,
+                    breaking,
+                    features,
+                    null,
+                    $"Penumbra usa API incompatible ({breaking}); se requiere {RequiredBreakingVersion}.");
+            }
+
+            if (features < RequiredFeatureVersion)
+            {
+                return new PenumbraAvailability(
+                    PenumbraAvailabilityStatus.InsufficientFeatureVersion,
+                    breaking,
+                    features,
+                    null,
+                    $"Penumbra no incluye las funciones necesarias (feature {features}; se requiere {RequiredFeatureVersion}).");
+            }
+
+            if (!_transport.GetEnabledState())
+            {
+                return new PenumbraAvailability(
+                    PenumbraAvailabilityStatus.Disabled,
+                    breaking,
+                    features,
+                    null,
+                    "Penumbra está desactivado.");
+            }
+
+            var directory = _transport.GetModDirectory();
+            if (String.IsNullOrWhiteSpace(directory) || !_directoryProbe.Exists(directory))
+            {
+                return new PenumbraAvailability(
+                    PenumbraAvailabilityStatus.InvalidModDirectory,
+                    breaking,
+                    features,
+                    directory,
+                    "El directorio de mods de Penumbra no existe o no es válido.");
+            }
+
+            return new PenumbraAvailability(
+                PenumbraAvailabilityStatus.Ready,
+                breaking,
+                features,
+                directory,
+                "Penumbra está disponible.");
+        }
+        catch (IpcNotReadyError exception)
+        {
+            _log.Information("Penumbra aún no está disponible; se volverá a comprobar al inicializarse.");
+            return new PenumbraAvailability(
+                PenumbraAvailabilityStatus.Unavailable,
+                0,
+                0,
+                null,
+                "Penumbra no está instalado, está iniciando o no expone su API.",
+                exception);
+        }
+        catch (Exception exception)
+        {
+            _log.Warning("La consulta a Penumbra falló; puede reintentarse.", exception);
+            return new PenumbraAvailability(
+                PenumbraAvailabilityStatus.Faulted,
+                0,
+                0,
+                null,
+                "No se pudo consultar Penumbra. Consulta el diagnóstico y reintenta.",
+                exception);
+        }
+    }
+
+    private void OnInitialized() => Publish("Penumbra se ha inicializado; disponibilidad actualizada.");
+
+    private void OnDisposed()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        var availability = new PenumbraAvailability(
+            PenumbraAvailabilityStatus.Unavailable,
+            0,
+            0,
+            null,
+            "Penumbra se ha descargado; el gestor queda en espera.");
+        _log.Information(availability.UserMessage);
+        AvailabilityChanged?.Invoke(availability);
+    }
+
+    private void OnEnabledChanged(bool _) => Publish("El estado de Penumbra ha cambiado; disponibilidad actualizada.");
+
+    private void OnModDirectoryChanged(string _, bool __) => Publish("El directorio de mods de Penumbra ha cambiado; disponibilidad actualizada.");
+
+    private void Publish(string message)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _log.Information(message);
+        AvailabilityChanged?.Invoke(EvaluateAvailability());
+    }
+}
+
+internal sealed class DalamudPenumbraApiTransport : IPenumbraApiTransport
+{
+    private const string ApiVersionLabel = "Penumbra.ApiVersion.V5";
+    private const string ModDirectoryLabel = "Penumbra.GetModDirectory";
+    private const string EnabledStateLabel = "Penumbra.GetEnabledState";
+    private readonly ICallGateSubscriber<(int Breaking, int Features)> _apiVersion;
+    private readonly ICallGateSubscriber<string> _modDirectory;
+    private readonly ICallGateSubscriber<bool> _enabledState;
+    private readonly ICallGateSubscriber<object?> _initialized;
+    private readonly ICallGateSubscriber<object?> _disposed;
+    private readonly ICallGateSubscriber<bool, object?> _enabledChanged;
+    private readonly ICallGateSubscriber<string, bool, object?> _modDirectoryChanged;
+
+    public DalamudPenumbraApiTransport(IDalamudPluginInterface pluginInterface)
+    {
+        _apiVersion = pluginInterface.GetIpcSubscriber<(int Breaking, int Features)>(ApiVersionLabel);
+        _modDirectory = pluginInterface.GetIpcSubscriber<string>(ModDirectoryLabel);
+        _enabledState = pluginInterface.GetIpcSubscriber<bool>(EnabledStateLabel);
+        _initialized = pluginInterface.GetIpcSubscriber<object?>("Penumbra.Initialized");
+        _disposed = pluginInterface.GetIpcSubscriber<object?>("Penumbra.Disposed");
+        _enabledChanged = pluginInterface.GetIpcSubscriber<bool, object?>("Penumbra.EnabledChange");
+        _modDirectoryChanged = pluginInterface.GetIpcSubscriber<string, bool, object?>("Penumbra.ModDirectoryChanged");
+        _initialized.Subscribe(HandleInitialized);
+        _disposed.Subscribe(HandleDisposed);
+        _enabledChanged.Subscribe(HandleEnabledChanged);
+        _modDirectoryChanged.Subscribe(HandleModDirectoryChanged);
+    }
+
+    public event Action? Initialized;
+
+    public event Action? Disposed;
+
+    public event Action<bool>? EnabledChanged;
+
+    public event Action<string, bool>? ModDirectoryChanged;
+
+    public (int Breaking, int Features) GetApiVersion() => _apiVersion.InvokeFunc();
+
+    public bool GetEnabledState() => _enabledState.InvokeFunc();
+
+    public string GetModDirectory() => _modDirectory.InvokeFunc();
+
+    public void Dispose()
+    {
+        _initialized.Unsubscribe(HandleInitialized);
+        _disposed.Unsubscribe(HandleDisposed);
+        _enabledChanged.Unsubscribe(HandleEnabledChanged);
+        _modDirectoryChanged.Unsubscribe(HandleModDirectoryChanged);
+    }
+
+    private void HandleInitialized() => Initialized?.Invoke();
+
+    private void HandleDisposed() => Disposed?.Invoke();
+
+    private void HandleEnabledChanged(bool enabled) => EnabledChanged?.Invoke(enabled);
+
+    private void HandleModDirectoryChanged(string path, bool valid) => ModDirectoryChanged?.Invoke(path, valid);
+}
+
+internal sealed class PhysicalPenumbraDirectoryProbe : IPenumbraDirectoryProbe
+{
+    public static PhysicalPenumbraDirectoryProbe Instance { get; } = new();
+
+    public bool Exists(string path) => Directory.Exists(path);
+}
+
+internal sealed class DalamudPluginDiagnosticLogger(IPluginLog log) : IPluginDiagnosticLogger
+{
+    public void Information(string message) => log.Information("{Message}", message);
+
+    public void Warning(string message, Exception? exception = null)
+    {
+        if (exception is null)
+        {
+            log.Warning("{Message}", message);
+            return;
+        }
+
+        log.Warning("{Message}: {Exception}", message, exception);
+    }
+}

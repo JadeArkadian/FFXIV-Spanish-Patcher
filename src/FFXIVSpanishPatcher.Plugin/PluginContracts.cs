@@ -4,6 +4,8 @@ namespace FFXIVSpanishPatcher.Plugin;
 public interface IPenumbraIpcClient : IAsyncDisposable
 {
     Task<PenumbraAvailability> GetAvailabilityAsync(CancellationToken cancellationToken);
+
+    event Action<PenumbraAvailability>? AvailabilityChanged;
 }
 
 /// <summary>Stage-2 boundary for the transactional installer; filesystem work arrives in stage 4.</summary>
@@ -18,7 +20,27 @@ public interface IGameDataBackend
     Task<GameDataBuildInput> GetBuildInputAsync(CancellationToken cancellationToken);
 }
 
-public sealed record PenumbraAvailability(bool IsInstalled, bool IsEnabled, int BreakingVersion, int FeatureVersion, string? Message);
+public enum PenumbraAvailabilityStatus
+{
+    Ready,
+    Unavailable,
+    Disabled,
+    InvalidModDirectory,
+    IncompatibleBreakingVersion,
+    InsufficientFeatureVersion,
+    Faulted,
+}
+
+public sealed record PenumbraAvailability(
+    PenumbraAvailabilityStatus Status,
+    int BreakingVersion,
+    int FeatureVersion,
+    string? ModDirectory,
+    string UserMessage,
+    Exception? TechnicalError = null)
+{
+    public bool IsReady => Status == PenumbraAvailabilityStatus.Ready;
+}
 
 public sealed record ModInstallRequest(string PayloadId);
 

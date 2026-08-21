@@ -382,6 +382,9 @@ Todas las suscripciones se disponen. Ningún catch vacío sin log diagnóstico y
 
 Smoke real: cargar plugin antes y después de Penumbra, desactivar/reactivar Penumbra.
 
+Estado: implementación automática y smoke tests preparados; pendiente de validación humana Windows y
+Linux antes de crear o modificar árboles de mod.
+
 Commit: `feat(plugin): integrate Penumbra API v5`.
 
 ### Etapa 4 — identidad, adopción e instalador transaccional

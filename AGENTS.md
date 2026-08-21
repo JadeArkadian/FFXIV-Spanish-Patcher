@@ -34,8 +34,9 @@ vendorizado propio bajo `vendor/`.
 - `src/FFXIVSpanishPatcher.Pipeline` - orquestacion `load -> SeString gate -> extract -> patch ->
   package -> verify`, detector de ruta/version del juego, categorias, integridad y eventos
   `IProgress<PipelineEvent>`.
-- `src/FFXIVSpanishPatcher.Plugin` - entrypoint Dalamud v0.6.0; reutiliza Pipeline y durante el
-  spike solo verifica lectura de EXH/EXD desde `IDataManager.GameData` sin instalar mod ni UI final.
+- `src/FFXIVSpanishPatcher.Plugin` - entrypoint Dalamud v0.6.0; reutiliza Pipeline, verifica
+  lectura de EXH/EXD desde `IDataManager.GameData` y consulta de forma degradable la API pública
+  IPC v5 de Penumbra, sin instalar mod ni UI final.
 - `vendor/XivSpanish.Core` - modelos de traduccion, JSONL, manifest, normalizacion, claves de origen.
 - `vendor/XivSpanish.GameData` - Lumina, EXH/EXD, `ExdPatcher`, lectura de filas, parser/tokenizer
   SeString, `GameLocator`.
@@ -50,7 +51,8 @@ vendorizado propio bajo `vendor/`.
 - `tests/FFXIVSpanishPatcher.Tests` - tests de pipeline, EXD sintetico, categorias, detector, SeString
   y packaging.
 - `tests/FFXIVSpanishPatcher.App.Tests` - tests headless de GUI/blob/viewmodel.
-- `tests/FFXIVSpanishPatcher.Plugin.Tests` - prueba de carga/cancelación y de ZIP Dalamud.
+- `tests/FFXIVSpanishPatcher.Plugin.Tests` - carga/cancelación, ZIP Dalamud, configuración, estado
+  y contratos IPC de Penumbra con fakes.
 - `.github/workflows/ci.yml` - build + test en `main` y PR.
 - `.github/workflows/release.yml` - tags `vX.Y.Z` publican zips self-contained para `win-x64`,
   `linux-x64` y `osx-arm64`.
@@ -233,7 +235,8 @@ de FFXIV y Penumbra en las plataformas que toque. Usar `docs/RELEASE_CHECKLIST.m
 ## Plugin Dalamud v0.6.0
 
 La evolucion futura vive en `docs/evolucion-v0.6.0/`. El plugin reutiliza el motor de arbol Penumbra
-v4; no duplicar parcheo, SeString ni verificacion. Etapa 1 solo permite proyecto, prueba de carga y
-ZIP sin DLLs compartidas de Dalamud/Lumina; no permite IPC Penumbra, instalacion ni directorios
-persistentes. Cada etapa requiere tests, smoke humano y nueva aprobacion antes de su commit.
+v4; no duplicar parcheo, SeString ni verificacion. Etapas 1-3 permiten prueba de carga, ZIP sin DLLs
+compartidas de Dalamud/Lumina y consulta IPC v5 degradable de Penumbra; no permiten instalación ni
+directorios persistentes. Cada etapa requiere tests, smoke humano y nueva aprobacion antes de su
+commit.
 Desinstalar o descargar el plugin nunca borra el mod de Penumbra.

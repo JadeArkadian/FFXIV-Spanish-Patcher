@@ -137,12 +137,15 @@ serializan mediante `IFramework`.
 ### 2.6 Dependencias de referencia
 
 - `Dalamud.NET.Sdk/15.0.0`.
-- `Penumbra.Api/5.17.0`.
-- Requisito runtime: API breaking `5`; comprobar feature mínimo para cada wrapper usado y rechazar
-  una API incompatible con mensaje claro.
+- Sin dependencia binaria de `Penumbra.Api`: la API 5.17.0 existe en el código fuente de Penumbra,
+  pero no está publicada en NuGet. El plugin usa wrappers tipados propios sobre los nombres públicos
+  IPC v5, evitando una copia local no reproducible o un ensamblado duplicado en el ZIP.
+- Requisito runtime: API breaking `5` y feature `15` para los wrappers iniciales; cada wrapper nuevo
+  declarará su mínimo y rechazará una API incompatible con mensaje claro.
 
-No se copiará código de Penumbra. Penumbra.Api se consume bajo MIT. Heliosphere solo se usa como
-referencia de patrones; su código está bajo EUPL-1.2 y no se copiará literalmente.
+No se copiará código de Penumbra. La API pública de Penumbra está bajo MIT; se consumen sus contratos
+IPC, no un ensamblado redistribuido. Heliosphere solo se usa como referencia de patrones; su código
+está bajo EUPL-1.2 y no se copiará literalmente.
 
 ## 3. Contrato de identidad congelado para desarrollo
 
