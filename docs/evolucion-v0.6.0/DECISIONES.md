@@ -144,26 +144,38 @@ serializan mediante `IFramework`.
 No se copiará código de Penumbra. Penumbra.Api se consume bajo MIT. Heliosphere solo se usa como
 referencia de patrones; su código está bajo EUPL-1.2 y no se copiará literalmente.
 
-## 3. Supuestos reversibles
+## 3. Contrato de identidad congelado para desarrollo
 
-- Nombre de trabajo aprobado para avanzar: **FFXIV Spanish Translation Manager**.
-- `InternalName` provisional: `FFXIVSpanishTranslationManager`.
-- Directorio canónico de mod provisional: `FFXIVSpanish`.
+Estos valores no cambian durante v0.6.0 sin una migración explícita de mod y settings. El nombre
+público puede revisarse antes de publicar, pero no altera las claves persistentes.
+
+- Nombre de trabajo: **FFXIV Spanish Translation Manager**.
+- `InternalName`: `FFXIVSpanishTranslationManager`.
+- Comando: `/ffxives`.
+- Directorio canónico de mod: `FFXIVSpanish`.
 - Nombre lógico de mod: `FFXIV en Español`.
+- Website de identidad: `https://ffxivspanish.carrd.co/`.
+- Tag de mod gestionado: `ffxiv-spanish-managed`.
+- Grupo Penumbra: `Categorías de traducción`; dominios y orden: los diez de
+  `TranslationCategoryCatalog` con `categorySchemaVersion = 1`.
+
+La adopción de un paquete v0.5.0, que no contiene el tag gestionado, exige nombre lógico y Website
+coincidentes. Si aparecen varios candidatos, el plugin debe pedir selección; nunca adivina ni borra.
+
+## 4. Supuestos reversibles
 - El plugin usa `IAsyncDalamudPlugin`, `LoadSync: true`, `LoadRequiredState: 2` y una prioridad de
   carga inferior a la de Penumbra: cuando existe un cambio real, `LoadAsync` termina la regeneración
   y verificación antes de declararse cargado. El trabajo sigue ocurriendo fuera del framework thread.
 
-## 4. Preguntas pendientes
+## 5. Preguntas pendientes
 
 Las tres preguntas funcionales de categorías, colección y validación quedan cerradas. No queda
-ninguna pregunta funcional que bloquee el inicio de v0.5.0.
+ninguna pregunta funcional que bloquee el inicio de v0.6.0 tras aprobar el contrato de identidad.
 
-El nombre provisional queda ratificado para desarrollo. El nombre público definitivo puede
-revisarse antes de publicar v0.6.0; no condiciona el diseño interno mientras `InternalName` se fije
-antes de que existan instalaciones públicas.
+El nombre público definitivo puede revisarse antes de publicar v0.6.0. Esa revisión no altera
+`InternalName`, directorio, tag, grupo ni opciones congelados arriba.
 
-## 5. Decisiones descartadas
+## 6. Decisiones descartadas
 
 - Descargar el corpus en runtime desde un manifiesto remoto.
 - Reescribir DAT del juego.

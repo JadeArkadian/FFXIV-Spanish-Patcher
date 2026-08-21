@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0-windows7.0": {
+      "DalamudPackager": {
+        "type": "Direct",
+        "requested": "[15.0.0, )",
+        "resolved": "15.0.0",
+        "contentHash": "411vwC8/X8Z/sQ2TI6v3SvOn66xFPeOjFn3Zn+h0d3Ox2t1kFm66AhDvmx/qcMwVrR+Hidxj0dadpQ2dgyXMBQ=="
+      },
+      "DotNet.ReproducibleBuilds": {
+        "type": "Direct",
+        "requested": "[1.2.39, )",
+        "resolved": "1.2.39",
+        "contentHash": "fcFN01tDTIQqDuTwr1jUQK/geofiwjG5DycJQOnC72i1SsLAk1ELe+apBOuZ11UMQG8YKFZG1FgvjZPbqHyatg=="
+      },
+      "BCnEncoder.Net": {
+        "type": "Transitive",
+        "resolved": "2.2.1",
+        "contentHash": "tI5+/OQo0kciLqWrViRjpOH+IL3FjexYnoWZajiGV41g/EM9CGbWsxsPzBDmpoxNkrV9uox/EtIhCIi9chBSFw==",
+        "dependencies": {
+          "CommunityToolkit.HighPerformance": "8.4.0"
+        }
+      },
+      "CommunityToolkit.HighPerformance": {
+        "type": "Transitive",
+        "resolved": "8.4.0",
+        "contentHash": "flxspiBs0G/0GMp7IK2J2ijV9bTG6hEwFc/z6ekHqB6nwRJ4Ry2yLdx+TkbCUYFCl4XhABkAwomeKbT6zM2Zlg=="
+      },
+      "Lumina": {
+        "type": "Transitive",
+        "resolved": "7.6.1",
+        "contentHash": "c3WhtkGaYwy6Bf2OFCOa5W/bGRlexDCLFALy9hBpIp7IQqPmAzmqQO9pg0cDQUvN+JelON06JkrJ0mK9PP40Ew==",
+        "dependencies": {
+          "BCnEncoder.Net": "2.2.1",
+          "Microsoft.Extensions.ObjectPool": "10.0.0"
+        }
+      },
+      "Lumina.Excel": {
+        "type": "Transitive",
+        "resolved": "7.5.0",
+        "contentHash": "yrwLCgUoslSrrYaeK2Z0UAcD1gUMv4e3/UObIBNiJG6IJZhO00XzzSFZWxZNiYyhAvzza5UUDyQ6xz4Kz2kscw==",
+        "dependencies": {
+          "Lumina": "7.6.0"
+        }
+      },
+      "Microsoft.Extensions.ObjectPool": {
+        "type": "Transitive",
+        "resolved": "10.0.0",
+        "contentHash": "bpeCq0IYmVLACyEUMzFIOQX+zZUElG1t+nu1lSxthe7B+1oNYking7b91305+jNB6iwojp9fqTY9O+Nh7ULQxg=="
+      },
+      "ZstdSharp.Port": {
+        "type": "Transitive",
+        "resolved": "0.8.8",
+        "contentHash": "UIDFkA5DC3en3tOJ3Mof11yBx9kUQLsaeo/oFdvN6Bbkr9E9+VCqfIadHci8cu+I51K2Sl7XYWVl2R/mA75NBQ=="
+      },
+      "ffxivspanishpatcher.pipeline": {
+        "type": "Project",
+        "dependencies": {
+          "XivSpanish.Core": "[0.0.0, )",
+          "XivSpanish.GameData": "[0.0.0, )",
+          "XivSpanish.Packaging": "[0.0.0, )",
+          "ZstdSharp.Port": "[0.8.8, )"
+        }
+      },
+      "xivspanish.core": {
+        "type": "Project"
+      },
+      "xivspanish.gamedata": {
+        "type": "Project",
+        "dependencies": {
+          "Lumina": "[7.6.1, )",
+          "Lumina.Excel": "[7.5.0, )",
+          "XivSpanish.Core": "[0.0.0, )"
+        }
+      },
+      "xivspanish.packaging": {
+        "type": "Project",
+        "dependencies": {
+          "XivSpanish.Core": "[0.0.0, )",
+          "XivSpanish.GameData": "[0.0.0, )"
+        }
+      }
+    },
+    "net10.0-windows7.0/linux-x64": {},
+    "net10.0-windows7.0/osx-arm64": {},
+    "net10.0-windows7.0/win-x64": {}
+  }
+}

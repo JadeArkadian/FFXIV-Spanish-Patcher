@@ -309,10 +309,13 @@ Nunca depender solo de `IToastGui`. Mantener historial visible en ventana y logs
 
 ### Etapa 0 — integrar v0.5.0 y cerrar decisiones
 
+Estado: contrato preparado en `DECISIONES.md`; pendiente de aprobación humana antes de crear el
+proyecto plugin, directorios persistentes o instalaciones en Penumbra.
+
 1. Partir del commit v0.5.0 aprobado, no del puntero antiguo de `v0.6.0`.
-2. Confirmar las decisiones cerradas de `DECISIONES.md` y usar el nombre de trabajo aprobado; el
-   nombre público definitivo queda como gate previo a la primera publicación.
-3. Congelar `InternalName`, mod identity y nombres de opciones.
+2. Confirmar las decisiones cerradas de `DECISIONES.md`; el nombre público definitivo queda como
+   gate previo a la primera publicación.
+3. Congelar `InternalName`, identidad de mod y nombres de opciones en el contrato de identidad.
 4. Actualizar `AGENTS.md` con estructura futura y gates.
 
 Gate humano: aprobar contrato antes de crear instalaciones persistentes.
@@ -320,6 +323,9 @@ Gate humano: aprobar contrato antes de crear instalaciones persistentes.
 Commit: `docs(v0.6): freeze plugin runtime contract`.
 
 ### Etapa 1 — spike Dalamud, SDK y Lumina
+
+Estado: implementación automática lista; pendiente smoke humano Windows y Linux antes de iniciar
+etapa 2 o crear servicios de configuración/IPC.
 
 Crear proyecto mínimo y prueba de carga, sin UI final ni instalación.
 

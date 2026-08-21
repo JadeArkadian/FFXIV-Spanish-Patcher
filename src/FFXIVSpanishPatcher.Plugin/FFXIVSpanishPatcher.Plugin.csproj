@@ -1,0 +1,29 @@
+<Project Sdk="Dalamud.NET.Sdk/15.0.0">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows7.0</TargetFramework>
+    <RootNamespace>FFXIVSpanishPatcher.Plugin</RootNamespace>
+    <AssemblyName>FFXIVSpanishTranslationManager</AssemblyName>
+    <Version Condition="'$(Version)' == ''">0.6.0</Version>
+    <Author>Jade Arkadian y colaboradores</Author>
+    <Name>FFXIV Spanish Translation Manager</Name>
+    <Punchline>Gestiona la traducción al castellano mediante Penumbra.</Punchline>
+    <Description>Genera y administra la traducción al castellano de FINAL FANTASY XIV mediante Penumbra.</Description>
+    <RepoUrl>https://github.com/JadeArkadian/FFXIV-Spanish-Patcher</RepoUrl>
+    <Tags>ffxiv;spanish;translation;penumbra</Tags>
+    <DalamudApiLevel>15</DalamudApiLevel>
+    <LoadRequiredState>2</LoadRequiredState>
+    <LoadSync>true</LoadSync>
+    <CanUnloadAsync>true</CanUnloadAsync>
+    <LoadPriority>0</LoadPriority>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FFXIVSpanishPatcher.Pipeline\FFXIVSpanishPatcher.Pipeline.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\data\translations.dat" LogicalName="FFXIVSpanishTranslationManager.translations.dat" />
+    <EmbeddedResource Include="..\..\data\recommended-game-version.txt" LogicalName="FFXIVSpanishTranslationManager.recommended-game-version.txt" />
+    <EmbeddedResource Include="..\..\data\translation-milestones.md" LogicalName="FFXIVSpanishTranslationManager.translation-milestones.md" />
+  </ItemGroup>
+</Project>
