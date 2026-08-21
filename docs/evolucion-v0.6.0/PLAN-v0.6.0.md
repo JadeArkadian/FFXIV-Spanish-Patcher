@@ -358,6 +358,9 @@ abstracciones:
 Pruebas de todas las transiciones, exclusión mutua, cancelación y migración de config. Nada de IO real
 en tests unitarios.
 
+Estado: implementación automática y smoke tests preparados; pendiente de validación humana Windows y
+Linux antes de integrar IPC de Penumbra.
+
 Commit: `feat(plugin): add state machine and build fingerprints`.
 
 ### Etapa 3 — Penumbra IPC y degradación

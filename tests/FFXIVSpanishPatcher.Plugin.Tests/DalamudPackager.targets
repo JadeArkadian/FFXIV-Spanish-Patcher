@@ -1,0 +1,3 @@
+<Project>
+  <!-- The test assembly uses the Dalamud SDK only to compile against its public configuration API. -->
+</Project>
