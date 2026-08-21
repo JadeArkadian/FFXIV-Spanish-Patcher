@@ -33,7 +33,11 @@ public sealed class ModTreeVerifier
             problems.Add($"invalid meta.json: {exception.Message}");
         }
 
-        var allowedFiles = new HashSet<string>(declaredFiles.Values, StringComparer.Ordinal) { "meta.json" };
+        var allowedFiles = new HashSet<string>(declaredFiles.Values, StringComparer.Ordinal)
+        {
+            "meta.json",
+            TranslationModIdentity.MarkerFileName,
+        };
         foreach (var relative in files.Keys)
         {
             if (!allowedFiles.Contains(relative))

@@ -68,6 +68,7 @@ internal sealed class PenumbraModTreeWriter
             .ToArray();
         var root = PackageModMetaV4.From(meta, options, TranslationCategoryCatalog.BuildDefaultSettings(selectedDomains));
         WriteJsonAtomically(Path.Combine(_stagingPath, "meta.json"), root);
+        TranslationModIdentity.Write(_stagingPath);
     }
 
     private string ResolveInsideTree(string relativePath)

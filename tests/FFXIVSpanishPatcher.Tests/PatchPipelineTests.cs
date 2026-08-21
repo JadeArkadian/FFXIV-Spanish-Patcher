@@ -124,6 +124,7 @@ public sealed class PatchPipelineTests : IDisposable
         using var archive = ZipFile.OpenRead(result.OutputPath!);
         var names = archive.Entries.Select(e => e.FullName).ToHashSet();
         Assert.Contains("meta.json", names);
+        Assert.Contains(TranslationModIdentity.MarkerFileName, names);
         Assert.DoesNotContain("default_mod.json", names);
         Assert.DoesNotContain(names, name => name.StartsWith("group_", StringComparison.Ordinal));
         Assert.Contains("files/categories/09-interfaz/exd/addon_0_en.exd", names);

@@ -16,9 +16,10 @@ Penumbra cuando corresponda.
 | ST-08 | Mod importado con selección parcial. | Reimportar paquete equivalente con otra selección inicial. | Penumbra conserva la selección local existente; `DefaultSettings` solo se aplica en la primera importación, para no sobrescribir la elección del usuario. El paquete sigue ofreciendo las diez opciones. |
 | ST-09 | Instalación de juego distinta de versión recomendada; best effort confirmado en patcher. | Generar e importar. | Se informan omisiones; paquete solo se publica si pasa integridad; categorías sin páginas aplicables permanecen visibles. |
 | ST-10 | Windows y Linux con XIVLauncher.Core, Penumbra y mod importado. | Repetir ST-06 y ST-07 en ambos sistemas. | Importación, toggles y textos funcionan en ambos; registrar cualquier diferencia antes de aprobar release. |
+| ST-11 | `.pmp` nuevo generado por esta revisión, antes de importarlo. | Abrir el ZIP y revisar `ffxivspanish.identity.json`. | El marcador existe en la raíz y contiene `SchemaVersion: 1`, `Product: FFXIVSpanish` y una huella SHA-256. Cambiar el nombre visible del mod en Penumbra no modifica ni invalida este fichero. Este marcador será la identidad primaria del gestor v0.6.0. |
 
 ## Criterio de aprobación humana
 
-ST-01 a ST-05 deben completarse antes de validar formato. ST-06 a ST-10 requieren confirmación
+ST-01 a ST-05 y ST-11 deben completarse antes de validar formato. ST-06 a ST-10 requieren confirmación
 humana explícita antes de publicar v0.5.0. Un ZIP válido o un import correcto sin comprobar texto
 dentro de FFXIV no cierra las pruebas.
