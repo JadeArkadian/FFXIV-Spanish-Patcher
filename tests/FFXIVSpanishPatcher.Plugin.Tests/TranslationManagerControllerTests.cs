@@ -126,6 +126,22 @@ public sealed class TranslationManagerControllerTests
         Assert.NotEqual(firstCheck, controller.Snapshot.OperationId);
     }
 
+    [Fact]
+    public async Task RunExclusiveAsync_GenerationMayCompleteReadyAfterVerifiedInstall()
+    {
+        await using var controller = new TranslationManagerController(new TestClock());
+        Assert.True(controller.TryTransition(PluginPhase.WelcomeRequired, "Primera instalación."));
+        Assert.True(controller.TryTransition(PluginPhase.Checking, "Preparando."));
+
+        var result = await controller.RunExclusiveAsync(
+            PluginPhase.Generating,
+            _ => Task.FromResult((true, PluginPhase.Ready, "Traducción instalada en Penumbra.")),
+            TestContext.Current.CancellationToken);
+
+        Assert.True(result);
+        Assert.Equal(PluginPhase.Ready, controller.Snapshot.Phase);
+    }
+
     private sealed class TestClock : IPluginClock
     {
         public DateTimeOffset UtcNow => DateTimeOffset.Parse("2026-08-21T00:00:00Z");

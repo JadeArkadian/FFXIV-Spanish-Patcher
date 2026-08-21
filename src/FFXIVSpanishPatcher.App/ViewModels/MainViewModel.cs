@@ -32,7 +32,6 @@ public partial class MainViewModel : ObservableObject
     private const string ExternalTranslationsMetadataName = "ExternalTranslations";
     private const string ExternalTranslationsFileName = "translations.dat";
     private const string RecommendedGameVersionResourceName = "FFXIVSpanishPatcher.App.recommended-game-version.txt";
-    private const string LandingPageUrl = "https://ffxivspanish.carrd.co/";
 
     private readonly IShellServices _shell;
     private readonly ITranslationSource _translations;
@@ -508,27 +507,11 @@ public partial class MainViewModel : ObservableObject
     }
 
     private PackageMeta BuildPackageMeta(IReadOnlyList<CategoryViewModel> enabled)
-    {
-        var version = $"v{_buildInfo.PackageVersion}"
-                      + (string.IsNullOrEmpty(InstalledGameVersion) ? "" : $"-{InstalledGameVersion}");
-        var includedDomains = string.Join(
-            "\n",
-            enabled.Select(category => $"* {category.Label}"));
-        var enabledByDefaultDomains = string.Join(
-            "\n",
-            enabled.Where(category => category.IsSelected).Select(category => $"* {category.Label}"));
-        var description = new PackageMeta().Description
-                          + $"\n\nVersión del patcher: v{_buildInfo.PackageVersion}"
-                          + $"\nVersión de FFXIV: {InstalledGameVersion ?? "desconocida"}"
-                          + $"\n\nCategorías incluidas:\n{includedDomains}"
-                          + $"\n\nCategorías activadas en primera importación de Penumbra:\n{enabledByDefaultDomains}";
-        return new PackageMeta
-        {
-            Version = version,
-            Description = description,
-            Website = LandingPageUrl,
-        };
-    }
+        => PackageMetadataFactory.Create(
+            _buildInfo.PackageVersion,
+            InstalledGameVersion,
+            enabled.Select(category => category.Label),
+            enabled.Where(category => category.IsSelected).Select(category => category.Label));
 
     [RelayCommand]
     private async Task BrowseAsync()

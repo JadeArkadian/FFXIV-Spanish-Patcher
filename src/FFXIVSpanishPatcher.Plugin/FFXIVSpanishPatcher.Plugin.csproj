@@ -3,7 +3,6 @@
     <TargetFramework>net10.0-windows7.0</TargetFramework>
     <RootNamespace>FFXIVSpanishPatcher.Plugin</RootNamespace>
     <AssemblyName>FFXIVSpanishTranslationManager</AssemblyName>
-    <Version Condition="'$(Version)' == ''">0.6.0</Version>
     <Author>Jade Arkadian y colaboradores</Author>
     <Name>FFXIV Spanish Translation Manager</Name>
     <Punchline>Gestiona la traducción al castellano mediante Penumbra.</Punchline>
@@ -25,5 +24,6 @@
     <EmbeddedResource Include="..\..\data\translations.dat" LogicalName="FFXIVSpanishTranslationManager.translations.dat" />
     <EmbeddedResource Include="..\..\data\recommended-game-version.txt" LogicalName="FFXIVSpanishTranslationManager.recommended-game-version.txt" />
     <EmbeddedResource Include="..\..\data\translation-milestones.md" LogicalName="FFXIVSpanishTranslationManager.translation-milestones.md" />
+    <EmbeddedResource Include="dalamud\legal-and-credits.md" LogicalName="FFXIVSpanishTranslationManager.legal-and-credits.md" />
   </ItemGroup>
 </Project>

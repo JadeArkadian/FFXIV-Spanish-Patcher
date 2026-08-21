@@ -154,6 +154,24 @@ public sealed class PatchPipelineTests : IDisposable
     }
 
     [Fact]
+    public void Run_WithTreeOutput_PromotesVerifiedTreeWithoutCreatingPmp()
+    {
+        var treeOutput = Path.Combine(_temp, "candidate-tree");
+        var pipeline = new PatchPipeline(new ListTranslationSource(ApprovedManifest()), new FakePatchBackendFactory(BuildSource()));
+
+        var result = pipeline.Run(
+            Request() with { TreeOutputPath = treeOutput },
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        Assert.Equal(treeOutput, result.OutputPath);
+        Assert.True(File.Exists(Path.Combine(treeOutput, "meta.json")));
+        Assert.True(TranslationModIdentity.HasValidMarker(treeOutput));
+        Assert.False(File.Exists(Path.Combine(_temp, "out.pmp")));
+        Assert.Empty(new ModTreeVerifier().Verify(treeOutput));
+    }
+
+    [Fact]
     public void Run_PlayerGenderMacro_PackagesCompiledConditional()
     {
         const string sheet = "quest/045/ChrHdb811_04542";

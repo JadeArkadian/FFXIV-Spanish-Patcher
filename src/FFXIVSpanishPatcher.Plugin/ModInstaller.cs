@@ -8,6 +8,7 @@ public enum ModInstallationStep
     ExistingModBackedUp,
     CandidatePromoted,
     PenumbraRegistered,
+    PenumbraActivated,
     PenumbraReloaded,
     PreviousVersionCleaned,
 }
@@ -26,9 +27,9 @@ public sealed class NoOpModInstallationFaultInjector : IModInstallationFaultInje
 }
 
 /// <summary>
-/// Promotes a complete v4 mod tree without calling Penumbra's delete API. New trees are copied to
-/// a sibling staging directory, verified, then moved into place. An update retains the old tree
-/// until Penumbra has accepted the reload; failures put it back and retain the failed candidate.
+/// Promotes a complete v4 mod tree. New trees are copied to a sibling staging directory, verified,
+/// then moved into place. A regeneration consolidates any duplicate managed trees into one tree;
+/// failures restore every pre-existing tree and retain the failed candidate.
 /// </summary>
 public sealed class ModInstaller : IModInstaller
 {
@@ -54,16 +55,18 @@ public sealed class ModInstaller : IModInstaller
     private ModInstallResult Install(ModInstallRequest request, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var resolution = _identity.Resolve(request.ModRootPath, request.SelectedExistingDirectory);
-        if (resolution.Kind is ModIdentityResolutionKind.Ambiguous or ModIdentityResolutionKind.Unsafe)
+        var resolution = _identity.Resolve(request.ModRootPath);
+        if (resolution.Kind == ModIdentityResolutionKind.Unsafe)
         {
             return new ModInstallResult(false, resolution.Message);
         }
 
-        var adopted = resolution.Selected;
-        var directoryName = adopted?.DirectoryName ?? PenumbraModIdentity.CanonicalDirectory;
+        var existing = resolution.Candidates;
+        var adopted = existing.Count > 0;
+        var survivor = adopted ? ChooseSurvivor(existing) : null;
+        var directoryName = survivor?.DirectoryName ?? PenumbraModIdentity.CanonicalDirectory;
         var targetPath = Path.Combine(Path.GetFullPath(request.ModRootPath), directoryName);
-        if (adopted is null && Directory.Exists(targetPath))
+        if (!adopted && Directory.Exists(targetPath))
         {
             return new ModInstallResult(false,
                 $"Ya existe {directoryName}, pero Penumbra no lo reconoce como una instalación segura para adoptar.");
@@ -77,9 +80,8 @@ public sealed class ModInstaller : IModInstaller
         var token = Guid.NewGuid().ToString("N");
         var parent = Path.GetDirectoryName(targetPath)!;
         var stagePath = Path.Combine(parent, $".{directoryName}.ffxivspanish-stage-{token}");
-        var backupPath = Path.Combine(parent, $".{directoryName}.ffxivspanish-backup-{token}");
         var failedPath = Path.Combine(parent, $".{directoryName}.ffxivspanish-failed-{token}");
-        var backedUp = false;
+        var backups = new List<ExistingTreeBackup>();
         var promoted = false;
 
         try
@@ -94,10 +96,11 @@ public sealed class ModInstaller : IModInstaller
                 return new ModInstallResult(false, "El árbol candidato no supera la verificación: " + String.Join("; ", problems));
             }
 
-            if (adopted is not null)
+            foreach (var candidate in existing)
             {
-                Directory.Move(targetPath, backupPath);
-                backedUp = true;
+                var backupPath = Path.Combine(parent, $".{candidate.DirectoryName}.ffxivspanish-backup-{token}");
+                Directory.Move(candidate.FullPath, backupPath);
+                backups.Add(new ExistingTreeBackup(candidate, backupPath));
                 _faultInjector.Before(ModInstallationStep.ExistingModBackedUp);
                 cancellationToken.ThrowIfCancellationRequested();
             }
@@ -107,22 +110,42 @@ public sealed class ModInstaller : IModInstaller
             _faultInjector.Before(ModInstallationStep.CandidatePromoted);
             cancellationToken.ThrowIfCancellationRequested();
 
-            var apiResult = adopted is null
+            foreach (var duplicate in backups.Where(backup => !StringComparer.Ordinal.Equals(backup.Original.DirectoryName, directoryName)))
+            {
+                // Penumbra's documented reload operation drops a mod that is no longer valid.
+                // The directory has been moved transactionally, so this only removes the duplicate
+                // from its in-memory list before we install the regenerated survivor.
+                _registry.ReloadMod(duplicate.Original.DirectoryName);
+            }
+
+            var apiResult = !adopted
                 ? _registry.AddMod(directoryName)
                 : _registry.ReloadMod(directoryName);
-            var apiStep = adopted is null ? ModInstallationStep.PenumbraRegistered : ModInstallationStep.PenumbraReloaded;
+            var apiStep = !adopted ? ModInstallationStep.PenumbraRegistered : ModInstallationStep.PenumbraReloaded;
             _faultInjector.Before(apiStep);
             if (apiResult != 0)
             {
-                throw new InvalidOperationException($"Penumbra devolvió el código {apiResult} al {(adopted is null ? "registrar" : "recargar")} el mod.");
+                throw new InvalidOperationException($"Penumbra devolvió el código {apiResult} al {(!adopted ? "registrar" : "recargar")} el mod.");
             }
 
-            if (backedUp)
+            var enableResult = _registry.SetEnabled(directoryName, enabled: true);
+            _faultInjector.Before(ModInstallationStep.PenumbraActivated);
+            // Penumbra returns NothingChanged (1) when the survivor was already enabled.
+            // Both that response and Success (0) establish the requested enabled state.
+            if (enableResult is not 0 and not 1)
+            {
+                throw new InvalidOperationException($"Penumbra devolvió el código {enableResult} al activar el mod en Base/Default.");
+            }
+
+            if (backups.Count > 0)
             {
                 try
                 {
                     _faultInjector.Before(ModInstallationStep.PreviousVersionCleaned);
-                    Directory.Delete(backupPath, recursive: true);
+                    foreach (var backup in backups)
+                    {
+                        Directory.Delete(backup.BackupPath, recursive: true);
+                    }
                 }
                 catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
                 {
@@ -132,14 +155,20 @@ public sealed class ModInstaller : IModInstaller
 
             return new ModInstallResult(
                 true,
-                adopted is null ? "Traducción instalada en Penumbra." : "Traducción existente actualizada de forma segura.",
+                !adopted
+                    ? "Traducción instalada en Penumbra."
+                    : existing.Count == 1
+                        ? "Traducción existente actualizada de forma segura."
+                        : $"Traducción actualizada y {existing.Count - 1} copia(s) duplicada(s) retirada(s).",
                 directoryName,
                 request.Fingerprint,
-                adopted is not null);
+                adopted);
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException or InvalidOperationException or OperationCanceledException)
+        // IPC failures have their own exception hierarchy. Every managed failure after promotion
+        // must follow the same rollback path, not only filesystem and validation exceptions.
+        catch (Exception exception)
         {
-            RestorePreviousVersion(targetPath, backupPath, failedPath, directoryName, backedUp, promoted);
+            RestorePreviousVersion(targetPath, failedPath, directoryName, backups, promoted);
             if (exception is OperationCanceledException)
             {
                 throw;
@@ -159,10 +188,9 @@ public sealed class ModInstaller : IModInstaller
 
     private void RestorePreviousVersion(
         string targetPath,
-        string backupPath,
         string failedPath,
         string directoryName,
-        bool backedUp,
+        IReadOnlyList<ExistingTreeBackup> backups,
         bool promoted)
     {
         try
@@ -172,13 +200,24 @@ public sealed class ModInstaller : IModInstaller
                 Directory.Move(targetPath, failedPath);
             }
 
-            if (backedUp && Directory.Exists(backupPath))
+            foreach (var backup in backups.Reverse())
             {
-                Directory.Move(backupPath, targetPath);
-                var rollbackResult = _registry.ReloadMod(directoryName);
+                if (Directory.Exists(backup.BackupPath) && !Directory.Exists(backup.Original.FullPath))
+                {
+                    Directory.Move(backup.BackupPath, backup.Original.FullPath);
+                }
+            }
+
+            foreach (var backup in backups)
+            {
+                var rollbackResult = _registry.ReloadMod(backup.Original.DirectoryName);
                 if (rollbackResult != 0)
                 {
-                    _log.Warning($"Penumbra devolvió el código {rollbackResult} al recargar la versión restaurada.");
+                    var addResult = _registry.AddMod(backup.Original.DirectoryName);
+                    if (addResult != 0)
+                    {
+                        _log.Warning($"Penumbra devolvió los códigos {rollbackResult}/{addResult} al restaurar {backup.Original.DirectoryName}.");
+                    }
                 }
             }
         }
@@ -187,6 +226,16 @@ public sealed class ModInstaller : IModInstaller
             _log.Warning("No se pudo completar la restauración automática; se conservaron los árboles para diagnóstico.", rollbackException);
         }
     }
+
+    private static ModIdentityCandidate ChooseSurvivor(IReadOnlyList<ModIdentityCandidate> candidates)
+        // The directory name is never used to establish identity. Once all candidates have passed
+        // the stable identity checks, it provides a deterministic preference for consolidation.
+        => candidates
+            .OrderByDescending(candidate => StringComparer.Ordinal.Equals(candidate.DirectoryName, PenumbraModIdentity.CanonicalDirectory))
+            .ThenBy(candidate => candidate.DirectoryName, StringComparer.Ordinal)
+            .First();
+
+    private sealed record ExistingTreeBackup(ModIdentityCandidate Original, string BackupPath);
 
     private static void CopyTreeWithoutLinks(string sourcePath, string destinationPath, CancellationToken cancellationToken)
     {

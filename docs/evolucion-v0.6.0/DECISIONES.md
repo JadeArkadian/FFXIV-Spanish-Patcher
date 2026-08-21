@@ -163,8 +163,12 @@ público puede revisarse antes de publicar, pero no altera las claves persistent
 - Grupo Penumbra: `Categorías de traducción`; dominios y orden: los diez de
   `TranslationCategoryCatalog` con `categorySchemaVersion = 1`.
 
-La adopción de un paquete v0.5.0, que no contiene el tag gestionado, exige nombre lógico y Website
-coincidentes. Si aparecen varios candidatos, el plugin debe pedir selección; nunca adivina ni borra.
+La adopción no usa nombre lógico ni Website: son campos de presentación y Penumbra no puede
+persistir su edición para mods v4. Un paquete con `ffxivspanish.identity.json` válido se reconoce por
+esa huella; para paquetes v0.5 históricos sin huella se acepta exclusivamente la firma estructural
+exacta de su árbol categorizado. v0.4 y anteriores quedan fuera del contrato de migración: el plugin
+no intenta identificarlos por nombre ni por una heurística de redirecciones. Si aparecen varios
+candidatos válidos, el plugin debe pedir selección; nunca adivina ni borra.
 
 ## 4. Supuestos reversibles
 - El plugin usa `IAsyncDalamudPlugin`, `LoadSync: true`, `LoadRequiredState: 2` y una prioridad de
@@ -178,6 +182,17 @@ ninguna pregunta funcional que bloquee el inicio de v0.6.0 tras aprobar el contr
 
 El nombre público definitivo puede revisarse antes de publicar v0.6.0. Esa revisión no altera
 `InternalName`, directorio, tag, grupo ni opciones congelados arriba.
+
+## 5.1 Deuda técnica: recuperación tras interrupción brusca
+
+La instalación conserva y restaura el árbol anterior ante cancelación controlada, error de E/S o
+fallo de IPC. No implementa aún recuperación automática después de una terminación brusca del
+proceso o apagón entre mover el árbol anterior a `.ffxivspanish-backup-*` y completar la promoción.
+
+Trabajo futuro: al arrancar, inspeccionar de forma segura `backup` y `stage` pertenecientes al
+gestor, restaurar un backup cuando falte el directorio activo, conservar árboles ambiguos para
+diagnóstico y añadir smoke tests que simulen cada punto de interrupción. No borrar árboles ajenos ni
+usar la API de borrado de Penumbra.
 
 ## 6. Decisiones descartadas
 

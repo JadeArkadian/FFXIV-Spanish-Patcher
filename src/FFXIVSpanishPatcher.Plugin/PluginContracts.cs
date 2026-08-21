@@ -1,3 +1,5 @@
+using FFXIVSpanishPatcher.Pipeline;
+
 namespace FFXIVSpanishPatcher.Plugin;
 
 /// <summary>Stage-2 boundary for Penumbra; concrete IPC arrives in stage 3.</summary>
@@ -25,6 +27,9 @@ public interface IPenumbraModRegistry
     int AddMod(string directoryName);
 
     int ReloadMod(string directoryName);
+
+    /// <summary>Enables or disables this mod only in Penumbra's Base/Default collection.</summary>
+    int SetEnabled(string directoryName, bool enabled);
 }
 
 /// <summary>IPC boundary for the single Penumbra collection and category group managed by this plugin.</summary>
@@ -48,6 +53,13 @@ public sealed record PenumbraModSettingsRead(
     bool Enabled,
     IReadOnlyDictionary<string, IReadOnlyList<string>> Options,
     bool Inherited);
+
+public interface ITranslationTreeBuilder
+{
+    Task<PatchResult> BuildAsync(TreeBuildRequest request, CancellationToken cancellationToken);
+}
+
+public sealed record TreeBuildRequest(string CandidateTreePath, BuildFingerprint Fingerprint);
 
 /// <summary>Stage-2 boundary for Dalamud-owned game data; it never owns or disposes GameData.</summary>
 public interface IGameDataBackend
@@ -81,8 +93,7 @@ public sealed record PenumbraAvailability(
 public sealed record ModInstallRequest(
     string CandidateTreePath,
     string ModRootPath,
-    BuildFingerprint Fingerprint,
-    string? SelectedExistingDirectory = null);
+    BuildFingerprint Fingerprint);
 
 public sealed record ModInstallResult(
     bool Succeeded,

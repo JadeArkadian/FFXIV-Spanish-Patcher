@@ -466,6 +466,10 @@ Primero implementar flujos y accesibilidad con componentes simples. Añadir prue
 comando, apertura/cierre, acciones y estados. Crear una maqueta/prototipo visible y obtener aprobación
 antes del pulido.
 
+Estado: flujos funcionales implementados con cuatro pestañas, acción principal, cancelación, edición de
+categorías Base/Default, versiones, hitos, ajustes, diagnóstico e historial. Pendiente smoke humano
+de comportamiento y aprobación de maqueta antes del pulido visual de etapa 8.
+
 No mezclar aún release CI.
 
 Commit: `feat(plugin): add translation manager workflows`.

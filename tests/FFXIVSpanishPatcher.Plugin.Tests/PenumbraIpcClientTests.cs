@@ -142,6 +142,18 @@ public sealed class PenumbraIpcClientTests
         Assert.Empty(observed);
     }
 
+    [Fact]
+    public void SetEnabled_DelegatesToPenumbraTransport()
+    {
+        var transport = new FakeTransport();
+        var client = CreateClient(transport);
+
+        var result = client.SetEnabled("FFXIVSpanish", true);
+
+        Assert.Equal(0, result);
+        Assert.Equal(("FFXIVSpanish", true), Assert.Single(transport.EnabledRequests));
+    }
+
     private static PenumbraIpcClient CreateClient(FakeTransport transport)
         => new(transport, new FakeDirectoryProbe(existing: true), new RecordingLogger());
 
@@ -158,6 +170,7 @@ public sealed class PenumbraIpcClientTests
         public bool IsEnabled { get; set; } = true;
         public string ModDirectory { get; set; } = "/mods";
         public IReadOnlyDictionary<string, string> ModList { get; set; } = new Dictionary<string, string>();
+        public List<(string DirectoryName, bool Enabled)> EnabledRequests { get; } = [];
         public Exception? ApiVersionException { get; set; }
         public Exception? EnabledStateException { get; set; }
         public Exception? ModDirectoryException { get; set; }
@@ -203,6 +216,12 @@ public sealed class PenumbraIpcClientTests
         public int AddMod(string directoryName) => 0;
 
         public int ReloadMod(string directoryName) => 0;
+
+        public int SetEnabled(string directoryName, bool enabled)
+        {
+            EnabledRequests.Add((directoryName, enabled));
+            return 0;
+        }
 
         public void SetException(Wrapper wrapper, Exception exception)
         {

@@ -557,6 +557,18 @@ public sealed class PatchPipeline
                     return PatchResult.Failure(PatchOutcome.ValidationFailed, Statistics(writer.FileCount));
                 }
 
+                if (!string.IsNullOrWhiteSpace(request.TreeOutputPath))
+                {
+                    PromoteVerifiedTree(writer.StagingPath, request.TreeOutputPath);
+                    Report(PipelineComponent.Verifier, "Integridad del árbol verificada", PipelineLevel.Ok);
+                    Report(PipelineComponent.Packager, "Árbol de mod publicado en su destino", PipelineLevel.Ok);
+                    var treeStatistics = Statistics(writer.FileCount);
+                    var treeOutcome = treeStatistics.HasOmissions ? PatchOutcome.PackagedWithMisses : PatchOutcome.Ok;
+                    Report(PipelineComponent.Pipeline, CoverageMessage(treeStatistics),
+                        treeOutcome == PatchOutcome.Ok ? PipelineLevel.Ok : PipelineLevel.Warning);
+                    return new PatchResult(treeOutcome, request.TreeOutputPath, treeStatistics);
+                }
+
                 Report(PipelineComponent.Packager, "Generando .pmp temporal...");
                 var output = PmpArchiveWriter.Create(writer.StagingPath, temporaryOutput);
                 Report(PipelineComponent.Packager,
@@ -713,6 +725,23 @@ public sealed class PatchPipeline
         {
             File.Move(temporaryPath, fullOutput);
         }
+    }
+
+    private static void PromoteVerifiedTree(string temporaryTree, string treeOutputPath)
+    {
+        if (Directory.Exists(treeOutputPath) || File.Exists(treeOutputPath))
+        {
+            throw new IOException($"Ya existe el destino del árbol de mod: {treeOutputPath}");
+        }
+
+        var parent = Path.GetDirectoryName(treeOutputPath);
+        if (string.IsNullOrWhiteSpace(parent))
+        {
+            throw new IOException("El destino del árbol de mod no tiene directorio padre.");
+        }
+
+        Directory.CreateDirectory(parent);
+        Directory.Move(temporaryTree, treeOutputPath);
     }
 
     private static void DeleteFileBestEffort(string path)

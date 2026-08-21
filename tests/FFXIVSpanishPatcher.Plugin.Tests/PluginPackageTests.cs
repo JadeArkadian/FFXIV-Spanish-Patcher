@@ -23,6 +23,7 @@ public sealed class PluginPackageTests
         Assert.Contains("FFXIVSpanishTranslationManager.translations.dat", resourceNames);
         Assert.Contains("FFXIVSpanishTranslationManager.recommended-game-version.txt", resourceNames);
         Assert.Contains("FFXIVSpanishTranslationManager.translation-milestones.md", resourceNames);
+        Assert.Contains("FFXIVSpanishTranslationManager.legal-and-credits.md", resourceNames);
 
         using var archive = ZipFile.OpenRead(ReleasePackagePath());
         var names = archive.Entries.Select(entry => entry.FullName).ToArray();

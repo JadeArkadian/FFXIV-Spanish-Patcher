@@ -26,6 +26,8 @@ public interface IPenumbraApiTransport : IDisposable
     int AddMod(string directoryName);
 
     int ReloadMod(string directoryName);
+
+    int SetEnabled(string directoryName, bool enabled);
 }
 
 public interface IPenumbraDirectoryProbe
@@ -78,6 +80,8 @@ public sealed class PenumbraIpcClient : IPenumbraIpcClient, IPenumbraModRegistry
     public int AddMod(string directoryName) => _transport.AddMod(directoryName);
 
     public int ReloadMod(string directoryName) => _transport.ReloadMod(directoryName);
+
+    public int SetEnabled(string directoryName, bool enabled) => _transport.SetEnabled(directoryName, enabled);
 
     public ValueTask DisposeAsync()
     {
@@ -218,6 +222,8 @@ internal sealed class DalamudPenumbraApiTransport : IPenumbraApiTransport
     private readonly ICallGateSubscriber<Dictionary<string, string>> _modList;
     private readonly ICallGateSubscriber<string, int> _addMod;
     private readonly ICallGateSubscriber<string, string, int> _reloadMod;
+    private readonly ICallGateSubscriber<byte, (Guid Id, string Name)?> _defaultCollection;
+    private readonly ICallGateSubscriber<Guid, string, string, bool, int> _setMod;
     private readonly ICallGateSubscriber<object?> _initialized;
     private readonly ICallGateSubscriber<object?> _disposed;
     private readonly ICallGateSubscriber<bool, object?> _enabledChanged;
@@ -231,6 +237,8 @@ internal sealed class DalamudPenumbraApiTransport : IPenumbraApiTransport
         _modList = pluginInterface.GetIpcSubscriber<Dictionary<string, string>>("Penumbra.GetModList");
         _addMod = pluginInterface.GetIpcSubscriber<string, int>("Penumbra.AddMod.V5");
         _reloadMod = pluginInterface.GetIpcSubscriber<string, string, int>("Penumbra.ReloadMod.V5");
+        _defaultCollection = pluginInterface.GetIpcSubscriber<byte, (Guid Id, string Name)?>("Penumbra.GetCollection");
+        _setMod = pluginInterface.GetIpcSubscriber<Guid, string, string, bool, int>("Penumbra.TrySetMod.V5");
         _initialized = pluginInterface.GetIpcSubscriber<object?>("Penumbra.Initialized");
         _disposed = pluginInterface.GetIpcSubscriber<object?>("Penumbra.Disposed");
         _enabledChanged = pluginInterface.GetIpcSubscriber<bool, object?>("Penumbra.EnabledChange");
@@ -260,6 +268,14 @@ internal sealed class DalamudPenumbraApiTransport : IPenumbraApiTransport
     public int AddMod(string directoryName) => _addMod.InvokeFunc(directoryName);
 
     public int ReloadMod(string directoryName) => _reloadMod.InvokeFunc(directoryName, string.Empty);
+
+    public int SetEnabled(string directoryName, bool enabled)
+    {
+        var collection = _defaultCollection.InvokeFunc(0xE0);
+        return collection is null
+            ? -1
+            : _setMod.InvokeFunc(collection.Value.Id, directoryName, string.Empty, enabled);
+    }
 
     public void Dispose()
     {

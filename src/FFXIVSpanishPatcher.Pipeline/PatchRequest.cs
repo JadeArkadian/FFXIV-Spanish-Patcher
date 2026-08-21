@@ -39,6 +39,12 @@ public sealed record PatchRequest
     /// <summary>Output <c>.pmp</c> path.</summary>
     public string OutputPath { get; init; } = DefaultOutputPath();
 
+    /// <summary>
+    /// Optional destination for a verified unpacked Penumbra tree. When supplied, the pipeline
+    /// promotes that tree instead of creating a <c>.pmp</c>; the destination must not exist.
+    /// </summary>
+    public string? TreeOutputPath { get; init; }
+
     /// <summary>Staging directory for the package tree (wiped and rebuilt each run).</summary>
     public string StagingPath { get; init; } = Path.Combine("artifacts", "pmp-staging");
 
