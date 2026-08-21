@@ -27,6 +27,28 @@ public interface IPenumbraModRegistry
     int ReloadMod(string directoryName);
 }
 
+/// <summary>IPC boundary for the single Penumbra collection and category group managed by this plugin.</summary>
+public interface IPenumbraCategoryTransport : IDisposable
+{
+    event Action<Guid, string, bool>? ModSettingChanged;
+
+    PenumbraCollection? GetDefaultCollection();
+
+    PenumbraModSettingsRead GetCurrentSettings(Guid collectionId, string modDirectory);
+
+    IReadOnlyDictionary<string, IReadOnlyList<string>>? GetAvailableSettings(string modDirectory);
+
+    int SetSettings(Guid collectionId, string modDirectory, string groupName, IReadOnlyList<string> enabledOptions);
+}
+
+public sealed record PenumbraCollection(Guid Id, string Name);
+
+public sealed record PenumbraModSettingsRead(
+    int ResultCode,
+    bool Enabled,
+    IReadOnlyDictionary<string, IReadOnlyList<string>> Options,
+    bool Inherited);
+
 /// <summary>Stage-2 boundary for Dalamud-owned game data; it never owns or disposes GameData.</summary>
 public interface IGameDataBackend
 {

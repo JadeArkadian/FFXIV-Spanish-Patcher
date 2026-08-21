@@ -417,6 +417,10 @@ Commit: `feat(plugin): install and adopt Penumbra mod safely`.
 
 Implementar colección elegida, lectura/escritura de grupo, herencia, anti-loop y reconciliación.
 
+Estado: núcleo y wrapper IPC implementados. Sin ventana hasta etapa 7, el plugin puede leer y
+reconciliar cambios externos del grupo en Base/Default; la acción visible que edita categorías se
+incorporará a esa ventana, reutilizando este servicio.
+
 Pruebas:
 
 - cambio desde plugin llega a Penumbra;

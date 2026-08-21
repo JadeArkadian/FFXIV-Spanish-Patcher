@@ -278,6 +278,65 @@ internal sealed class DalamudPenumbraApiTransport : IPenumbraApiTransport
     private void HandleModDirectoryChanged(string path, bool valid) => ModDirectoryChanged?.Invoke(path, valid);
 }
 
+/// <summary>Raw v5 category IPC adapter. The event's first argument stays <see cref="object"/>
+/// because Penumbra's enum is not redistributed with this plugin; its value is not needed to
+/// reconcile the authoritative snapshot.</summary>
+internal sealed class DalamudPenumbraCategoryTransport : IPenumbraCategoryTransport
+{
+    private readonly ICallGateSubscriber<byte, (Guid Id, string Name)?> _defaultCollection;
+    private readonly ICallGateSubscriber<string, string, IReadOnlyDictionary<string, (string[] Options, int Type)>?> _availableSettings;
+    private readonly ICallGateSubscriber<Guid, string, string, bool, (int Result, (bool Enabled, int Priority, Dictionary<string, List<string>> Options, bool Inherited)? Settings)> _currentSettings;
+    private readonly ICallGateSubscriber<Guid, string, string, string, IReadOnlyList<string>, int> _setSettings;
+    private readonly ICallGateSubscriber<object, Guid, string, bool, object?> _settingChanged;
+
+    public DalamudPenumbraCategoryTransport(IDalamudPluginInterface pluginInterface)
+    {
+        _defaultCollection = pluginInterface.GetIpcSubscriber<byte, (Guid Id, string Name)?>("Penumbra.GetCollection");
+        _availableSettings = pluginInterface.GetIpcSubscriber<string, string, IReadOnlyDictionary<string, (string[] Options, int Type)>?>("Penumbra.GetAvailableModSettings.V5");
+        _currentSettings = pluginInterface.GetIpcSubscriber<Guid, string, string, bool, (int Result, (bool Enabled, int Priority, Dictionary<string, List<string>> Options, bool Inherited)? Settings)>("Penumbra.GetCurrentModSettings.V5");
+        _setSettings = pluginInterface.GetIpcSubscriber<Guid, string, string, string, IReadOnlyList<string>, int>("Penumbra.TrySetModSettings.V5");
+        _settingChanged = pluginInterface.GetIpcSubscriber<object, Guid, string, bool, object?>("Penumbra.ModSettingChanged.V5");
+        _settingChanged.Subscribe(HandleSettingChanged);
+    }
+
+    public event Action<Guid, string, bool>? ModSettingChanged;
+
+    public PenumbraCollection? GetDefaultCollection()
+    {
+        var collection = _defaultCollection.InvokeFunc(0xE0);
+        return collection is { } value ? new PenumbraCollection(value.Id, value.Name) : null;
+    }
+
+    public IReadOnlyDictionary<string, IReadOnlyList<string>>? GetAvailableSettings(string modDirectory)
+    {
+        var available = _availableSettings.InvokeFunc(modDirectory, string.Empty);
+        return available?.ToDictionary(
+            pair => pair.Key,
+            pair => (IReadOnlyList<string>)pair.Value.Options,
+            StringComparer.Ordinal);
+    }
+
+    public PenumbraModSettingsRead GetCurrentSettings(Guid collectionId, string modDirectory)
+    {
+        var (result, settings) = _currentSettings.InvokeFunc(collectionId, modDirectory, string.Empty, false);
+        return settings is null
+            ? new PenumbraModSettingsRead(result, false, new Dictionary<string, IReadOnlyList<string>>(), false)
+            : new PenumbraModSettingsRead(
+                result,
+                settings.Value.Enabled,
+                settings.Value.Options.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<string>)pair.Value, StringComparer.Ordinal),
+                settings.Value.Inherited);
+    }
+
+    public int SetSettings(Guid collectionId, string modDirectory, string groupName, IReadOnlyList<string> enabledOptions)
+        => _setSettings.InvokeFunc(collectionId, modDirectory, string.Empty, groupName, enabledOptions);
+
+    public void Dispose() => _settingChanged.Unsubscribe(HandleSettingChanged);
+
+    private void HandleSettingChanged(object _, Guid collectionId, string modDirectory, bool inherited)
+        => ModSettingChanged?.Invoke(collectionId, modDirectory, inherited);
+}
+
 internal sealed class PhysicalPenumbraDirectoryProbe : IPenumbraDirectoryProbe
 {
     public static PhysicalPenumbraDirectoryProbe Instance { get; } = new();

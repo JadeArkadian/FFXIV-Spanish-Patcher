@@ -24,8 +24,9 @@ otros agentes pueden ejecutar sin depender de la conversación original.
 6. [`SMOKE-TESTS-v0.6.0-ETAPA-1.md`](SMOKE-TESTS-v0.6.0-ETAPA-1.md),
    [`SMOKE-TESTS-v0.6.0-ETAPA-2.md`](SMOKE-TESTS-v0.6.0-ETAPA-2.md) y
    [`SMOKE-TESTS-v0.6.0-ETAPA-3.md`](SMOKE-TESTS-v0.6.0-ETAPA-3.md) y
-   [`SMOKE-TESTS-v0.6.0-ETAPA-4.md`](SMOKE-TESTS-v0.6.0-ETAPA-4.md): validación incremental de
-   carga, estado interno, disponibilidad de Penumbra e instalación transaccional.
+   [`SMOKE-TESTS-v0.6.0-ETAPA-4.md`](SMOKE-TESTS-v0.6.0-ETAPA-4.md) y
+   [`SMOKE-TESTS-v0.6.0-ETAPA-5.md`](SMOKE-TESTS-v0.6.0-ETAPA-5.md): validación incremental de
+   carga, estado interno, disponibilidad de Penumbra, instalación transaccional y categorías.
 
 ## Punto de partida verificado
 
