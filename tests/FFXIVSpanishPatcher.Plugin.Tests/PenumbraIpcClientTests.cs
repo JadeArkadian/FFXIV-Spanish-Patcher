@@ -157,6 +157,7 @@ public sealed class PenumbraIpcClientTests
         public (int Breaking, int Features) Version { get; set; } = (5, 17);
         public bool IsEnabled { get; set; } = true;
         public string ModDirectory { get; set; } = "/mods";
+        public IReadOnlyDictionary<string, string> ModList { get; set; } = new Dictionary<string, string>();
         public Exception? ApiVersionException { get; set; }
         public Exception? EnabledStateException { get; set; }
         public Exception? ModDirectoryException { get; set; }
@@ -196,6 +197,12 @@ public sealed class PenumbraIpcClientTests
 
             return ModDirectory;
         }
+
+        public IReadOnlyDictionary<string, string> GetModList() => ModList;
+
+        public int AddMod(string directoryName) => 0;
+
+        public int ReloadMod(string directoryName) => 0;
 
         public void SetException(Wrapper wrapper, Exception exception)
         {

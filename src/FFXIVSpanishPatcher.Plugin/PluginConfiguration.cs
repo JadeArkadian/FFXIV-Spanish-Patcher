@@ -53,6 +53,22 @@ public interface IPluginConfigurationStore
     void Save(PluginConfiguration configuration);
 }
 
+/// <summary>Persists a fingerprint only after the complete filesystem and Penumbra transaction succeeds.</summary>
+public static class BuildFingerprintPersistence
+{
+    public static bool SaveIfSuccessful(IPluginConfigurationStore store, PluginConfiguration configuration, ModInstallResult result)
+    {
+        if (!result.Succeeded || result.PersistedFingerprint is null)
+        {
+            return false;
+        }
+
+        configuration.LastSuccessfulFingerprint = result.PersistedFingerprint;
+        store.Save(configuration);
+        return true;
+    }
+}
+
 internal sealed class DalamudPluginConfigurationStore(IDalamudPluginInterface pluginInterface) : IPluginConfigurationStore
 {
     public PluginConfiguration Load()

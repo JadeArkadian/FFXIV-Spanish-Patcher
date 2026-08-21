@@ -20,6 +20,12 @@ public interface IPenumbraApiTransport : IDisposable
     bool GetEnabledState();
 
     string GetModDirectory();
+
+    IReadOnlyDictionary<string, string> GetModList();
+
+    int AddMod(string directoryName);
+
+    int ReloadMod(string directoryName);
 }
 
 public interface IPenumbraDirectoryProbe
@@ -35,7 +41,7 @@ public interface IPluginDiagnosticLogger
 }
 
 /// <summary>Typed Penumbra API v5 client that turns unavailable IPC into recoverable state.</summary>
-public sealed class PenumbraIpcClient : IPenumbraIpcClient
+public sealed class PenumbraIpcClient : IPenumbraIpcClient, IPenumbraModRegistry
 {
     public const int RequiredBreakingVersion = 5;
     public const int RequiredFeatureVersion = 15;
@@ -66,6 +72,12 @@ public sealed class PenumbraIpcClient : IPenumbraIpcClient
         cancellationToken.ThrowIfCancellationRequested();
         return Task.FromResult(EvaluateAvailability());
     }
+
+    public IReadOnlyDictionary<string, string> GetModList() => _transport.GetModList();
+
+    public int AddMod(string directoryName) => _transport.AddMod(directoryName);
+
+    public int ReloadMod(string directoryName) => _transport.ReloadMod(directoryName);
 
     public ValueTask DisposeAsync()
     {
@@ -203,6 +215,9 @@ internal sealed class DalamudPenumbraApiTransport : IPenumbraApiTransport
     private readonly ICallGateSubscriber<(int Breaking, int Features)> _apiVersion;
     private readonly ICallGateSubscriber<string> _modDirectory;
     private readonly ICallGateSubscriber<bool> _enabledState;
+    private readonly ICallGateSubscriber<Dictionary<string, string>> _modList;
+    private readonly ICallGateSubscriber<string, int> _addMod;
+    private readonly ICallGateSubscriber<string, string, int> _reloadMod;
     private readonly ICallGateSubscriber<object?> _initialized;
     private readonly ICallGateSubscriber<object?> _disposed;
     private readonly ICallGateSubscriber<bool, object?> _enabledChanged;
@@ -213,6 +228,9 @@ internal sealed class DalamudPenumbraApiTransport : IPenumbraApiTransport
         _apiVersion = pluginInterface.GetIpcSubscriber<(int Breaking, int Features)>(ApiVersionLabel);
         _modDirectory = pluginInterface.GetIpcSubscriber<string>(ModDirectoryLabel);
         _enabledState = pluginInterface.GetIpcSubscriber<bool>(EnabledStateLabel);
+        _modList = pluginInterface.GetIpcSubscriber<Dictionary<string, string>>("Penumbra.GetModList");
+        _addMod = pluginInterface.GetIpcSubscriber<string, int>("Penumbra.AddMod.V5");
+        _reloadMod = pluginInterface.GetIpcSubscriber<string, string, int>("Penumbra.ReloadMod.V5");
         _initialized = pluginInterface.GetIpcSubscriber<object?>("Penumbra.Initialized");
         _disposed = pluginInterface.GetIpcSubscriber<object?>("Penumbra.Disposed");
         _enabledChanged = pluginInterface.GetIpcSubscriber<bool, object?>("Penumbra.EnabledChange");
@@ -236,6 +254,12 @@ internal sealed class DalamudPenumbraApiTransport : IPenumbraApiTransport
     public bool GetEnabledState() => _enabledState.InvokeFunc();
 
     public string GetModDirectory() => _modDirectory.InvokeFunc();
+
+    public IReadOnlyDictionary<string, string> GetModList() => _modList.InvokeFunc();
+
+    public int AddMod(string directoryName) => _addMod.InvokeFunc(directoryName);
+
+    public int ReloadMod(string directoryName) => _reloadMod.InvokeFunc(directoryName, string.Empty);
 
     public void Dispose()
     {

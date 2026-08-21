@@ -35,8 +35,9 @@ vendorizado propio bajo `vendor/`.
   package -> verify`, detector de ruta/version del juego, categorias, integridad y eventos
   `IProgress<PipelineEvent>`.
 - `src/FFXIVSpanishPatcher.Plugin` - entrypoint Dalamud v0.6.0; reutiliza Pipeline, verifica
-  lectura de EXH/EXD desde `IDataManager.GameData` y consulta de forma degradable la API pública
-  IPC v5 de Penumbra, sin instalar mod ni UI final.
+  lectura de EXH/EXD desde `IDataManager.GameData`, consulta de forma degradable la API pública
+  IPC v5 de Penumbra y contiene el instalador transaccional de árboles v4. La conexión entre el
+  generador real y ese instalador llega en la etapa 6; no hay todavía UI final.
 - `vendor/XivSpanish.Core` - modelos de traduccion, JSONL, manifest, normalizacion, claves de origen.
 - `vendor/XivSpanish.GameData` - Lumina, EXH/EXD, `ExdPatcher`, lectura de filas, parser/tokenizer
   SeString, `GameLocator`.
@@ -236,7 +237,9 @@ de FFXIV y Penumbra en las plataformas que toque. Usar `docs/RELEASE_CHECKLIST.m
 
 La evolucion futura vive en `docs/evolucion-v0.6.0/`. El plugin reutiliza el motor de arbol Penumbra
 v4; no duplicar parcheo, SeString ni verificacion. Etapas 1-3 permiten prueba de carga, ZIP sin DLLs
-compartidas de Dalamud/Lumina y consulta IPC v5 degradable de Penumbra; no permiten instalación ni
-directorios persistentes. Cada etapa requiere tests, smoke humano y nueva aprobacion antes de su
-commit.
+compartidas de Dalamud/Lumina y consulta IPC v5 degradable de Penumbra. La etapa 4 añade el núcleo
+transaccional para instalar/adoptar un árbol ya generado: no llama a `DeleteMod`, no borra al descargar
+el plugin y conserva/restaura la versión previa ante fallos. La conexión al generador real y el smoke
+de instalación con traducciones se realiza en etapa 6. Cada etapa requiere tests, smoke humano y
+nueva aprobacion antes de su commit.
 Desinstalar o descargar el plugin nunca borra el mod de Penumbra.

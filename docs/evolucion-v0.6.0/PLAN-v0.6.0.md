@@ -391,6 +391,10 @@ Commit: `feat(plugin): integrate Penumbra API v5`.
 
 Implementar detector, staging/payload, promoción, rollback y fingerprint persistente.
 
+Estado: núcleo automático implementado. La etapa recibe un árbol v4 ya generado y verificado; la
+conexión con la generación real de EXD se hace en etapa 6, por lo que el gate humano de instalación
+con traducciones queda entonces como un único flujo completo, no una instalación sintética oculta.
+
 Pruebas de filesystem sintético:
 
 - primera instalación;

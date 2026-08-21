@@ -131,6 +131,9 @@ public sealed class PatchPipelineTests : IDisposable
 
         using var metadata = JsonDocument.Parse(ReadEntryBytes(archive, "meta.json"));
         Assert.Equal(4, metadata.RootElement.GetProperty("FileVersion").GetInt32());
+        Assert.Contains(
+            metadata.RootElement.GetProperty("ModTags").EnumerateArray().Select(tag => tag.GetString()),
+            tag => tag == "ffxiv-spanish-managed");
         var groups = metadata.RootElement.GetProperty("Groups");
         var group = Assert.Single(groups.EnumerateArray());
         Assert.Equal("Categorías de traducción", group.GetProperty("Name").GetString());

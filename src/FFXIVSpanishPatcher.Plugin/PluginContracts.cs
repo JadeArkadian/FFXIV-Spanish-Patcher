@@ -14,6 +14,19 @@ public interface IModInstaller
     Task<ModInstallResult> InstallAsync(ModInstallRequest request, CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// Small, deliberately non-destructive subset of Penumbra's mod API used by the installer.
+/// There is intentionally no delete operation here: unloading this plugin never removes a mod.
+/// </summary>
+public interface IPenumbraModRegistry
+{
+    IReadOnlyDictionary<string, string> GetModList();
+
+    int AddMod(string directoryName);
+
+    int ReloadMod(string directoryName);
+}
+
 /// <summary>Stage-2 boundary for Dalamud-owned game data; it never owns or disposes GameData.</summary>
 public interface IGameDataBackend
 {
@@ -42,8 +55,18 @@ public sealed record PenumbraAvailability(
     public bool IsReady => Status == PenumbraAvailabilityStatus.Ready;
 }
 
-public sealed record ModInstallRequest(string PayloadId);
+/// <summary>One fully generated, verified candidate tree ready to be promoted into Penumbra's root.</summary>
+public sealed record ModInstallRequest(
+    string CandidateTreePath,
+    string ModRootPath,
+    BuildFingerprint Fingerprint,
+    string? SelectedExistingDirectory = null);
 
-public sealed record ModInstallResult(bool Succeeded, string? Message);
+public sealed record ModInstallResult(
+    bool Succeeded,
+    string Message,
+    string? ModDirectory = null,
+    BuildFingerprint? PersistedFingerprint = null,
+    bool AdoptedExistingMod = false);
 
 public sealed record GameDataBuildInput(string InstalledGameVersion, string CorpusSha256);

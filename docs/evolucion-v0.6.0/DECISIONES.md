@@ -128,9 +128,10 @@ serializan mediante `IFramework`.
 
 - Primera instalación: árbol completo en staging, verificación, promoción al directorio canónico y
   `AddMod`.
-- Actualización: payload versionado nuevo, `meta.json` temporal que apunta al payload nuevo,
-  sustitución atómica, `ReloadMod` y limpieza del payload anterior solo tras éxito.
-- Si falla `ReloadMod`, restaurar el manifiesto anterior y conservar el payload previo.
+- Actualización/adopción: copia de candidato a staging en el volumen del directorio de mods, copia
+  de seguridad del árbol previo, promoción por movimiento atómico y `ReloadMod`. La limpieza del
+  árbol previo solo ocurre tras éxito; si falla, se restaura el árbol completo y se conserva el
+  candidato fallido para diagnóstico.
 - `DisposeAsync` cancela trabajo, espera su cierre con límite y libera recursos; nunca elimina el
   mod.
 

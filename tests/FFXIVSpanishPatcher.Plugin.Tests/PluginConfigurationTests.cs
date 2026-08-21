@@ -44,6 +44,46 @@ public sealed class PluginConfigurationTests
         Assert.Throws<InvalidOperationException>(() => PluginConfiguration.Migrate(saved));
     }
 
+    [Fact]
+    public void SaveIfSuccessful_PersistsOnlySuccessfulFingerprint()
+    {
+        var store = new RecordingStore();
+        var configuration = new PluginConfiguration();
+        var fingerprint = TestFingerprint();
+
+        var saved = BuildFingerprintPersistence.SaveIfSuccessful(
+            store,
+            configuration,
+            new ModInstallResult(true, "ok", "FFXIVSpanish", fingerprint));
+
+        Assert.True(saved);
+        Assert.Same(fingerprint, configuration.LastSuccessfulFingerprint);
+        Assert.Same(configuration, store.Saved);
+    }
+
+    [Fact]
+    public void SaveIfSuccessful_FailedInstallation_DoesNotChangeConfiguration()
+    {
+        var store = new RecordingStore();
+        var configuration = new PluginConfiguration { LastSuccessfulFingerprint = TestFingerprint() };
+
+        var saved = BuildFingerprintPersistence.SaveIfSuccessful(
+            store,
+            configuration,
+            new ModInstallResult(false, "fallo"));
+
+        Assert.False(saved);
+        Assert.Null(store.Saved);
+        Assert.NotNull(configuration.LastSuccessfulFingerprint);
+    }
+
     private static BuildFingerprint TestFingerprint()
         => new(1, "0.6.0", "hash", "recommended", "installed", 1, 4, "identity", "payload", DateTimeOffset.UnixEpoch);
+
+    private sealed class RecordingStore : IPluginConfigurationStore
+    {
+        public PluginConfiguration? Saved { get; private set; }
+        public PluginConfiguration Load() => new();
+        public void Save(PluginConfiguration configuration) => Saved = configuration;
+    }
 }
