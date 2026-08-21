@@ -24,6 +24,6 @@
     <EmbeddedResource Include="..\..\data\translations.dat" LogicalName="FFXIVSpanishTranslationManager.translations.dat" />
     <EmbeddedResource Include="..\..\data\recommended-game-version.txt" LogicalName="FFXIVSpanishTranslationManager.recommended-game-version.txt" />
     <EmbeddedResource Include="..\..\data\translation-milestones.md" LogicalName="FFXIVSpanishTranslationManager.translation-milestones.md" />
-    <EmbeddedResource Include="dalamud\legal-and-credits.md" LogicalName="FFXIVSpanishTranslationManager.legal-and-credits.md" />
+    <EmbeddedResource Include="..\..\docs\assets\logo-git.png" LogicalName="FFXIVSpanishTranslationManager.logo-git.png" />
   </ItemGroup>
 </Project>

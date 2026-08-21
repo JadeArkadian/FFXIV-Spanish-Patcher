@@ -177,16 +177,7 @@ public partial class MainViewModel : ObservableObject
         ? "Instalación, versión, corpus y entorno de Penumbra revisados."
         : "Selecciona una instalación válida mientras se prepara el corpus.";
 
-    public string LegalNoticeText =>
-        "Proyecto no oficial hecho por fans. No está afiliado, patrocinado ni aprobado por Square Enix.\n\n" +
-        "FINAL FANTASY XIV, FFXIV, SQUARE ENIX y todos los nombres, marcas, logotipos, textos y demás " +
-        "propiedad intelectual relacionados pertenecen a sus respectivos propietarios.\n\n" +
-        "Esta aplicación no incluye ni redistribuye archivos del juego: trabaja únicamente sobre los " +
-        "archivos de tu instalación local y genera un paquete separado para Penumbra.\n\n" +
-        "No elude la propiedad del juego, suscripciones, autenticación ni restricciones de licencia. " +
-        "Eres responsable de cumplir los términos y políticas aplicables.\n\n" +
-        "Las traducciones pertenecen a sus autores. La licencia MIT aplica solo al código fuente. " +
-        "Este software se proporciona sin garantía; aviso completo en NOTICE.md.";
+    public string LegalNoticeText => LegalNotice.Text;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(GenerateModCommand))]

@@ -3,7 +3,9 @@ using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using Dalamud.Game.Command;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Utility;
 using FFXIVSpanishPatcher.Pipeline;
+using Markdig.Syntax;
 using System.Numerics;
 
 namespace FFXIVSpanishPatcher.Plugin;
@@ -11,11 +13,30 @@ namespace FFXIVSpanishPatcher.Plugin;
 /// <summary>Minimal Dalamud entrypoint used to prove shared-engine compatibility.</summary>
 public sealed class Plugin : IAsyncDalamudPlugin
 {
+    private static readonly Vector4 Night = new(0.027f, 0.063f, 0.118f, 0.98f);
+    private static readonly Vector4 Surface = new(0.055f, 0.114f, 0.190f, 1f);
+    private static readonly Vector4 SurfaceRaised = new(0.075f, 0.145f, 0.235f, 1f);
+    private static readonly Vector4 Line = new(0.157f, 0.267f, 0.396f, 1f);
+    private static readonly Vector4 Text = new(0.937f, 0.961f, 0.992f, 1f);
+    private static readonly Vector4 Muted = new(0.557f, 0.643f, 0.749f, 1f);
+    private static readonly Vector4 Blue = new(0.235f, 0.553f, 1f, 1f);
+    private static readonly Vector4 Cyan = new(0.420f, 0.847f, 1f, 1f);
+    private static readonly Vector4 Gold = new(0.941f, 0.741f, 0.345f, 1f);
+    private static readonly Vector4 Green = new(0.345f, 0.875f, 0.651f, 1f);
+    private static readonly Vector4 Red = new(0.941f, 0.353f, 0.353f, 1f);
+    private const string PenumbraRepositoryUrl = "https://github.com/xivdev/Penumbra";
+    private const ImGuiWindowFlags DashboardCardFlags =
+        ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse;
+    private const ImGuiWindowFlags PopupContentFlags = ImGuiWindowFlags.AlwaysUseWindowPadding;
+    private const int VisualStyleColorCount = 21;
+    private const int VisualStyleVarCount = 9;
+
     [PluginService] internal static IDalamudPluginInterface PluginInterface { get; private set; } = null!;
     [PluginService] internal static IDataManager DataManager { get; private set; } = null!;
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
     [PluginService] internal static ICommandManager CommandManager { get; private set; } = null!;
     [PluginService] internal static IFramework Framework { get; private set; } = null!;
+    [PluginService] internal static ITextureProvider TextureProvider { get; private set; } = null!;
 
     private readonly PluginLoadProbe _loadProbe = new(new DalamudGameDataProbe(DataManager));
     private readonly TranslationManagerController _controller = new(SystemPluginClock.Instance);
@@ -38,11 +59,12 @@ public sealed class Plugin : IAsyncDalamudPlugin
     private string? _managedModDirectory;
     private readonly List<PluginEvent> _eventHistory = [];
     private string? _pendingInheritedCategoryDomain;
-    private TranslationManagerTab _activeTab;
-    private string _milestones = "No se han podido cargar los hitos incluidos.";
-    private string _legalAndCredits = "No se han podido cargar los créditos incluidos.";
+    private MarkdownDocument? _milestones;
     private readonly CommandInfo _openCommand;
     private bool _windowOpen;
+    private bool _openMilestonesRequested;
+    private bool _openHistoryRequested;
+    private bool _openLegalRequested;
     private Task? _regenerationTask;
     private Task? _categoryUpdateTask;
 
@@ -85,8 +107,19 @@ public sealed class Plugin : IAsyncDalamudPlugin
             DateTimeOffset.UtcNow);
         _buildInput = buildInput;
         _currentFingerprint = fingerprint;
-        _milestones = ReadEmbeddedText("FFXIVSpanishTranslationManager.translation-milestones.md", _milestones);
-        _legalAndCredits = ReadEmbeddedText("FFXIVSpanishTranslationManager.legal-and-credits.md", _legalAndCredits);
+        var milestoneMarkdown = ReadEmbeddedText(
+            "FFXIVSpanishTranslationManager.translation-milestones.md",
+            "# Hitos de traducción\n\nNo se han podido cargar los hitos incluidos.");
+        try
+        {
+            _milestones = new SafeMarkdownParser().Parse(milestoneMarkdown);
+        }
+        catch (InvalidDataException exception)
+        {
+            Log.Warning(exception, "El historial Markdown incluido no es compatible.");
+            _milestones = new SafeMarkdownParser().Parse(
+                "# Hitos de traducción\n\nNo se ha podido mostrar el historial incluido en esta compilación.");
+        }
         _regeneration = RegenerationPlanner.Decide(
             fingerprint,
             _configuration.LastSuccessfulFingerprint,
@@ -156,188 +189,503 @@ public sealed class Plugin : IAsyncDalamudPlugin
             return;
         }
 
-        ImGui.SetNextWindowSize(new Vector2(720, 560), ImGuiCond.FirstUseEver);
-        ImGui.SetNextWindowSizeConstraints(new Vector2(520, 400), new Vector2(1100, 1000));
-        if (!ImGui.Begin("FFXIV Spanish Translation Manager", ref _windowOpen))
+        PushVisualStyle();
+        try
         {
+            ImGui.SetNextWindowSize(new Vector2(1120, 830), ImGuiCond.FirstUseEver);
+            ImGui.SetNextWindowSizeConstraints(new Vector2(1120, 830), new Vector2(1600, 1120));
+            if (!ImGui.Begin(
+                    "FFXIV Spanish Translation Manager",
+                    ref _windowOpen,
+                    ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse))
+            {
+                ImGui.End();
+                return;
+            }
+
+            DrainEvents();
+            DrawBrandHeader();
+            DrawDashboard();
+            DrawInformationPopups();
+
             ImGui.End();
-            return;
         }
-
-        DrainEvents();
-        if (ImGui.BeginTabBar("Gestor de traducción"))
+        finally
         {
-            DrawTab(TranslationManagerTab.Inicio, "Inicio", DrawHome);
-            DrawTab(TranslationManagerTab.Categorias, "Categorías", DrawCategories);
-            DrawTab(TranslationManagerTab.Actualizaciones, "Actualizaciones", DrawUpdates);
-            DrawTab(TranslationManagerTab.Ajustes, "Ajustes", DrawSettings);
-            ImGui.EndTabBar();
+            ImGui.PopStyleVar(VisualStyleVarCount);
+            ImGui.PopStyleColor(VisualStyleColorCount);
         }
-
-        ImGui.End();
     }
 
-    private void DrawTab(TranslationManagerTab tab, string label, Action draw)
+    private static void PushVisualStyle()
     {
-        if (!ImGui.BeginTabItem(label))
-        {
-            return;
-        }
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowRounding, 14f);
+        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, 12f);
+        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 8f);
+        ImGui.PushStyleVar(ImGuiStyleVar.GrabRounding, 8f);
+        ImGui.PushStyleVar(ImGuiStyleVar.TabRounding, 8f);
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(20f, 18f));
+        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(12f, 8f));
+        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(10f, 10f));
+        ImGui.PushStyleVar(ImGuiStyleVar.ItemInnerSpacing, new Vector2(8f, 6f));
 
-        _activeTab = tab;
-        draw();
-        ImGui.EndTabItem();
+        ImGui.PushStyleColor(ImGuiCol.WindowBg, Night);
+        ImGui.PushStyleColor(ImGuiCol.ChildBg, Surface);
+        ImGui.PushStyleColor(ImGuiCol.Border, Line);
+        ImGui.PushStyleColor(ImGuiCol.Text, Text);
+        ImGui.PushStyleColor(ImGuiCol.TextDisabled, Muted);
+        ImGui.PushStyleColor(ImGuiCol.FrameBg, Surface);
+        ImGui.PushStyleColor(ImGuiCol.FrameBgHovered, SurfaceRaised);
+        ImGui.PushStyleColor(ImGuiCol.FrameBgActive, SurfaceRaised);
+        ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.086f, 0.188f, 0.318f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.125f, 0.302f, 0.518f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.ButtonActive, Blue);
+        ImGui.PushStyleColor(ImGuiCol.Header, new Vector4(0.082f, 0.207f, 0.365f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.HeaderHovered, new Vector4(0.118f, 0.291f, 0.494f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.HeaderActive, Blue);
+        ImGui.PushStyleColor(ImGuiCol.CheckMark, Cyan);
+        ImGui.PushStyleColor(ImGuiCol.Tab, new Vector4(0.048f, 0.106f, 0.180f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.TabHovered, new Vector4(0.095f, 0.230f, 0.396f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.TabActive, new Vector4(0.100f, 0.257f, 0.447f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.TitleBg, Night);
+        ImGui.PushStyleColor(ImGuiCol.TitleBgActive, Surface);
+        ImGui.PushStyleColor(ImGuiCol.TitleBgCollapsed, Night);
     }
 
-    private void DrawHome()
+    private void DrawBrandHeader()
     {
-        var ui = UiSnapshot();
-        ImGui.TextUnformatted("Estado de la traducción");
-        ImGui.TextWrapped(_controller.Snapshot.Message);
-        ImGui.Separator();
-        ImGui.TextUnformatted($"Penumbra: {_penumbraAvailability.Status}");
-        ImGui.TextWrapped(_penumbraAvailability.UserMessage);
-        if (_regeneration is { } regeneration)
-        {
-            ImGui.Spacing();
-            ImGui.TextWrapped(regeneration.Message);
-        }
+        var start = ImGui.GetCursorScreenPos();
+        var width = ImGui.GetContentRegionAvail().X;
+        const float height = 92f;
+        var end = start + new Vector2(width, height);
+        var drawList = ImGui.GetWindowDrawList();
+        drawList.AddRectFilled(start, end, ImGui.GetColorU32(SurfaceRaised), 12f);
+        drawList.AddRect(start, end, ImGui.GetColorU32(Line), 12f);
+        drawList.AddRectFilled(start, start + new Vector2(5f, height), ImGui.GetColorU32(Blue), 12f);
+
+        ImGui.SetCursorScreenPos(start + new Vector2(18f, 16f));
+        var logo = TextureProvider.GetFromManifestResource(
+            typeof(Plugin).Assembly,
+            "FFXIVSpanishTranslationManager.logo-git.png");
+        ImGui.Image(logo.GetWrapOrEmpty().Handle, new Vector2(58f, 58f));
+
+        ImGui.SetCursorScreenPos(start + new Vector2(92f, 17f));
+        ImGui.TextColored(Cyan, "FFXIV SPANISH");
+        ImGui.SameLine();
+        ImGui.TextDisabled("TRANSLATION MANAGER");
+        ImGui.SetCursorScreenPos(start + new Vector2(92f, 48f));
+        ImGui.TextColored(Gold, "Traducción al castellano");
+        ImGui.SameLine();
+        ImGui.TextDisabled("· Gestión segura mediante Penumbra");
+
+        var state = _penumbraAvailability.IsReady ? "✓ PENUMBRA LISTO" : "⦻ PENUMBRA NO DISPONIBLE";
+        var stateColor = _penumbraAvailability.IsReady ? Green : Red;
+        var labelSize = ImGui.CalcTextSize(state);
+        var chipStart = new Vector2(end.X - labelSize.X - 34f, start.Y + 33f);
+        var chipEnd = new Vector2(end.X - 14f, start.Y + 59f);
+        drawList.AddRectFilled(chipStart, chipEnd, ImGui.GetColorU32(new Vector4(stateColor.X, stateColor.Y, stateColor.Z, 0.14f)), 8f);
+        drawList.AddRect(chipStart, chipEnd, ImGui.GetColorU32(stateColor), 8f);
+        ImGui.SetCursorScreenPos(chipStart + new Vector2(10f, 5f));
+        ImGui.TextColored(stateColor, state);
+
+        ImGui.SetCursorScreenPos(start + new Vector2(0f, height + 10f));
+    }
+
+    private void DrawDashboard()
+    {
+        const float topHeight = 190f;
+        const float categoriesHeight = 270f;
+        const float bottomHeight = 145f;
+        var gap = ImGui.GetStyle().ItemSpacing.X;
+        var contentWidth = ImGui.GetContentRegionAvail().X;
+        var primaryWidth = (contentWidth - gap) * 0.62f;
+
+        DrawStatusCard(new Vector2(primaryWidth, topHeight));
+        ImGui.SameLine();
+        DrawCompatibilityCard(new Vector2(0f, topHeight));
 
         ImGui.Spacing();
-        if (ui.CanStartRegeneration && ImGui.Button(ui.PrimaryActionLabel))
-        {
-            StartRegeneration();
-        }
-        else if (ui.CanCancelRegeneration)
-        {
-            ImGui.TextDisabled("Generando e instalando la traducción…");
-            if (ImGui.Button("Cancelar"))
-            {
-                _controller.CancelActiveOperation();
-            }
-        }
-        else if (!ui.CanStartRegeneration)
-        {
-            ImGui.TextDisabled("La instalación necesita que Penumbra esté disponible.");
-        }
+        DrawCategoriesCard(new Vector2(0f, categoriesHeight));
+
+        ImGui.Spacing();
+        DrawAutomationCard(new Vector2(primaryWidth, bottomHeight));
+        ImGui.SameLine();
+        DrawInformationCard(new Vector2(0f, bottomHeight));
     }
 
-    private void DrawCategories()
+    private static void DrawCardHeading(string eyebrow, string title)
+    {
+        ImGui.TextColored(Cyan, eyebrow.ToUpperInvariant());
+        ImGui.SameLine();
+        ImGui.TextUnformatted(title);
+        ImGui.Separator();
+    }
+
+    private void DrawStatusCard(Vector2 size)
+    {
+        var ui = UiSnapshot();
+        if (ImGui.BeginChild("Estado de la traducción", size, true, DashboardCardFlags))
+        {
+            DrawCardHeading("GESTIÓN", "Estado de la traducción");
+            ImGui.TextWrapped(_controller.Snapshot.Message);
+            var penumbraColor = _penumbraAvailability.IsReady ? Green : Red;
+            var penumbraStatus = _penumbraAvailability.IsReady
+                ? "✓ Penumbra disponible"
+                : "⦻ Penumbra no disponible";
+            ImGui.TextColored(penumbraColor, penumbraStatus);
+            ImGui.SameLine();
+            ImGui.TextDisabled(_penumbraAvailability.UserMessage);
+            if (_regeneration is { } regeneration)
+            {
+                ImGui.TextWrapped(regeneration.Message);
+            }
+
+            if (_penumbraAvailability.Status == PenumbraAvailabilityStatus.Unavailable)
+            {
+                if (ImGui.SmallButton("Abrir repositorio oficial"))
+                {
+                    Util.OpenLink(PenumbraRepositoryUrl);
+                }
+            }
+
+            ImGui.Spacing();
+            if (ui.CanStartRegeneration && ImGui.Button(ui.PrimaryActionLabel))
+            {
+                StartRegeneration();
+            }
+            else if (ui.CanCancelRegeneration)
+            {
+                ImGui.TextDisabled("Generando e instalando la traducción…");
+                if (ImGui.Button("Cancelar"))
+                {
+                    _controller.CancelActiveOperation();
+                }
+            }
+            else if (!ui.CanStartRegeneration)
+            {
+                ImGui.TextDisabled("La instalación necesita que Penumbra esté disponible.");
+            }
+        }
+        ImGui.EndChild();
+    }
+
+    private void DrawCompatibilityCard(Vector2 size)
+    {
+        var fingerprint = _currentFingerprint ?? _configuration?.LastSuccessfulFingerprint;
+        if (ImGui.BeginChild("Compatibilidad", size, true, DashboardCardFlags))
+        {
+            DrawCardHeading("SISTEMA", "Compatibilidad");
+            DrawDetail("Plugin", fingerprint?.PluginAssemblyVersion ?? "sin datos");
+            DrawDetail("FFXIV instalado", fingerprint?.InstalledGameVersion ?? "sin datos");
+            DrawDetail("FFXIV recomendado", fingerprint?.RecommendedGameVersion ?? "sin datos");
+            ImGui.Spacing();
+            ImGui.TextWrapped(_regeneration?.Message ?? "La compatibilidad aún no se ha comprobado.");
+        }
+
+        ImGui.EndChild();
+    }
+
+    private static void DrawDetail(string label, string value)
+    {
+        ImGui.TextDisabled($"{label}:");
+        ImGui.SameLine();
+        ImGui.TextUnformatted(value);
+    }
+
+    private static bool DrawFramedCheckbox(string label, ref bool value)
+    {
+        var boxStart = ImGui.GetCursorScreenPos();
+        var boxSize = ImGui.GetFrameHeight();
+        var changed = ImGui.Checkbox(label, ref value);
+        ImGui.GetWindowDrawList().AddRect(
+            boxStart,
+            boxStart + new Vector2(boxSize, boxSize),
+            ImGui.GetColorU32(Line),
+            ImGui.GetStyle().FrameRounding);
+        return changed;
+    }
+
+    private void DrawCategoriesCard(Vector2 size)
     {
         var ui = UiSnapshot();
         var categories = _categories.Snapshot;
-        ImGui.TextUnformatted($"Colección administrada: Base/Default ({categories.CollectionName})");
-        ImGui.TextWrapped(categories.Message);
-        ImGui.Separator();
-        if (!ui.CanEditCategories || String.IsNullOrWhiteSpace(_managedModDirectory))
+        if (ImGui.BeginChild("Categorías", size, true, DashboardCardFlags))
         {
-            ImGui.TextDisabled("Las categorías estarán disponibles cuando Penumbra detecte el mod gestionado.");
+            DrawCardHeading("CONTENIDO DEL MOD", "Categorías de traducción");
+            ImGui.TextDisabled($"Base/Default ({categories.CollectionName}) · {categories.Message}");
+            if (!ui.CanEditCategories || String.IsNullOrWhiteSpace(_managedModDirectory))
+            {
+                ImGui.Spacing();
+                ImGui.TextDisabled("Las categorías estarán disponibles cuando Penumbra detecte el mod gestionado.");
+            }
+            else if (ImGui.BeginTable("Cuadrícula de categorías", 2, ImGuiTableFlags.SizingStretchSame))
+            {
+                foreach (var category in TranslationCategoryCatalog.All)
+                {
+                    ImGui.TableNextColumn();
+                    DrawCategoryToggle(category, categories);
+                }
+
+                ImGui.EndTable();
+            }
+
+            if (_pendingInheritedCategoryDomain is not null)
+            {
+                ImGui.TextColored(Gold, "Cambio pendiente: confirma cómo tratar la herencia.");
+            }
+        }
+
+        ImGui.EndChild();
+    }
+
+    private void DrawCategoryToggle(TranslationCategoryDefinition category, CategorySyncSnapshot categories)
+    {
+        var enabled = categories.EnabledDomains.Contains(category.Domain);
+        ImGui.PushID(category.Domain);
+        var changed = DrawFramedCheckbox("##Activo", ref enabled);
+        ImGui.SameLine();
+        ImGui.BeginGroup();
+        ImGui.TextUnformatted(category.DisplayName);
+        ImGui.EndGroup();
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.BeginTooltip();
+            ImGui.PushTextWrapPos(360f);
+            ImGui.TextUnformatted(category.Description);
+            ImGui.PopTextWrapPos();
+            ImGui.EndTooltip();
+        }
+        ImGui.PopID();
+
+        if (!changed)
+        {
             return;
         }
 
-        foreach (var category in TranslationCategoryCatalog.All)
+        var desired = new HashSet<string>(categories.EnabledDomains, StringComparer.OrdinalIgnoreCase);
+        if (enabled)
         {
-            var enabled = categories.EnabledDomains.Contains(category.Domain);
-            if (!ImGui.Checkbox(category.DisplayName, ref enabled))
-            {
-                continue;
-            }
-
-            var desired = new HashSet<string>(categories.EnabledDomains, StringComparer.OrdinalIgnoreCase);
-            if (enabled)
-            {
-                desired.Add(category.Domain);
-            }
-            else
-            {
-                desired.Remove(category.Domain);
-            }
-
-            if (categories.Status == CategorySyncStatus.Inherited)
-            {
-                _pendingInheritedCategoryDomain = category.Domain;
-            }
-            else
-            {
-                StartCategoryUpdate(desired, confirmBreakInheritance: false);
-            }
+            desired.Add(category.Domain);
+        }
+        else
+        {
+            desired.Remove(category.Domain);
         }
 
-        if (_pendingInheritedCategoryDomain is { } pending)
+        if (categories.Status == CategorySyncStatus.Inherited)
         {
-            ImGui.Separator();
-            ImGui.TextWrapped("Estas categorías se heredan. Crear un ajuste propio en Base/Default dejará de heredar cambios de la colección superior.");
-            if (ImGui.Button("Crear ajuste propio"))
-            {
-                var desired = new HashSet<string>(categories.EnabledDomains, StringComparer.OrdinalIgnoreCase);
-                if (!desired.Add(pending))
-                {
-                    desired.Remove(pending);
-                }
+            _pendingInheritedCategoryDomain = category.Domain;
+        }
+        else
+        {
+            StartCategoryUpdate(desired, confirmBreakInheritance: false);
+        }
+    }
 
-                StartCategoryUpdate(desired, confirmBreakInheritance: true);
-                _pendingInheritedCategoryDomain = null;
+    private void DrawAutomationCard(Vector2 size)
+    {
+        if (ImGui.BeginChild("Automatización", size, true, DashboardCardFlags))
+        {
+            DrawCardHeading("AJUSTES", "Automatización");
+            if (_configuration is { } configuration && _configurationStore is { } store)
+            {
+                var autoRegeneration = configuration.AutoRegenerationEnabled;
+                if (DrawFramedCheckbox("Regenerar tras una actualización real", ref autoRegeneration))
+                {
+                    configuration.AutoRegenerationEnabled = autoRegeneration;
+                    store.Save(configuration);
+                    _regeneration = _currentFingerprint is null
+                        ? _regeneration
+                        : RegenerationPlanner.Decide(_currentFingerprint, configuration.LastSuccessfulFingerprint, autoRegeneration);
+                }
+            }
+
+            ImGui.TextDisabled("Administra únicamente Base/Default; no altera otras colecciones.");
+            ImGui.TextColored(Gold, "Activa Wait for plugins before game loads en Dalamud.");
+        }
+
+        ImGui.EndChild();
+    }
+
+    private void DrawInformationCard(Vector2 size)
+    {
+        if (ImGui.BeginChild("Información y soporte", size, true, DashboardCardFlags))
+        {
+            DrawCardHeading("PROYECTO", "Información y soporte");
+            var gap = ImGui.GetStyle().ItemSpacing.X;
+            var buttonWidth = (ImGui.GetContentRegionAvail().X - gap) / 2f;
+            if (ImGui.Button("Hitos de traducción", new Vector2(buttonWidth, 34f)))
+            {
+                _openMilestonesRequested = true;
             }
 
             ImGui.SameLine();
-            if (ImGui.Button("Cancelar cambio"))
+            if (ImGui.Button("Historial de sesión", new Vector2(buttonWidth, 34f)))
             {
-                _pendingInheritedCategoryDomain = null;
+                _openHistoryRequested = true;
             }
-        }
-    }
 
-    private void DrawUpdates()
-    {
-        var fingerprint = _currentFingerprint ?? _configuration?.LastSuccessfulFingerprint;
-        ImGui.TextUnformatted("Versiones y actualización");
-        ImGui.TextUnformatted($"Plugin: {fingerprint?.PluginAssemblyVersion ?? "sin datos"}");
-        ImGui.TextUnformatted($"FFXIV instalado: {fingerprint?.InstalledGameVersion ?? "sin datos"}");
-        ImGui.TextUnformatted($"FFXIV recomendado: {fingerprint?.RecommendedGameVersion ?? "sin datos"}");
-        ImGui.TextWrapped(_regeneration?.Message ?? "La compatibilidad aún no se ha comprobado.");
-        ImGui.Separator();
-        if (ImGui.CollapsingHeader("Hitos de traducción"))
-        {
-            ImGui.TextWrapped(_milestones);
-        }
-    }
-
-    private void DrawSettings()
-    {
-        if (_configuration is { } configuration && _configurationStore is { } store)
-        {
-            var autoRegeneration = configuration.AutoRegenerationEnabled;
-            if (ImGui.Checkbox("Regenerar automáticamente tras una actualización real", ref autoRegeneration))
+            if (ImGui.Button("Aviso legal", new Vector2(buttonWidth, 34f)))
             {
-                configuration.AutoRegenerationEnabled = autoRegeneration;
-                store.Save(configuration);
-                _regeneration = _currentFingerprint is null
-                    ? _regeneration
-                    : RegenerationPlanner.Decide(_currentFingerprint, configuration.LastSuccessfulFingerprint, autoRegeneration);
+                _openLegalRequested = true;
+            }
+
+            ImGui.SameLine();
+            if (ImGui.Button("Copiar diagnóstico", new Vector2(buttonWidth, 34f)))
+            {
+                ImGui.SetClipboardText(UiSnapshot().Diagnostic);
             }
         }
 
-        ImGui.TextWrapped("Las diferencias entre versión instalada y corpus usan el mismo modo best effort verificado que el patcher clásico. Un fallo de verificación siempre bloquea la instalación.");
-        ImGui.TextWrapped("El gestor administra únicamente Base/Default. No modifica colecciones individuales, Current ni Interface.");
-        ImGui.TextWrapped("Para que la traducción esté lista antes de abrir el juego, activa Wait for plugins before game loads en Dalamud.");
-        ImGui.Separator();
-        if (ImGui.Button("Copiar diagnóstico"))
+        ImGui.EndChild();
+    }
+
+    private void DrawInformationPopups()
+    {
+        OpenRequestedPopup(ref _openMilestonesRequested, "Hitos de traducción");
+        OpenRequestedPopup(ref _openHistoryRequested, "Historial de sesión");
+        OpenRequestedPopup(ref _openLegalRequested, "Aviso legal");
+
+        DrawMarkdownPopup();
+        DrawHistoryPopup();
+        DrawTextPopup("Aviso legal", LegalNotice.Text);
+        DrawInheritedCategoryPopup();
+    }
+
+    private static void OpenRequestedPopup(ref bool requested, string name)
+    {
+        if (!requested)
         {
-            ImGui.SetClipboardText(UiSnapshot().Diagnostic);
+            return;
         }
 
-        if (ImGui.CollapsingHeader("Historial de esta sesión"))
+        ImGui.OpenPopup(name);
+        requested = false;
+    }
+
+    private static void DrawTextPopup(string title, string text)
+    {
+        ImGui.SetNextWindowSize(new Vector2(760f, 470f), ImGuiCond.Appearing);
+        if (!ImGui.BeginPopup(title))
         {
-            foreach (var entry in _eventHistory.TakeLast(20))
+            return;
+        }
+
+        ImGui.TextColored(Cyan, title.ToUpperInvariant());
+        ImGui.Separator();
+        if (ImGui.BeginChild(
+                $"Contenido de {title}",
+                new Vector2(0f, 370f),
+                false,
+                PopupContentFlags))
+        {
+            ImGui.TextWrapped(text);
+        }
+        ImGui.EndChild();
+        if (ImGui.Button("Cerrar"))
+        {
+            ImGui.CloseCurrentPopup();
+        }
+        ImGui.EndPopup();
+    }
+
+    private void DrawMarkdownPopup()
+    {
+        ImGui.SetNextWindowSize(new Vector2(860f, 620f), ImGuiCond.Appearing);
+        if (!ImGui.BeginPopup("Hitos de traducción"))
+        {
+            return;
+        }
+
+        ImGui.TextColored(Cyan, "HITOS DE TRADUCCIÓN");
+        ImGui.Separator();
+        if (ImGui.BeginChild(
+                "Documento de hitos",
+                new Vector2(0f, 520f),
+                false,
+                PopupContentFlags))
+        {
+            if (_milestones is { } document)
+            {
+                MarkdownImGuiRenderer.Draw(document);
+            }
+            else
+            {
+                ImGui.TextDisabled("El historial aún no está disponible.");
+            }
+        }
+        ImGui.EndChild();
+        if (ImGui.Button("Cerrar"))
+        {
+            ImGui.CloseCurrentPopup();
+        }
+        ImGui.EndPopup();
+    }
+
+    private void DrawHistoryPopup()
+    {
+        ImGui.SetNextWindowSize(new Vector2(760f, 470f), ImGuiCond.Appearing);
+        if (!ImGui.BeginPopup("Historial de sesión"))
+        {
+            return;
+        }
+
+        ImGui.TextColored(Cyan, "HISTORIAL DE ESTA SESIÓN");
+        ImGui.Separator();
+        if (ImGui.BeginChild(
+                "Eventos",
+                new Vector2(0f, 370f),
+                false,
+                PopupContentFlags))
+        {
+            foreach (var entry in _eventHistory.TakeLast(40))
             {
                 ImGui.TextWrapped($"{entry.TimestampUtc:HH:mm:ss} [{entry.Severity}] {entry.Message}");
             }
         }
-
-        if (ImGui.CollapsingHeader("Créditos y aviso legal"))
+        ImGui.EndChild();
+        if (ImGui.Button("Cerrar"))
         {
-            ImGui.TextWrapped(_legalAndCredits);
+            ImGui.CloseCurrentPopup();
         }
+        ImGui.EndPopup();
+    }
+
+    private void DrawInheritedCategoryPopup()
+    {
+        if (_pendingInheritedCategoryDomain is not { } pending)
+        {
+            return;
+        }
+
+        ImGui.OpenPopup("Confirmar categorías heredadas");
+        ImGui.SetNextWindowSize(new Vector2(560f, 0f), ImGuiCond.Appearing);
+        if (!ImGui.BeginPopup("Confirmar categorías heredadas"))
+        {
+            return;
+        }
+
+        ImGui.TextWrapped("Estas categorías se heredan. Crear un ajuste propio en Base/Default dejará de heredar cambios de la colección superior.");
+        if (ImGui.Button("Crear ajuste propio"))
+        {
+            var desired = new HashSet<string>(_categories.Snapshot.EnabledDomains, StringComparer.OrdinalIgnoreCase);
+            if (!desired.Add(pending))
+            {
+                desired.Remove(pending);
+            }
+
+            StartCategoryUpdate(desired, confirmBreakInheritance: true);
+            _pendingInheritedCategoryDomain = null;
+            ImGui.CloseCurrentPopup();
+        }
+
+        ImGui.SameLine();
+        if (ImGui.Button("Cancelar cambio"))
+        {
+            _pendingInheritedCategoryDomain = null;
+            ImGui.CloseCurrentPopup();
+        }
+        ImGui.EndPopup();
     }
 
     private TranslationManagerUiSnapshot UiSnapshot()

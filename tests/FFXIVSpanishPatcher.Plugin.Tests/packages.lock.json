@@ -69,6 +69,11 @@
           "Lumina": "7.6.0"
         }
       },
+      "Markdig": {
+        "type": "Transitive",
+        "resolved": "1.3.2",
+        "contentHash": "fZgOC/3CswUrndjDTac70aQpYdtxbW5+5bRumR7vzvI2HJbkmgKisB1c9oT+GA6v0jB/JDR9BLa9FiPzQmaK6A=="
+      },
       "Microsoft.ApplicationInsights": {
         "type": "Transitive",
         "resolved": "2.23.0",
@@ -212,6 +217,7 @@
       "ffxivspanishpatcher.pipeline": {
         "type": "Project",
         "dependencies": {
+          "Markdig": "[1.3.2, )",
           "XivSpanish.Core": "[0.0.0, )",
           "XivSpanish.GameData": "[0.0.0, )",
           "XivSpanish.Packaging": "[0.0.0, )",
