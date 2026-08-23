@@ -9,13 +9,12 @@ Resumen de todos los cambios relevantes del proyecto.
   del seguimiento por dominio: `CharaMakeName` y `KTGTypeWordTextData`.
 - *Stormblood* sube al **56,3 %**: **17.854/31.689 líneas traducidas**, frente a las
   13.112 de v0.4.0.
-- Cerrados tres nuevos lotes de historia principal de *Stormblood* (`quest-stmbda-msq-002`,
-  `-003` y `-004`): **135 hojas** de guion; también se completa un lote de **12 hojas** de
+- Cerrados tres nuevos lotes de historia principal de *Stormblood* (`quest-stmbda-msq-002`, `-003` y `-004`):
+  **135 hojas** de guion; también se completa un lote de **12 hojas** de
   eventos estacionales.
 - Revisadas las últimas filas pendientes de validación y corregido el texto de un objeto de misión:
   «registro muy desgastado».
-- Corregidas las cifras internas de cinemáticas y conversaciones personalizadas para que cada
-  expansión muestre su avance real.
+- Traducidas algunas cosas que quedaron pendientes del evento de la Verbena de este año (las conversaciones con las Pregoneras)
 
 ## v0.4.0
 
