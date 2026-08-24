@@ -39,7 +39,7 @@
     <PackageReference Include="Avalonia.AvaloniaEdit" Version="12.0.0" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="Markdig" Version="1.3.2" />
-    <!-- Override Avalonia's Tmds.DBus.Protocol with the latest 0.94 patch. Linux-only. -->
+    <!-- Override Avalonia's Tmds.DBus.Protocol with the latest compatible release. Linux-only. -->
     <PackageReference Include="Tmds.DBus.Protocol" Version="0.95.0" />
   </ItemGroup>
 
