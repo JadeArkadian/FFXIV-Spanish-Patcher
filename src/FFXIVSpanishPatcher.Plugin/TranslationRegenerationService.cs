@@ -12,6 +12,7 @@ public sealed class TranslationRegenerationService(
     public async Task<ModInstallResult> RegenerateAsync(
         TreeBuildRequest buildRequest,
         string modRootPath,
+        bool enableInDefaultCollection,
         CancellationToken cancellationToken)
     {
         try
@@ -24,7 +25,11 @@ public sealed class TranslationRegenerationService(
             }
 
             var result = await installer.InstallAsync(
-                    new ModInstallRequest(build.OutputPath, modRootPath, buildRequest.Fingerprint),
+                    new ModInstallRequest(
+                        build.OutputPath,
+                        modRootPath,
+                        buildRequest.Fingerprint,
+                        enableInDefaultCollection),
                     cancellationToken)
                 .ConfigureAwait(false);
             BuildFingerprintPersistence.SaveIfSuccessful(configurationStore, configuration, result);

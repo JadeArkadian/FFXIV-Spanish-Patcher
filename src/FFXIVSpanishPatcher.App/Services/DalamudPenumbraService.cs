@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
+using FFXIVSpanishPatcher.Pipeline;
 
 namespace FFXIVSpanishPatcher.App.Services;
 
@@ -21,7 +22,7 @@ public sealed record DalamudPenumbraCheck(DalamudPenumbraState State, string? Co
 /// </summary>
 public sealed class DalamudPenumbraService
 {
-    private const string PropertyName = "IsResumeGameAfterPluginLoad";
+    private const string PropertyName = DalamudStartupSettings.WaitForPluginsPropertyName;
 
     public DalamudPenumbraCheck Inspect()
     {

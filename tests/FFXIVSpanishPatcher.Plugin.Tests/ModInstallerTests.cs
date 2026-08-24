@@ -36,6 +36,18 @@ public sealed class ModInstallerTests : IDisposable
     }
 
     [Fact]
+    public async Task Regeneration_PreservesRequestedDisabledState()
+    {
+        var registry = new FakeRegistry();
+        var request = Request() with { EnableInDefaultCollection = false };
+
+        var result = await CreateInstaller(registry).InstallAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.True(result.Succeeded, result.Message);
+        Assert.Equal([(PenumbraModIdentity.CanonicalDirectory, false)], registry.Enabled);
+    }
+
+    [Fact]
     public async Task Update_DoesNotAdoptV040PmpWithoutStableIdentity()
     {
         var existing = Path.Combine(_modRoot, "SpanishV040");

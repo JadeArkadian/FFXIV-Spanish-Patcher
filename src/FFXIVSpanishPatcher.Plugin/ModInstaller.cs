@@ -128,13 +128,14 @@ public sealed class ModInstaller : IModInstaller
                 throw new InvalidOperationException($"Penumbra devolvió el código {apiResult} al {(!adopted ? "registrar" : "recargar")} el mod.");
             }
 
-            var enableResult = _registry.SetEnabled(directoryName, enabled: true);
+            var enableResult = _registry.SetEnabled(directoryName, request.EnableInDefaultCollection);
             _faultInjector.Before(ModInstallationStep.PenumbraActivated);
             // Penumbra returns NothingChanged (1) when the survivor was already enabled.
             // Both that response and Success (0) establish the requested enabled state.
             if (enableResult is not 0 and not 1)
             {
-                throw new InvalidOperationException($"Penumbra devolvió el código {enableResult} al activar el mod en Base/Default.");
+                throw new InvalidOperationException(
+                    $"Penumbra devolvió el código {enableResult} al sincronizar el estado del mod en Base/Default.");
             }
 
             if (backups.Count > 0)

@@ -25,7 +25,7 @@ public sealed class TranslationRegenerationServiceTests
                 new PluginConfiguration());
 
             var result = await service.RegenerateAsync(
-                new TreeBuildRequest(candidate, fingerprint), modRoot, TestContext.Current.CancellationToken);
+                new TreeBuildRequest(candidate, fingerprint), modRoot, true, TestContext.Current.CancellationToken);
 
             Assert.True(result.Succeeded);
             Assert.False(Directory.Exists(Path.Combine(modRoot, ".ffxivspanish-pipeline-staging")));
@@ -50,7 +50,7 @@ public sealed class TranslationRegenerationServiceTests
         var configuration = new PluginConfiguration();
         var service = new TranslationRegenerationService(builder, installer, store, configuration);
 
-        var result = await service.RegenerateAsync(Request(), "/mods", TestContext.Current.CancellationToken);
+        var result = await service.RegenerateAsync(Request(), "/mods", true, TestContext.Current.CancellationToken);
 
         Assert.False(result.Succeeded);
         Assert.False(installer.WasCalled);
@@ -68,10 +68,15 @@ public sealed class TranslationRegenerationServiceTests
         var configuration = new PluginConfiguration();
         var service = new TranslationRegenerationService(builder, installer, store, configuration);
 
-        var result = await service.RegenerateAsync(new TreeBuildRequest("/candidate", fingerprint), "/mods", TestContext.Current.CancellationToken);
+        var result = await service.RegenerateAsync(
+            new TreeBuildRequest("/candidate", fingerprint),
+            "/mods",
+            false,
+            TestContext.Current.CancellationToken);
 
         Assert.True(result.Succeeded);
         Assert.True(installer.WasCalled);
+        Assert.False(installer.Request!.EnableInDefaultCollection);
         Assert.Same(fingerprint, configuration.LastSuccessfulFingerprint);
         Assert.Same(configuration, store.Saved);
     }
@@ -87,9 +92,11 @@ public sealed class TranslationRegenerationServiceTests
     private sealed class FakeInstaller(ModInstallResult? result = null) : IModInstaller
     {
         public bool WasCalled { get; private set; }
+        public ModInstallRequest? Request { get; private set; }
         public Task<ModInstallResult> InstallAsync(ModInstallRequest request, CancellationToken cancellationToken)
         {
             WasCalled = true;
+            Request = request;
             return Task.FromResult(result ?? new ModInstallResult(false, "not configured"));
         }
     }

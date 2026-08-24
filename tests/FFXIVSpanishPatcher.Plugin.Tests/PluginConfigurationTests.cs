@@ -12,7 +12,18 @@ public sealed class PluginConfigurationTests
 
         Assert.Equal(PluginConfiguration.CurrentVersion, configuration.Version);
         Assert.True(configuration.AutoRegenerationEnabled);
+        Assert.Null(configuration.ManagedModEnabled);
         Assert.Null(configuration.LastSuccessfulFingerprint);
+    }
+
+    [Fact]
+    public void Migrate_CurrentConfiguration_PreservesManagedModState()
+    {
+        var saved = new PluginConfiguration { ManagedModEnabled = false };
+
+        var configuration = PluginConfiguration.Migrate(saved);
+
+        Assert.False(configuration.ManagedModEnabled);
     }
 
     [Fact]

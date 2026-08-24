@@ -15,9 +15,161 @@ public sealed class CategorySyncServiceTests
         var snapshot = service.Refresh("FFXIVSpanish");
 
         Assert.Equal(CategorySyncStatus.Ready, snapshot.Status);
+        Assert.True(snapshot.ModEnabled);
         Assert.Equal("Base", snapshot.CollectionName);
         Assert.Equal(["interfaz"], snapshot.EnabledDomains);
         Assert.Equal([transport.Default.Id], transport.ReadCollections);
+    }
+
+    [Fact]
+    public async Task SetModEnabled_WritesBaseCollectionThenReconciles()
+    {
+        var transport = new FakeTransport();
+        await using var service = CreateService(transport);
+
+        var snapshot = service.SetModEnabled("FFXIVSpanish", enabled: false);
+
+        Assert.False(snapshot.ModEnabled);
+        Assert.Equal([(transport.Default.Id, "FFXIVSpanish", false)], transport.StateWrites);
+    }
+
+    [Fact]
+    public async Task PrepareSession_PreservesPersistentActivationUntilValidation()
+    {
+        var transport = new FakeTransport { Enabled = true };
+        await using var service = CreateService(transport);
+
+        var preparation = service.PrepareSession("FFXIVSpanish", configuredDesiredState: null);
+
+        Assert.True(preparation.Succeeded);
+        Assert.True(preparation.DesiredEnabled);
+        Assert.True(transport.Enabled);
+        Assert.True(preparation.Snapshot.ModEnabled);
+        Assert.False(preparation.Snapshot.SessionActivationAllowed);
+        Assert.Empty(transport.StateWrites);
+    }
+
+    [Fact]
+    public async Task GrantSessionActivation_PersistsVerifiedDesiredStateForNextBoot()
+    {
+        var transport = new FakeTransport { Enabled = false };
+        await using var service = CreateService(transport);
+        service.PrepareSession("FFXIVSpanish", configuredDesiredState: true);
+
+        var snapshot = service.GrantSessionActivation("FFXIVSpanish", desiredEnabled: true);
+
+        Assert.True(transport.Enabled);
+        Assert.True(snapshot.ModEnabled);
+        Assert.True(snapshot.SessionActivationAllowed);
+        Assert.False(snapshot.UsesSessionLease);
+        Assert.Equal([(transport.Default.Id, "FFXIVSpanish", true)], transport.StateWrites);
+        Assert.Empty(transport.TemporaryWrites);
+    }
+
+    [Fact]
+    public async Task EnableBeforeValidation_IsRejectedWithoutChangingPersistentState()
+    {
+        var transport = new FakeTransport { Enabled = false };
+        await using var service = CreateService(transport);
+        service.PrepareSession("FFXIVSpanish", configuredDesiredState: true);
+
+        var snapshot = service.SetModEnabled("FFXIVSpanish", enabled: true);
+
+        Assert.Equal(CategorySyncStatus.WriteRejected, snapshot.Status);
+        Assert.False(transport.Enabled);
+        Assert.Empty(transport.TemporaryWrites);
+    }
+
+    [Fact]
+    public async Task RejectedPersistentActivation_LeavesPreviousStateUntouched()
+    {
+        var transport = new FakeTransport { Enabled = false, SetEnabledResult = 20 };
+        await using var service = CreateService(transport);
+        service.PrepareSession("FFXIVSpanish", configuredDesiredState: true);
+
+        var snapshot = service.GrantSessionActivation("FFXIVSpanish", desiredEnabled: true);
+
+        Assert.Equal(CategorySyncStatus.WriteRejected, snapshot.Status);
+        Assert.False(snapshot.SessionActivationAllowed);
+        Assert.False(transport.Enabled);
+        Assert.Null(transport.Temporary);
+    }
+
+    [Fact]
+    public async Task ForeignTemporarySettings_AreNeverRemovedOrOverwritten()
+    {
+        var transport = new FakeTransport { Enabled = true };
+        transport.SetForeignTemporary("Otro plugin");
+        await using var service = CreateService(transport);
+
+        var preparation = service.PrepareSession("FFXIVSpanish", configuredDesiredState: true);
+        var activation = service.GrantSessionActivation("FFXIVSpanish", desiredEnabled: true);
+
+        Assert.False(preparation.Succeeded);
+        Assert.Equal(CategorySyncStatus.WriteRejected, activation.Status);
+        Assert.Equal("Otro plugin", transport.Temporary!.Source);
+        Assert.True(transport.Enabled);
+        Assert.Empty(transport.RemoveRequests);
+        Assert.Empty(transport.TemporaryWrites);
+    }
+
+    [Fact]
+    public async Task Dispose_RemovesOnlyLegacyOwnLeaseAndPreservesPersistentActivation()
+    {
+        var transport = new FakeTransport { Enabled = true };
+        var service = CreateService(transport);
+        service.Refresh("FFXIVSpanish");
+        transport.SetOwnTemporary();
+        transport.RemoveRequests.Clear();
+
+        await service.DisposeAsync();
+
+        var removal = Assert.Single(transport.RemoveRequests);
+        Assert.Equal("FFXIVSpanish", removal.Directory);
+        Assert.True(removal.Key < 0);
+        Assert.True(transport.Enabled);
+    }
+
+    [Fact]
+    public async Task CategoryChange_PreservesPersistentActivationWithoutTemporaryLease()
+    {
+        var transport = new FakeTransport { Enabled = true };
+        await using var service = CreateService(transport);
+        service.PrepareSession("FFXIVSpanish", configuredDesiredState: true);
+        service.GrantSessionActivation("FFXIVSpanish", desiredEnabled: true);
+
+        var snapshot = service.SetEnabledDomains("FFXIVSpanish", ["misiones", "items"], confirmBreakInheritance: false);
+
+        Assert.True(snapshot.ModEnabled);
+        Assert.False(snapshot.UsesSessionLease);
+        Assert.Equal(["items", "misiones"], snapshot.EnabledDomains.Order());
+        Assert.Empty(transport.TemporaryWrites);
+    }
+
+    [Fact]
+    public async Task ExternalEnabledChange_ReconcilesWithoutWritingBack()
+    {
+        var transport = new FakeTransport();
+        await using var service = CreateService(transport);
+        service.Refresh("FFXIVSpanish");
+
+        transport.SetExternalEnabled(false);
+
+        Assert.False(service.Snapshot.ModEnabled);
+        Assert.Empty(transport.StateWrites);
+    }
+
+    [Fact]
+    public async Task RejectedEnabledChange_RestoresReadState()
+    {
+        var transport = new FakeTransport { SetEnabledResult = 9 };
+        await using var service = CreateService(transport);
+
+        var snapshot = service.SetModEnabled("FFXIVSpanish", enabled: false);
+
+        Assert.Equal(CategorySyncStatus.WriteRejected, snapshot.Status);
+        Assert.True(snapshot.ModEnabled);
+        Assert.Single(transport.StateWrites);
     }
 
     [Fact]
@@ -128,6 +280,9 @@ public sealed class CategorySyncServiceTests
         public PenumbraCollection Default { get; } = new(Guid.NewGuid(), "Base");
         public List<Guid> ReadCollections { get; } = [];
         public List<(string Group, IReadOnlyList<string> Options)> Writes { get; } = [];
+        public List<(Guid CollectionId, string Directory, bool Enabled)> StateWrites { get; } = [];
+        public List<TemporaryWrite> TemporaryWrites { get; } = [];
+        public List<(Guid CollectionId, string Directory, int Key)> RemoveRequests { get; } = [];
         public Dictionary<string, IReadOnlyList<string>> Available { get; set; } = new()
         {
             [TranslationCategoryCatalog.GroupName] = TranslationCategoryCatalog.All.Select(category => category.DisplayName).ToArray(),
@@ -137,8 +292,14 @@ public sealed class CategorySyncServiceTests
             [TranslationCategoryCatalog.GroupName] = ["Interfaz"],
         };
         public bool Inherited { get; set; }
+        public bool Enabled { get; set; } = true;
+        public int Priority { get; set; } = 7;
         public int SetResult { get; set; }
+        public int SetEnabledResult { get; set; }
+        public int SetTemporaryResult { get; set; }
+        public int RemoveTemporaryResult { get; set; }
         public bool Disposed { get; private set; }
+        public PenumbraTemporaryModSettingsRead? Temporary { get; private set; }
         public event Action<Guid, string, bool>? ModSettingChanged;
 
         public PenumbraCollection? GetDefaultCollection()
@@ -148,7 +309,10 @@ public sealed class CategorySyncServiceTests
         }
 
         public PenumbraModSettingsRead GetCurrentSettings(Guid collectionId, string modDirectory)
-            => new(0, true, Current, Inherited);
+            => new(0, Enabled, Priority, Current, Inherited);
+
+        public PenumbraTemporaryModSettingsRead GetTemporarySettings(Guid collectionId, string modDirectory, int key)
+            => Temporary ?? new(0, false, false, false, 0, new Dictionary<string, IReadOnlyList<string>>(), string.Empty);
 
         public IReadOnlyDictionary<string, IReadOnlyList<string>>? GetAvailableSettings(string modDirectory) => Available;
 
@@ -166,13 +330,104 @@ public sealed class CategorySyncServiceTests
             return 0;
         }
 
+        public int SetEnabled(Guid collectionId, string modDirectory, bool enabled)
+        {
+            StateWrites.Add((collectionId, modDirectory, enabled));
+            if (SetEnabledResult != 0)
+            {
+                return SetEnabledResult;
+            }
+
+            Enabled = enabled;
+            Inherited = false;
+            ModSettingChanged?.Invoke(collectionId, modDirectory, false);
+            return 0;
+        }
+
+        public int SetTemporarySettings(
+            Guid collectionId,
+            string modDirectory,
+            bool inherit,
+            bool enabled,
+            int priority,
+            IReadOnlyDictionary<string, IReadOnlyList<string>> options,
+            string source,
+            int key)
+        {
+            TemporaryWrites.Add(new TemporaryWrite(collectionId, modDirectory, inherit, enabled, priority, options, source, key));
+            if (SetTemporaryResult != 0)
+            {
+                return SetTemporaryResult;
+            }
+
+            Temporary = new PenumbraTemporaryModSettingsRead(0, true, inherit, enabled, priority, options, source);
+            ModSettingChanged?.Invoke(collectionId, modDirectory, false);
+            return 0;
+        }
+
+        public int RemoveTemporarySettings(Guid collectionId, string modDirectory, int key)
+        {
+            RemoveRequests.Add((collectionId, modDirectory, key));
+            if (RemoveTemporaryResult != 0)
+            {
+                return RemoveTemporaryResult;
+            }
+
+            Temporary = null;
+            ModSettingChanged?.Invoke(collectionId, modDirectory, false);
+            return 0;
+        }
+
         public void SetExternal(IReadOnlyList<string> options, string modDirectory = "FFXIVSpanish")
         {
             Current = new Dictionary<string, IReadOnlyList<string>> { [TranslationCategoryCatalog.GroupName] = options };
             ModSettingChanged?.Invoke(Default.Id, modDirectory, false);
         }
 
+        public void SetExternalEnabled(bool enabled, string modDirectory = "FFXIVSpanish")
+        {
+            if (Temporary is { Exists: true } temporary)
+            {
+                Temporary = temporary with { Enabled = enabled };
+            }
+            else
+            {
+                Enabled = enabled;
+            }
+            ModSettingChanged?.Invoke(Default.Id, modDirectory, false);
+        }
+
+        public void SetForeignTemporary(string source)
+            => Temporary = new PenumbraTemporaryModSettingsRead(
+                0,
+                true,
+                false,
+                true,
+                Priority,
+                Current,
+                source);
+
+        public void SetOwnTemporary()
+            => Temporary = new PenumbraTemporaryModSettingsRead(
+                0,
+                true,
+                false,
+                true,
+                Priority,
+                Current,
+                "FFXIV Spanish Translation Manager");
+
         public void Dispose() => Disposed = true;
+
+        public sealed record TemporaryWrite(
+            Guid CollectionId,
+            string Directory,
+            bool Inherit,
+            bool Enabled,
+            int Priority,
+            IReadOnlyDictionary<string, IReadOnlyList<string>> Options,
+            string Source,
+            int Key);
     }
 
     private sealed class RecordingLogger : IPluginDiagnosticLogger

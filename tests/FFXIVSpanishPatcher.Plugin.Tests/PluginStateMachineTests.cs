@@ -30,6 +30,7 @@ public sealed class PluginStateMachineTests
         yield return [PluginPhase.Starting, PluginPhase.Checking];
         yield return [PluginPhase.Starting, PluginPhase.ErrorFatal];
         yield return [PluginPhase.PenumbraUnavailable, PluginPhase.Checking];
+        yield return [PluginPhase.PenumbraUnavailable, PluginPhase.Ready];
         yield return [PluginPhase.PenumbraUnavailable, PluginPhase.ErrorFatal];
         yield return [PluginPhase.WelcomeRequired, PluginPhase.Checking];
         yield return [PluginPhase.Checking, PluginPhase.UpToDate];

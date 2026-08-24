@@ -15,6 +15,10 @@ public interface IPenumbraApiTransport : IDisposable
 
     event Action<string, bool>? ModDirectoryChanged;
 
+    event Action<string>? ModDeleted;
+
+    event Action<string, string>? ModMoved;
+
     (int Breaking, int Features) GetApiVersion();
 
     bool GetEnabledState();
@@ -65,15 +69,27 @@ public sealed class PenumbraIpcClient : IPenumbraIpcClient, IPenumbraModRegistry
         _transport.Disposed += OnDisposed;
         _transport.EnabledChanged += OnEnabledChanged;
         _transport.ModDirectoryChanged += OnModDirectoryChanged;
+        _transport.ModDeleted += OnModDeleted;
+        _transport.ModMoved += OnModMoved;
     }
 
     public event Action<PenumbraAvailability>? AvailabilityChanged;
 
+    public event Action<string>? ModDeleted;
+
+    public event Action<string, string>? ModMoved;
+
     public Task<PenumbraAvailability> GetAvailabilityAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(EvaluateAvailability());
+        return Task.FromResult(ProbeAvailability());
     }
+
+    /// <summary>
+    /// Rechecks the synchronous IPC contract. The plugin invokes this from the framework thread as
+    /// a fallback when an initialization event is missed or arrives before every endpoint is ready.
+    /// </summary>
+    public PenumbraAvailability ProbeAvailability() => EvaluateAvailability();
 
     public IReadOnlyDictionary<string, string> GetModList() => _transport.GetModList();
 
@@ -95,6 +111,8 @@ public sealed class PenumbraIpcClient : IPenumbraIpcClient, IPenumbraModRegistry
         _transport.Disposed -= OnDisposed;
         _transport.EnabledChanged -= OnEnabledChanged;
         _transport.ModDirectoryChanged -= OnModDirectoryChanged;
+        _transport.ModDeleted -= OnModDeleted;
+        _transport.ModMoved -= OnModMoved;
         _transport.Dispose();
         return ValueTask.CompletedTask;
     }
@@ -154,13 +172,13 @@ public sealed class PenumbraIpcClient : IPenumbraIpcClient, IPenumbraModRegistry
         }
         catch (IpcNotReadyError exception)
         {
-            _log.Information("Penumbra aún no está disponible; se volverá a comprobar al inicializarse.");
+            _log.Information("Penumbra aún no está disponible; se reintentará la conexión.");
             return new PenumbraAvailability(
                 PenumbraAvailabilityStatus.Unavailable,
                 0,
                 0,
                 null,
-                "Penumbra no está instalado, está iniciando o no expone su API.",
+                "Penumbra todavía no está disponible; puede no estar instalado o seguir iniciándose.",
                 exception);
         }
         catch (Exception exception)
@@ -199,6 +217,22 @@ public sealed class PenumbraIpcClient : IPenumbraIpcClient, IPenumbraModRegistry
 
     private void OnModDirectoryChanged(string _, bool __) => Publish("El directorio de mods de Penumbra ha cambiado; disponibilidad actualizada.");
 
+    private void OnModDeleted(string directoryName)
+    {
+        if (!_disposed)
+        {
+            ModDeleted?.Invoke(directoryName);
+        }
+    }
+
+    private void OnModMoved(string oldDirectoryName, string newDirectoryName)
+    {
+        if (!_disposed)
+        {
+            ModMoved?.Invoke(oldDirectoryName, newDirectoryName);
+        }
+    }
+
     private void Publish(string message)
     {
         if (_disposed)
@@ -228,6 +262,8 @@ internal sealed class DalamudPenumbraApiTransport : IPenumbraApiTransport
     private readonly ICallGateSubscriber<object?> _disposed;
     private readonly ICallGateSubscriber<bool, object?> _enabledChanged;
     private readonly ICallGateSubscriber<string, bool, object?> _modDirectoryChanged;
+    private readonly ICallGateSubscriber<string, object?> _modDeleted;
+    private readonly ICallGateSubscriber<string, string, object?> _modMoved;
 
     public DalamudPenumbraApiTransport(IDalamudPluginInterface pluginInterface)
     {
@@ -243,10 +279,14 @@ internal sealed class DalamudPenumbraApiTransport : IPenumbraApiTransport
         _disposed = pluginInterface.GetIpcSubscriber<object?>("Penumbra.Disposed");
         _enabledChanged = pluginInterface.GetIpcSubscriber<bool, object?>("Penumbra.EnabledChange");
         _modDirectoryChanged = pluginInterface.GetIpcSubscriber<string, bool, object?>("Penumbra.ModDirectoryChanged");
+        _modDeleted = pluginInterface.GetIpcSubscriber<string, object?>("Penumbra.ModDeleted");
+        _modMoved = pluginInterface.GetIpcSubscriber<string, string, object?>("Penumbra.ModMoved");
         _initialized.Subscribe(HandleInitialized);
         _disposed.Subscribe(HandleDisposed);
         _enabledChanged.Subscribe(HandleEnabledChanged);
         _modDirectoryChanged.Subscribe(HandleModDirectoryChanged);
+        _modDeleted.Subscribe(HandleModDeleted);
+        _modMoved.Subscribe(HandleModMoved);
     }
 
     public event Action? Initialized;
@@ -256,6 +296,10 @@ internal sealed class DalamudPenumbraApiTransport : IPenumbraApiTransport
     public event Action<bool>? EnabledChanged;
 
     public event Action<string, bool>? ModDirectoryChanged;
+
+    public event Action<string>? ModDeleted;
+
+    public event Action<string, string>? ModMoved;
 
     public (int Breaking, int Features) GetApiVersion() => _apiVersion.InvokeFunc();
 
@@ -283,6 +327,8 @@ internal sealed class DalamudPenumbraApiTransport : IPenumbraApiTransport
         _disposed.Unsubscribe(HandleDisposed);
         _enabledChanged.Unsubscribe(HandleEnabledChanged);
         _modDirectoryChanged.Unsubscribe(HandleModDirectoryChanged);
+        _modDeleted.Unsubscribe(HandleModDeleted);
+        _modMoved.Unsubscribe(HandleModMoved);
     }
 
     private void HandleInitialized() => Initialized?.Invoke();
@@ -292,6 +338,11 @@ internal sealed class DalamudPenumbraApiTransport : IPenumbraApiTransport
     private void HandleEnabledChanged(bool enabled) => EnabledChanged?.Invoke(enabled);
 
     private void HandleModDirectoryChanged(string path, bool valid) => ModDirectoryChanged?.Invoke(path, valid);
+
+    private void HandleModDeleted(string directoryName) => ModDeleted?.Invoke(directoryName);
+
+    private void HandleModMoved(string oldDirectoryName, string newDirectoryName)
+        => ModMoved?.Invoke(oldDirectoryName, newDirectoryName);
 }
 
 /// <summary>Raw v5 category IPC adapter. The event's first argument stays <see cref="object"/>
@@ -299,10 +350,16 @@ internal sealed class DalamudPenumbraApiTransport : IPenumbraApiTransport
 /// reconcile the authoritative snapshot.</summary>
 internal sealed class DalamudPenumbraCategoryTransport : IPenumbraCategoryTransport
 {
+    private static readonly IReadOnlyDictionary<string, IReadOnlyList<string>> EmptyOptions
+        = new Dictionary<string, IReadOnlyList<string>>();
     private readonly ICallGateSubscriber<byte, (Guid Id, string Name)?> _defaultCollection;
     private readonly ICallGateSubscriber<string, string, IReadOnlyDictionary<string, (string[] Options, int Type)>?> _availableSettings;
     private readonly ICallGateSubscriber<Guid, string, string, bool, (int Result, (bool Enabled, int Priority, Dictionary<string, List<string>> Options, bool Inherited)? Settings)> _currentSettings;
+    private readonly ICallGateSubscriber<Guid, string, string, int, (int Result, (bool ForceInherit, bool Enabled, int Priority, Dictionary<string, List<string>> Options)? Settings, string Source)> _temporarySettings;
+    private readonly ICallGateSubscriber<Guid, string, string, bool, int> _setMod;
     private readonly ICallGateSubscriber<Guid, string, string, string, IReadOnlyList<string>, int> _setSettings;
+    private readonly ICallGateSubscriber<Guid, string, string, (bool Inherit, bool Enabled, int Priority, IReadOnlyDictionary<string, IReadOnlyList<string>> Options), string, int, int> _setTemporarySettings;
+    private readonly ICallGateSubscriber<Guid, string, string, int, int> _removeTemporarySettings;
     private readonly ICallGateSubscriber<object, Guid, string, bool, object?> _settingChanged;
 
     public DalamudPenumbraCategoryTransport(IDalamudPluginInterface pluginInterface)
@@ -310,7 +367,11 @@ internal sealed class DalamudPenumbraCategoryTransport : IPenumbraCategoryTransp
         _defaultCollection = pluginInterface.GetIpcSubscriber<byte, (Guid Id, string Name)?>("Penumbra.GetCollection");
         _availableSettings = pluginInterface.GetIpcSubscriber<string, string, IReadOnlyDictionary<string, (string[] Options, int Type)>?>("Penumbra.GetAvailableModSettings.V5");
         _currentSettings = pluginInterface.GetIpcSubscriber<Guid, string, string, bool, (int Result, (bool Enabled, int Priority, Dictionary<string, List<string>> Options, bool Inherited)? Settings)>("Penumbra.GetCurrentModSettings.V5");
+        _temporarySettings = pluginInterface.GetIpcSubscriber<Guid, string, string, int, (int Result, (bool ForceInherit, bool Enabled, int Priority, Dictionary<string, List<string>> Options)? Settings, string Source)>("Penumbra.QueryTemporaryModSettings.V5");
+        _setMod = pluginInterface.GetIpcSubscriber<Guid, string, string, bool, int>("Penumbra.TrySetMod.V5");
         _setSettings = pluginInterface.GetIpcSubscriber<Guid, string, string, string, IReadOnlyList<string>, int>("Penumbra.TrySetModSettings.V5");
+        _setTemporarySettings = pluginInterface.GetIpcSubscriber<Guid, string, string, (bool Inherit, bool Enabled, int Priority, IReadOnlyDictionary<string, IReadOnlyList<string>> Options), string, int, int>("Penumbra.SetTemporaryModSettings.V5");
+        _removeTemporarySettings = pluginInterface.GetIpcSubscriber<Guid, string, string, int, int>("Penumbra.RemoveTemporaryModSettings.V5");
         _settingChanged = pluginInterface.GetIpcSubscriber<object, Guid, string, bool, object?>("Penumbra.ModSettingChanged.V5");
         _settingChanged.Subscribe(HandleSettingChanged);
     }
@@ -336,16 +397,55 @@ internal sealed class DalamudPenumbraCategoryTransport : IPenumbraCategoryTransp
     {
         var (result, settings) = _currentSettings.InvokeFunc(collectionId, modDirectory, string.Empty, false);
         return settings is null
-            ? new PenumbraModSettingsRead(result, false, new Dictionary<string, IReadOnlyList<string>>(), false)
+            ? new PenumbraModSettingsRead(result, false, 0, EmptyOptions, false)
             : new PenumbraModSettingsRead(
                 result,
                 settings.Value.Enabled,
+                settings.Value.Priority,
                 settings.Value.Options.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<string>)pair.Value, StringComparer.Ordinal),
                 settings.Value.Inherited);
     }
 
+    public PenumbraTemporaryModSettingsRead GetTemporarySettings(Guid collectionId, string modDirectory, int key)
+    {
+        var (result, settings, source) = _temporarySettings.InvokeFunc(collectionId, modDirectory, string.Empty, key);
+        return settings is null
+            ? new PenumbraTemporaryModSettingsRead(result, false, false, false, 0, EmptyOptions, source)
+            : new PenumbraTemporaryModSettingsRead(
+                result,
+                true,
+                settings.Value.ForceInherit,
+                settings.Value.Enabled,
+                settings.Value.Priority,
+                settings.Value.Options.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<string>)pair.Value, StringComparer.Ordinal),
+                source);
+    }
+
     public int SetSettings(Guid collectionId, string modDirectory, string groupName, IReadOnlyList<string> enabledOptions)
         => _setSettings.InvokeFunc(collectionId, modDirectory, string.Empty, groupName, enabledOptions);
+
+    public int SetEnabled(Guid collectionId, string modDirectory, bool enabled)
+        => _setMod.InvokeFunc(collectionId, modDirectory, string.Empty, enabled);
+
+    public int SetTemporarySettings(
+        Guid collectionId,
+        string modDirectory,
+        bool inherit,
+        bool enabled,
+        int priority,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> options,
+        string source,
+        int key)
+        => _setTemporarySettings.InvokeFunc(
+            collectionId,
+            modDirectory,
+            string.Empty,
+            (inherit, enabled, priority, options),
+            source,
+            key);
+
+    public int RemoveTemporarySettings(Guid collectionId, string modDirectory, int key)
+        => _removeTemporarySettings.InvokeFunc(collectionId, modDirectory, string.Empty, key);
 
     public void Dispose() => _settingChanged.Unsubscribe(HandleSettingChanged);
 

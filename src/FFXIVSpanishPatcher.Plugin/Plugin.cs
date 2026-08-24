@@ -3,6 +3,8 @@ using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using Dalamud.Game.Command;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.ImGuiNotification;
+using Dalamud.Interface.Textures;
 using Dalamud.Utility;
 using FFXIVSpanishPatcher.Pipeline;
 using Markdig.Syntax;
@@ -13,6 +15,9 @@ namespace FFXIVSpanishPatcher.Plugin;
 /// <summary>Minimal Dalamud entrypoint used to prove shared-engine compatibility.</summary>
 public sealed class Plugin : IAsyncDalamudPlugin
 {
+    private const int PenumbraRetryLimit = 8;
+    private const int PenumbraInitialRetryMilliseconds = 250;
+    private const int PenumbraMaximumRetryMilliseconds = 5000;
     private static readonly Vector4 Night = new(0.027f, 0.063f, 0.118f, 0.98f);
     private static readonly Vector4 Surface = new(0.055f, 0.114f, 0.190f, 1f);
     private static readonly Vector4 SurfaceRaised = new(0.075f, 0.145f, 0.235f, 1f);
@@ -37,9 +42,11 @@ public sealed class Plugin : IAsyncDalamudPlugin
     [PluginService] internal static ICommandManager CommandManager { get; private set; } = null!;
     [PluginService] internal static IFramework Framework { get; private set; } = null!;
     [PluginService] internal static ITextureProvider TextureProvider { get; private set; } = null!;
+    [PluginService] internal static INotificationManager NotificationManager { get; private set; } = null!;
 
     private readonly PluginLoadProbe _loadProbe = new(new DalamudGameDataProbe(DataManager));
     private readonly TranslationManagerController _controller = new(SystemPluginClock.Instance);
+    private readonly TranslationRestartTracker _restartTracker = new();
     private readonly PenumbraIpcClient _penumbra = new(
         new DalamudPenumbraApiTransport(PluginInterface),
         PhysicalPenumbraDirectoryProbe.Instance,
@@ -48,15 +55,22 @@ public sealed class Plugin : IAsyncDalamudPlugin
         new DalamudPenumbraCategoryTransport(PluginInterface),
         new DalamudPluginDiagnosticLogger(Log));
     private readonly IGameDataBackend _buildInputs = new DalamudBuildInputProvider(typeof(Plugin).Assembly, DataManager);
+    private readonly DalamudStartupWaitService _startupWaitService = new(typeof(IDalamudPluginInterface).Assembly);
     private PluginConfiguration? _configuration;
     private IPluginConfigurationStore? _configurationStore;
     private PenumbraAvailability _penumbraAvailability = new(
         PenumbraAvailabilityStatus.Unavailable, 0, 0, null,
         "Penumbra aún no se ha comprobado.");
+    private DalamudStartupWaitSnapshot _startupWait = new(
+        DalamudStartupWaitStatus.Unavailable,
+        "La carga temprana de Dalamud aún no se ha comprobado.");
     private RegenerationDecision? _regeneration;
     private GameDataBuildInput? _buildInput;
     private BuildFingerprint? _currentFingerprint;
     private string? _managedModDirectory;
+    private bool _managedInstallationMissing;
+    private bool _initialIdentityResolved;
+    private bool _loadCompleted;
     private readonly List<PluginEvent> _eventHistory = [];
     private string? _pendingInheritedCategoryDomain;
     private MarkdownDocument? _milestones;
@@ -65,8 +79,18 @@ public sealed class Plugin : IAsyncDalamudPlugin
     private bool _openMilestonesRequested;
     private bool _openHistoryRequested;
     private bool _openLegalRequested;
+    private bool _openStartupWaitConfirmationRequested;
+    private bool _openGameRestartConfirmationRequested;
+    private IActiveNotification? _translationRestartNotification;
+    private bool _startupWaitGuaranteedForSession;
+    private DateTime _nextStartupWaitCheckUtc;
+    private DateTime _nextPenumbraRetryUtc;
+    private int _penumbraRetryAttempt;
+    private bool _penumbraRetryPending;
+    private string? _preparedSessionDirectory;
     private Task? _regenerationTask;
     private Task? _categoryUpdateTask;
+    private Task? _modStateUpdateTask;
 
     public Plugin()
     {
@@ -90,15 +114,19 @@ public sealed class Plugin : IAsyncDalamudPlugin
             throw new InvalidOperationException("La configuración del plugin no pudo migrarse.");
         }
 
+        RefreshStartupWait(initialCheck: true);
+        Framework.Update += OnFrameworkUpdate;
         await _loadProbe.LoadAsync(cancellationToken).ConfigureAwait(false);
         _penumbra.AvailabilityChanged += OnPenumbraAvailabilityChanged;
+        _penumbra.ModDeleted += OnPenumbraModDeleted;
+        _penumbra.ModMoved += OnPenumbraModMoved;
         _categories.SnapshotChanged += OnCategorySnapshotChanged;
         var penumbra = await _penumbra.GetAvailabilityAsync(cancellationToken).ConfigureAwait(false);
         OnPenumbraAvailabilityChanged(penumbra);
         _controller.TryTransition(
             penumbra.IsReady ? PluginPhase.WelcomeRequired : PluginPhase.PenumbraUnavailable,
             penumbra.UserMessage,
-            penumbra.TechnicalError);
+            penumbra.Status == PenumbraAvailabilityStatus.Faulted ? penumbra.TechnicalError : null);
         var buildInput = await _buildInputs.GetBuildInputAsync(cancellationToken).ConfigureAwait(false);
         var fingerprint = BuildFingerprintFactory.Create(
             typeof(Plugin).Assembly,
@@ -123,9 +151,24 @@ public sealed class Plugin : IAsyncDalamudPlugin
         _regeneration = RegenerationPlanner.Decide(
             fingerprint,
             _configuration.LastSuccessfulFingerprint,
-            _configuration.AutoRegenerationEnabled);
+            _configuration.AutoRegenerationEnabled,
+            _managedInstallationMissing);
         Log.Information("Regeneración: {Decision}. {Message}", _regeneration.Kind, _regeneration.Message);
+        if (AutomaticRegenerationPolicy.ShouldCompleteBeforeGameLoad(
+                _regeneration,
+                _startupWait,
+                _penumbraAvailability))
+        {
+            Log.Information("La regeneración automática terminará durante la carga temprana.");
+            _regenerationTask = RegenerateAsync(
+                marshalPenumbraToFrameworkThread: false,
+                cancellationToken);
+            await _regenerationTask.ConfigureAwait(false);
+        }
+
         TryStartAutomaticRegeneration();
+        _loadCompleted = true;
+        RecoverControllerAfterPenumbraWait();
         Log.Information(
             "Configuración v{ConfigurationVersion} cargada; regeneración automática: {AutoRegenerationEnabled}.",
             _configuration.Version,
@@ -139,46 +182,305 @@ public sealed class Plugin : IAsyncDalamudPlugin
         PluginInterface.UiBuilder.Draw -= Draw;
         PluginInterface.UiBuilder.OpenConfigUi -= OpenWindow;
         PluginInterface.UiBuilder.OpenMainUi -= OpenWindow;
+        Framework.Update -= OnFrameworkUpdate;
         CommandManager.RemoveHandler("/ffxives");
         _penumbra.AvailabilityChanged -= OnPenumbraAvailabilityChanged;
+        _penumbra.ModDeleted -= OnPenumbraModDeleted;
+        _penumbra.ModMoved -= OnPenumbraModMoved;
         _categories.SnapshotChanged -= OnCategorySnapshotChanged;
+        _translationRestartNotification?.DismissNow();
+        _translationRestartNotification = null;
+        // Stop an in-flight repair before disposing the IPC and category dependencies it uses.
+        await _controller.DisposeAsync().ConfigureAwait(false);
         await _categories.DisposeAsync().ConfigureAwait(false);
         await _penumbra.DisposeAsync().ConfigureAwait(false);
-        await _controller.DisposeAsync().ConfigureAwait(false);
         await _loadProbe.DisposeAsync().ConfigureAwait(false);
     }
 
     private void OnPenumbraAvailabilityChanged(PenumbraAvailability availability)
+        => ApplyPenumbraAvailability(availability, restartRetryBudget: true);
+
+    private void ApplyPenumbraAvailability(PenumbraAvailability availability, bool restartRetryBudget)
     {
+        var availabilityChanged = !SameAvailability(_penumbraAvailability, availability);
         _penumbraAvailability = availability;
-        Log.Information("Penumbra: {Status}. {Message}", availability.Status, availability.UserMessage);
+        if (availabilityChanged)
+        {
+            Log.Information("Penumbra: {Status}. {Message}", availability.Status, availability.UserMessage);
+        }
+
         if (!availability.IsReady || String.IsNullOrWhiteSpace(availability.ModDirectory))
         {
             _managedModDirectory = null;
+            _managedInstallationMissing = false;
+            _preparedSessionDirectory = null;
+            SchedulePenumbraRetry(restartRetryBudget);
             return;
         }
 
+        _penumbraRetryPending = false;
+        _penumbraRetryAttempt = 0;
+        var reconciliationSucceeded = false;
         try
         {
             var identity = new PenumbraModIdentityService(_penumbra).Resolve(availability.ModDirectory);
+            if (!_initialIdentityResolved)
+            {
+                _initialIdentityResolved = true;
+            }
+            _managedInstallationMissing = identity.Kind == ModIdentityResolutionKind.NewInstallation;
             if (identity.Selected is not { } selected)
             {
                 _managedModDirectory = null;
+                _preparedSessionDirectory = null;
+                RefreshRegenerationDecision();
+                RecoverControllerAfterPenumbraWait();
+                TryStartAutomaticRegeneration();
                 return;
             }
 
             _managedModDirectory = selected.DirectoryName;
-            _categories.Refresh(selected.DirectoryName);
+            var preparationSucceeded = true;
+            if (!StringComparer.Ordinal.Equals(_preparedSessionDirectory, selected.DirectoryName))
+            {
+                var preparation = _categories.PrepareSession(
+                    selected.DirectoryName,
+                    _configuration?.ManagedModEnabled);
+                if (_configuration is { } configuration
+                    && _configurationStore is { } store
+                    && configuration.ManagedModEnabled != preparation.DesiredEnabled)
+                {
+                    configuration.ManagedModEnabled = preparation.DesiredEnabled;
+                    store.Save(configuration);
+                }
+
+                preparationSucceeded = preparation.Succeeded;
+                if (preparationSucceeded)
+                {
+                    _preparedSessionDirectory = selected.DirectoryName;
+                }
+                else
+                {
+                    Log.Warning("No se pudo preparar la activación segura del mod gestionado.");
+                }
+            }
+
+            RefreshRegenerationDecision();
+            var activationSucceeded = TryActivateVerifiedSession();
+            reconciliationSucceeded = preparationSucceeded && activationSucceeded;
+            RecoverControllerAfterPenumbraWait();
             TryStartAutomaticRegeneration();
         }
         catch (Exception exception)
         {
             Log.Warning(exception, "No se pudieron comprobar las categorías de Penumbra.");
         }
+
+        if (!reconciliationSucceeded)
+        {
+            SchedulePenumbraRetry(restartRetryBudget: false);
+        }
+    }
+
+    private void OnPenumbraModDeleted(string directoryName)
+    {
+        if (String.IsNullOrWhiteSpace(_managedModDirectory)
+            || !StringComparer.Ordinal.Equals(_managedModDirectory, directoryName))
+        {
+            return;
+        }
+
+        Log.Information("Penumbra ha eliminado el mod gestionado; se programa su reparación automática.");
+        _managedModDirectory = null;
+        _preparedSessionDirectory = null;
+        _managedInstallationMissing = true;
+        RefreshRegenerationDecision();
+        TryStartAutomaticRegeneration();
+    }
+
+    private void OnPenumbraModMoved(string oldDirectoryName, string newDirectoryName)
+    {
+        if (!StringComparer.Ordinal.Equals(_managedModDirectory, oldDirectoryName)
+            || !PenumbraModIdentityService.IsSafeDirectoryName(newDirectoryName))
+        {
+            return;
+        }
+
+        _managedModDirectory = newDirectoryName;
+        var preparation = _categories.PrepareSession(newDirectoryName, _configuration?.ManagedModEnabled);
+        if (preparation.Succeeded)
+        {
+            _preparedSessionDirectory = newDirectoryName;
+        }
+        else
+        {
+            Log.Warning("No se pudo preparar la activación segura tras renombrar el mod gestionado.");
+        }
+        TryActivateVerifiedSession();
+        Log.Information("Penumbra ha renombrado el directorio del mod gestionado a {DirectoryName}.", newDirectoryName);
     }
 
     private void OnCategorySnapshotChanged(CategorySyncSnapshot categories)
-        => Log.Information("Categorías: {Status}. {Message}", categories.Status, categories.Message);
+    {
+        Log.Information("Categorías: {Status}. {Message}", categories.Status, categories.Message);
+        ObserveTranslationRuntimeState(categories);
+        var desiredEnabled = _configuration?.ManagedModEnabled ?? true;
+        if (_loadCompleted
+            && _penumbraAvailability.IsReady
+            && ManagedModActivationPolicy.NeedsSessionRepair(categories, desiredEnabled, _regeneration))
+        {
+            SchedulePenumbraRetry(restartRetryBudget: true);
+        }
+
+        if (!categories.UsesSessionLease
+            || categories.ModEnabled is not { } enabled
+            || _configuration is not { } configuration
+            || _configurationStore is not { } store
+            || configuration.ManagedModEnabled == enabled)
+        {
+            return;
+        }
+
+        configuration.ManagedModEnabled = enabled;
+        store.Save(configuration);
+    }
+
+    private void OnFrameworkUpdate(IFramework _)
+    {
+        var now = DateTime.UtcNow;
+        if (now >= _nextStartupWaitCheckUtc)
+        {
+            _nextStartupWaitCheckUtc = now.AddSeconds(1);
+            RefreshStartupWait(initialCheck: false);
+        }
+
+        if (_penumbraRetryPending && now >= _nextPenumbraRetryUtc)
+        {
+            _penumbraRetryPending = false;
+            _penumbraRetryAttempt++;
+            ApplyPenumbraAvailability(_penumbra.ProbeAvailability(), restartRetryBudget: false);
+        }
+    }
+
+    private void SchedulePenumbraRetry(bool restartRetryBudget)
+    {
+        if (restartRetryBudget)
+        {
+            _penumbraRetryAttempt = 0;
+        }
+
+        if (_penumbraRetryAttempt >= PenumbraRetryLimit)
+        {
+            _penumbraRetryPending = false;
+            return;
+        }
+
+        var exponent = Math.Min(_penumbraRetryAttempt, 5);
+        var delayMilliseconds = Math.Min(
+            PenumbraInitialRetryMilliseconds * (1 << exponent),
+            PenumbraMaximumRetryMilliseconds);
+        _nextPenumbraRetryUtc = DateTime.UtcNow.AddMilliseconds(delayMilliseconds);
+        _penumbraRetryPending = true;
+    }
+
+    private void RecoverControllerAfterPenumbraWait()
+    {
+        if (_loadCompleted
+            && _penumbraAvailability.IsReady
+            && _controller.Snapshot.Phase == PluginPhase.PenumbraUnavailable)
+        {
+            _controller.TryTransition(
+                PluginPhase.Ready,
+                "Penumbra está disponible; estado del mod reconciliado.");
+        }
+    }
+
+    private static bool SameAvailability(PenumbraAvailability left, PenumbraAvailability right)
+        => left.Status == right.Status
+            && left.BreakingVersion == right.BreakingVersion
+            && left.FeatureVersion == right.FeatureVersion
+            && StringComparer.Ordinal.Equals(left.ModDirectory, right.ModDirectory)
+            && StringComparer.Ordinal.Equals(left.UserMessage, right.UserMessage);
+
+    private void RefreshStartupWait(bool initialCheck)
+    {
+        var enabled = _startupWaitService.TryRead(out var currentValue)
+            ? currentValue
+            : (bool?)null;
+        if (initialCheck)
+        {
+            _startupWaitGuaranteedForSession = DalamudStartupWaitPolicy.IsGuaranteedForCurrentSession(
+                enabled,
+                PluginInterface.Reason);
+        }
+
+        var previous = _startupWait;
+        var current = DalamudStartupWaitPolicy.Evaluate(enabled, _startupWaitGuaranteedForSession);
+        _startupWait = current;
+        if (!initialCheck && current.Status == previous.Status)
+        {
+            return;
+        }
+
+        Log.Information("Carga temprana de Dalamud: {Status}. {Message}", current.Status, current.Message);
+        if (!current.IsReady)
+        {
+            ShowStartupWaitNotification(current);
+        }
+        else if (!previous.IsReady)
+        {
+            TryStartAutomaticRegeneration();
+        }
+    }
+
+    private void ShowStartupWaitNotification(DalamudStartupWaitSnapshot snapshot)
+    {
+        var (title, type) = snapshot.Status switch
+        {
+            DalamudStartupWaitStatus.Disabled => ("Carga temprana desactivada", NotificationType.Warning),
+            DalamudStartupWaitStatus.RestartRequired => ("Reinicio necesario", NotificationType.Warning),
+            _ => ("No se pudo verificar Dalamud", NotificationType.Error),
+        };
+        var notification = NotificationManager.AddNotification(new Notification
+        {
+            Title = title,
+            Content = snapshot.Message,
+            Type = type,
+            Icon = new CrystalNotificationIcon(TextureProvider.GetFromManifestResource(
+                typeof(Plugin).Assembly,
+                "FFXIVSpanishTranslationManager.logo-git.png")),
+            InitialDuration = TimeSpan.FromSeconds(12),
+        });
+        notification.Click += _ =>
+        {
+            _windowOpen = true;
+            notification.DismissNow();
+        };
+    }
+
+    private sealed class CrystalNotificationIcon(ISharedImmediateTexture texture) : INotificationIcon
+    {
+        private static readonly Vector2 CrystalUvMin = new(108f / 512f, 21f / 512f);
+        private static readonly Vector2 CrystalUvMax = new(416f / 512f, 329f / 512f);
+
+        public bool DrawIcon(Vector2 minCoord, Vector2 maxCoord, Vector4 color)
+        {
+            var wrap = texture.GetWrapOrEmpty();
+            if (wrap.Handle == nint.Zero)
+            {
+                return false;
+            }
+
+            ImGui.GetWindowDrawList().AddImage(
+                wrap.Handle,
+                minCoord,
+                maxCoord,
+                CrystalUvMin,
+                CrystalUvMax,
+                uint.MaxValue);
+            return true;
+        }
+    }
 
     private void OpenWindow() => _windowOpen = true;
 
@@ -278,8 +580,27 @@ public sealed class Plugin : IAsyncDalamudPlugin
         ImGui.SameLine();
         ImGui.TextDisabled("· Gestión segura mediante Penumbra");
 
-        var state = _penumbraAvailability.IsReady ? "✓ PENUMBRA LISTO" : "⦻ PENUMBRA NO DISPONIBLE";
-        var stateColor = _penumbraAvailability.IsReady ? Green : Red;
+        var header = ManagedModHeaderStatusModel.Create(
+            _controller.Snapshot,
+            _startupWait,
+            _penumbraAvailability,
+            _categories.Snapshot,
+            _regeneration,
+            _configuration,
+            _currentFingerprint,
+            _managedInstallationMissing,
+            _restartTracker.IsRestartRequired);
+        var state = header.Label;
+        var stateColor = header.Status switch
+        {
+            ManagedModHeaderStatus.Regenerating => Cyan,
+            ManagedModHeaderStatus.Active => Green,
+            ManagedModHeaderStatus.BestEffort => Gold,
+            ManagedModHeaderStatus.Disabled => Muted,
+            ManagedModHeaderStatus.RestartRequired => Gold,
+            ManagedModHeaderStatus.Blocked or ManagedModHeaderStatus.NotInstalled => Red,
+            _ => Red,
+        };
         var labelSize = ImGui.CalcTextSize(state);
         var chipStart = new Vector2(end.X - labelSize.X - 34f, start.Y + 33f);
         var chipEnd = new Vector2(end.X - 14f, start.Y + 59f);
@@ -327,46 +648,115 @@ public sealed class Plugin : IAsyncDalamudPlugin
         if (ImGui.BeginChild("Estado de la traducción", size, true, DashboardCardFlags))
         {
             DrawCardHeading("GESTIÓN", "Estado de la traducción");
-            ImGui.TextWrapped(_controller.Snapshot.Message);
-            var penumbraColor = _penumbraAvailability.IsReady ? Green : Red;
-            var penumbraStatus = _penumbraAvailability.IsReady
-                ? "✓ Penumbra disponible"
-                : "⦻ Penumbra no disponible";
-            ImGui.TextColored(penumbraColor, penumbraStatus);
-            ImGui.SameLine();
-            ImGui.TextDisabled(_penumbraAvailability.UserMessage);
-            if (_regeneration is { } regeneration)
+            if (!_startupWait.IsReady)
             {
-                ImGui.TextWrapped(regeneration.Message);
+                DrawStartupWaitRequirement();
             }
-
-            if (_penumbraAvailability.Status == PenumbraAvailabilityStatus.Unavailable)
+            else
             {
-                if (ImGui.SmallButton("Abrir repositorio oficial"))
+                if (_restartTracker.IsRestartRequired)
                 {
-                    Util.OpenLink(PenumbraRepositoryUrl);
+                    ImGui.TextColored(Gold, "Hay cambios pendientes de aplicar.");
+                    ImGui.TextWrapped("Reinicia el juego para cargar desde el inicio el estado actual de la traducción.");
+                    DrawRestartGameButton();
                 }
-            }
-
-            ImGui.Spacing();
-            if (ui.CanStartRegeneration && ImGui.Button(ui.PrimaryActionLabel))
-            {
-                StartRegeneration();
-            }
-            else if (ui.CanCancelRegeneration)
-            {
-                ImGui.TextDisabled("Generando e instalando la traducción…");
-                if (ImGui.Button("Cancelar"))
+                else if (!_penumbraAvailability.IsReady)
                 {
-                    _controller.CancelActiveOperation();
+                    ImGui.TextColored(Red, _penumbraAvailability.UserMessage);
                 }
-            }
-            else if (!ui.CanStartRegeneration)
-            {
-                ImGui.TextDisabled("La instalación necesita que Penumbra esté disponible.");
+                else if (ui.CanCancelRegeneration
+                    || _controller.Snapshot.Phase is PluginPhase.ErrorRecoverable
+                        or PluginPhase.ErrorFatal
+                        or PluginPhase.Cancelled)
+                {
+                    ImGui.TextWrapped(_controller.Snapshot.Message);
+                }
+                else if (_regeneration is { } regeneration)
+                {
+                    ImGui.TextWrapped(regeneration.Message);
+                }
+
+                var categories = _categories.Snapshot;
+                if (_managedModDirectory is not null && categories.ModEnabled is not null)
+                {
+                    ImGui.Spacing();
+                    var modEnabled = _configuration?.ManagedModEnabled ?? categories.ModEnabled.Value;
+                    var stateUpdateRunning = _modStateUpdateTask is { IsCompleted: false };
+                    ImGui.BeginDisabled(
+                        stateUpdateRunning
+                        || ui.CanCancelRegeneration
+                        || (modEnabled == false && !categories.SessionActivationAllowed));
+                    if (DrawFramedCheckbox("Traducción activa en Base/Default", ref modEnabled))
+                    {
+                        StartModStateUpdate(modEnabled);
+                    }
+                    ImGui.EndDisabled();
+                    if (stateUpdateRunning)
+                    {
+                        ImGui.SameLine();
+                        ImGui.TextDisabled("Sincronizando…");
+                    }
+                }
+
+                if (_penumbraAvailability.Status == PenumbraAvailabilityStatus.Unavailable)
+                {
+                    if (ImGui.SmallButton("Abrir repositorio oficial"))
+                    {
+                        Util.OpenLink(PenumbraRepositoryUrl);
+                    }
+                }
+
+                ImGui.Spacing();
+                if (!_restartTracker.IsRestartRequired
+                    && ui.CanStartRegeneration
+                    && ImGui.Button(ui.PrimaryActionLabel))
+                {
+                    StartRegeneration();
+                }
+                else if (ui.CanCancelRegeneration)
+                {
+                    ImGui.TextDisabled("Generando e instalando la traducción…");
+                    if (ImGui.Button("Cancelar"))
+                    {
+                        _controller.CancelActiveOperation();
+                    }
+                }
             }
         }
         ImGui.EndChild();
+    }
+
+    private void DrawStartupWaitRequirement()
+    {
+        ImGui.TextWrapped(_startupWait.Message);
+        var ui = UiSnapshot();
+        if (ui.CanCancelRegeneration)
+        {
+            ImGui.TextDisabled("La operación en curso puede terminar con seguridad o cancelarse.");
+            if (ImGui.Button("Cancelar operación"))
+            {
+                _controller.CancelActiveOperation();
+            }
+            return;
+        }
+
+        if (_startupWait.CanEnable && ImGui.Button("Activar carga temprana"))
+        {
+            _openStartupWaitConfirmationRequested = true;
+        }
+        else if (_startupWait.Status == DalamudStartupWaitStatus.RestartRequired)
+        {
+            DrawRestartGameButton();
+        }
+    }
+
+    private void DrawRestartGameButton()
+    {
+        ImGui.Spacing();
+        if (ImGui.Button("Reiniciar juego"))
+        {
+            _openGameRestartConfirmationRequested = true;
+        }
     }
 
     private void DrawCompatibilityCard(Vector2 size)
@@ -379,11 +769,31 @@ public sealed class Plugin : IAsyncDalamudPlugin
             DrawDetail("FFXIV instalado", fingerprint?.InstalledGameVersion ?? "sin datos");
             DrawDetail("FFXIV recomendado", fingerprint?.RecommendedGameVersion ?? "sin datos");
             ImGui.Spacing();
-            ImGui.TextWrapped(_regeneration?.Message ?? "La compatibilidad aún no se ha comprobado.");
+            if (fingerprint is null
+                || IsUnknownVersion(fingerprint.InstalledGameVersion)
+                || IsUnknownVersion(fingerprint.RecommendedGameVersion))
+            {
+                ImGui.TextDisabled("No se ha podido comprobar la compatibilidad de FFXIV.");
+            }
+            else if (StringComparer.Ordinal.Equals(
+                fingerprint.InstalledGameVersion,
+                fingerprint.RecommendedGameVersion))
+            {
+                ImGui.TextColored(Green, "✓ Versión de FFXIV compatible.");
+            }
+            else
+            {
+                ImGui.TextColored(Gold, "! La versión instalada difiere de la recomendada.");
+            }
         }
 
         ImGui.EndChild();
     }
+
+    private static bool IsUnknownVersion(string? value)
+        => String.IsNullOrWhiteSpace(value)
+            || StringComparer.OrdinalIgnoreCase.Equals(value, "desconocida")
+            || StringComparer.OrdinalIgnoreCase.Equals(value, "sin datos");
 
     private static void DrawDetail(string label, string value)
     {
@@ -413,7 +823,17 @@ public sealed class Plugin : IAsyncDalamudPlugin
         {
             DrawCardHeading("CONTENIDO DEL MOD", "Categorías de traducción");
             ImGui.TextDisabled($"Base/Default ({categories.CollectionName}) · {categories.Message}");
-            if (!ui.CanEditCategories || String.IsNullOrWhiteSpace(_managedModDirectory))
+            if (!_startupWait.IsReady)
+            {
+                ImGui.Spacing();
+                ImGui.TextDisabled(_startupWait.Status switch
+                {
+                    DalamudStartupWaitStatus.Disabled => "Activa la carga temprana para editar las categorías.",
+                    DalamudStartupWaitStatus.RestartRequired => "Las categorías estarán disponibles después de reiniciar.",
+                    _ => "Las categorías no están disponibles hasta verificar la carga temprana.",
+                });
+            }
+            else if (!ui.CanEditCategories || String.IsNullOrWhiteSpace(_managedModDirectory))
             {
                 ImGui.Spacing();
                 ImGui.TextDisabled("Las categorías estarán disponibles cuando Penumbra detecte el mod gestionado.");
@@ -490,18 +910,16 @@ public sealed class Plugin : IAsyncDalamudPlugin
             if (_configuration is { } configuration && _configurationStore is { } store)
             {
                 var autoRegeneration = configuration.AutoRegenerationEnabled;
-                if (DrawFramedCheckbox("Regenerar tras una actualización real", ref autoRegeneration))
+                if (DrawFramedCheckbox("Mantener la traducción instalada y actualizada automáticamente", ref autoRegeneration))
                 {
                     configuration.AutoRegenerationEnabled = autoRegeneration;
                     store.Save(configuration);
-                    _regeneration = _currentFingerprint is null
-                        ? _regeneration
-                        : RegenerationPlanner.Decide(_currentFingerprint, configuration.LastSuccessfulFingerprint, autoRegeneration);
+                    RefreshRegenerationDecision();
+                    TryStartAutomaticRegeneration();
                 }
             }
 
             ImGui.TextDisabled("Administra únicamente Base/Default; no altera otras colecciones.");
-            ImGui.TextColored(Gold, "Activa Wait for plugins before game loads en Dalamud.");
         }
 
         ImGui.EndChild();
@@ -545,10 +963,14 @@ public sealed class Plugin : IAsyncDalamudPlugin
         OpenRequestedPopup(ref _openMilestonesRequested, "Hitos de traducción");
         OpenRequestedPopup(ref _openHistoryRequested, "Historial de sesión");
         OpenRequestedPopup(ref _openLegalRequested, "Aviso legal");
+        OpenRequestedPopup(ref _openStartupWaitConfirmationRequested, "Activar carga temprana");
+        OpenRequestedPopup(ref _openGameRestartConfirmationRequested, "Confirmar reinicio del juego");
 
         DrawMarkdownPopup();
         DrawHistoryPopup();
         DrawTextPopup("Aviso legal", LegalNotice.Text);
+        DrawStartupWaitConfirmationPopup();
+        DrawGameRestartConfirmationPopup();
         DrawInheritedCategoryPopup();
     }
 
@@ -688,9 +1110,91 @@ public sealed class Plugin : IAsyncDalamudPlugin
         ImGui.EndPopup();
     }
 
+    private void DrawStartupWaitConfirmationPopup()
+    {
+        ImGui.SetNextWindowSize(new Vector2(600f, 0f), ImGuiCond.Appearing);
+        if (!ImGui.BeginPopup("Activar carga temprana"))
+        {
+            return;
+        }
+
+        ImGui.TextColored(Cyan, "ACTIVAR AJUSTE DE DALAMUD");
+        ImGui.Separator();
+        ImGui.TextWrapped(
+            "Se activará Wait for plugins before game loads en la configuración de Dalamud. " +
+            "El juego deberá reiniciarse para garantizar que el gestor y Penumbra carguen antes que sus recursos.");
+        ImGui.Spacing();
+        if (ImGui.Button("Activar y requerir reinicio"))
+        {
+            if (_startupWaitService.TryEnable())
+            {
+                RefreshStartupWait(initialCheck: false);
+            }
+            else
+            {
+                NotificationManager.AddNotification(new Notification
+                {
+                    Title = "No se pudo activar el ajuste",
+                    Content = "Actívalo manualmente en /xlsettings → General.",
+                    Type = NotificationType.Error,
+                    InitialDuration = TimeSpan.FromSeconds(12),
+                });
+            }
+            ImGui.CloseCurrentPopup();
+        }
+
+        ImGui.SameLine();
+        if (ImGui.Button("Cancelar"))
+        {
+            ImGui.CloseCurrentPopup();
+        }
+        ImGui.EndPopup();
+    }
+
+    private static void DrawGameRestartConfirmationPopup()
+    {
+        ImGui.SetNextWindowSize(new Vector2(560f, 0f), ImGuiCond.Appearing);
+        if (!ImGui.BeginPopupModal(
+                "Confirmar reinicio del juego",
+                ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoResize))
+        {
+            return;
+        }
+
+        ImGui.TextColored(Gold, "REINICIAR FINAL FANTASY XIV");
+        ImGui.Separator();
+        ImGui.TextWrapped(
+            "El cliente se cerrará inmediatamente y XIVLauncher volverá a iniciarlo. " +
+            "Confirma únicamente cuando puedas abandonar la sesión actual.");
+        ImGui.Spacing();
+        if (ImGui.Button("Reiniciar ahora"))
+        {
+            if (!CommandManager.ProcessCommand("/xlrestart"))
+            {
+                NotificationManager.AddNotification(new Notification
+                {
+                    Title = "No se pudo reiniciar el juego",
+                    Content = "El comando interno de reinicio de Dalamud no está disponible.",
+                    Type = NotificationType.Error,
+                    InitialDuration = TimeSpan.FromSeconds(12),
+                });
+            }
+
+            ImGui.CloseCurrentPopup();
+        }
+
+        ImGui.SameLine();
+        if (ImGui.Button("Cancelar"))
+        {
+            ImGui.CloseCurrentPopup();
+        }
+        ImGui.EndPopup();
+    }
+
     private TranslationManagerUiSnapshot UiSnapshot()
         => TranslationManagerUiModel.Create(
             _controller.Snapshot,
+            _startupWait,
             _penumbraAvailability,
             _categories.Snapshot,
             _regeneration,
@@ -708,7 +1212,9 @@ public sealed class Plugin : IAsyncDalamudPlugin
 
     private void StartCategoryUpdate(IReadOnlyCollection<string> domains, bool confirmBreakInheritance)
     {
-        if (_categoryUpdateTask is { IsCompleted: false } || String.IsNullOrWhiteSpace(_managedModDirectory))
+        if (!_startupWait.IsReady
+            || _categoryUpdateTask is { IsCompleted: false }
+            || String.IsNullOrWhiteSpace(_managedModDirectory))
         {
             return;
         }
@@ -728,6 +1234,37 @@ public sealed class Plugin : IAsyncDalamudPlugin
         catch (Exception exception)
         {
             Log.Warning(exception, "No se pudieron actualizar las categorías de traducción.");
+        }
+    }
+
+    private void StartModStateUpdate(bool enabled)
+    {
+        if (_managedModDirectory is not { } directory
+            || _modStateUpdateTask is { IsCompleted: false }
+            || (enabled && !_categories.Snapshot.SessionActivationAllowed))
+        {
+            return;
+        }
+
+        _modStateUpdateTask = UpdateModStateAsync(directory, enabled);
+    }
+
+    private async Task UpdateModStateAsync(string directory, bool enabled)
+    {
+        try
+        {
+            var snapshot = await Framework.Run(() => _categories.SetModEnabled(directory, enabled)).ConfigureAwait(false);
+            var applied = ManagedModActivationPolicy.IsSessionStateApplied(snapshot, enabled);
+            if (applied && _configuration is { } configuration && _configurationStore is { } store)
+            {
+                configuration.ManagedModEnabled = enabled;
+                store.Save(configuration);
+            }
+        }
+        catch (Exception exception)
+        {
+            Log.Warning(exception, "No se pudo sincronizar el estado del mod con Penumbra.");
+            _categories.Refresh(directory);
         }
     }
 
@@ -752,24 +1289,78 @@ public sealed class Plugin : IAsyncDalamudPlugin
 
     private void StartRegeneration()
     {
-        if (_regenerationTask is { IsCompleted: false })
+        if (!_startupWait.IsReady || _regenerationTask is { IsCompleted: false })
         {
             return;
         }
 
-        _regenerationTask = RegenerateAsync();
+        _regenerationTask = RegenerateAsync(
+            marshalPenumbraToFrameworkThread: true,
+            CancellationToken.None);
     }
 
     private void TryStartAutomaticRegeneration()
     {
-        if (_regeneration?.RequiresBuild == true && _penumbraAvailability.IsReady)
+        TryActivateVerifiedSession();
+        if (_startupWait.IsReady
+            && _regeneration?.RequiresBuild == true
+            && _penumbraAvailability.IsReady)
         {
             Log.Information("Se inicia la regeneración automática de la traducción.");
             StartRegeneration();
         }
     }
 
-    private async Task RegenerateAsync()
+    private bool TryActivateVerifiedSession()
+    {
+        if (_regeneration?.Kind != RegenerationDecisionKind.UpToDate)
+        {
+            return true;
+        }
+
+        if (!_penumbraAvailability.IsReady
+            || _managedModDirectory is not { } directory
+            || _configuration is not { } configuration)
+        {
+            return false;
+        }
+
+        var desired = configuration.ManagedModEnabled ?? true;
+        if (ManagedModActivationPolicy.IsSessionStateApplied(_categories.Snapshot, desired))
+        {
+            return true;
+        }
+
+        var snapshot = _categories.GrantSessionActivation(directory, desired);
+        if (!ManagedModActivationPolicy.IsSessionStateApplied(snapshot, desired))
+        {
+            Log.Warning("La instalación está actualizada, pero Penumbra rechazó su estado persistente.");
+            return false;
+        }
+
+        Log.Information(
+            "Estado persistente: {State}.",
+            desired ? "traducción activa antes del próximo arranque" : "traducción desactivada por elección del usuario");
+        return true;
+    }
+
+    private void RefreshRegenerationDecision()
+    {
+        if (_currentFingerprint is not { } fingerprint || _configuration is not { } configuration)
+        {
+            return;
+        }
+
+        _regeneration = RegenerationPlanner.Decide(
+            fingerprint,
+            configuration.LastSuccessfulFingerprint,
+            configuration.AutoRegenerationEnabled,
+            _managedInstallationMissing);
+    }
+
+    private async Task RegenerateAsync(
+        bool marshalPenumbraToFrameworkThread,
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -784,7 +1375,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
                 return;
             }
 
-            var buildInput = await _buildInputs.GetBuildInputAsync(CancellationToken.None).ConfigureAwait(false);
+            var buildInput = await _buildInputs.GetBuildInputAsync(cancellationToken).ConfigureAwait(false);
             var fingerprint = BuildFingerprintFactory.Create(
                 typeof(Plugin).Assembly,
                 buildInput,
@@ -804,36 +1395,81 @@ public sealed class Plugin : IAsyncDalamudPlugin
             var treeBuilder = new PipelineTreeBuilder(
                 pipeline,
                 request => BuildPatchRequest(request, availability.ModDirectory!, metadata));
-            var installer = new ModInstaller(
-                new FrameworkPenumbraModRegistry(_penumbra, Framework),
-                new DalamudPluginDiagnosticLogger(Log));
+            // During a guaranteed Boot load Dalamud is deliberately holding the framework thread
+            // until this method returns. Penumbra is already Ready, so its synchronous IPC must run
+            // on this load worker; queueing it to Framework would deadlock startup. Every later write
+            // keeps the normal framework-thread adapter.
+            IPenumbraModRegistry registry = marshalPenumbraToFrameworkThread
+                ? new FrameworkPenumbraModRegistry(_penumbra, Framework)
+                : _penumbra;
+            var installer = new ModInstaller(registry, new DalamudPluginDiagnosticLogger(Log));
             var service = new TranslationRegenerationService(treeBuilder, installer, configurationStore, configuration);
+            var enableInDefaultCollection = ManagedModActivationPolicy.DesiredAfterRegeneration(
+                configuration.LastSuccessfulFingerprint,
+                _categories.Snapshot.ModEnabled,
+                configuration.ManagedModEnabled);
             var candidateTree = Path.Combine(
                 Path.GetTempPath(),
                 "ffxivspanish-translation-manager",
                 $"candidate-{Guid.NewGuid():N}");
-            var result = await _controller.RunExclusiveAsync(
+            var sessionWasValidated = _categories.Snapshot.SessionActivationAllowed;
+            var execution = await _controller.RunExclusiveAsync(
                 PluginPhase.Generating,
                 async cancellationToken =>
                 {
                     var install = await service.RegenerateAsync(
-                            new TreeBuildRequest(candidateTree, fingerprint),
-                            availability.ModDirectory!,
-                            cancellationToken)
+                        new TreeBuildRequest(candidateTree, fingerprint),
+                        availability.ModDirectory!,
+                        enableInDefaultCollection: false,
+                        cancellationToken)
                         .ConfigureAwait(false);
-                    return (install,
-                        install.Succeeded ? PluginPhase.Ready : PluginPhase.ErrorRecoverable,
-                        install.Message);
-                }).ConfigureAwait(false);
+                    if (!install.Succeeded || install.ModDirectory is not { } installedDirectory)
+                    {
+                        if (sessionWasValidated && _managedModDirectory is { } previousDirectory)
+                        {
+                            _categories.GrantSessionActivation(previousDirectory, enableInDefaultCollection);
+                        }
 
-            _regeneration = RegenerationPlanner.Decide(fingerprint, configuration.LastSuccessfulFingerprint,
-                configuration.AutoRegenerationEnabled);
+                        return (new RegenerationExecution(install, false),
+                            PluginPhase.ErrorRecoverable,
+                            install.Message);
+                    }
+
+                    var activation = _categories.GrantSessionActivation(installedDirectory, enableInDefaultCollection);
+                    var activationApplied = ManagedModActivationPolicy.IsSessionStateApplied(
+                        activation,
+                        enableInDefaultCollection);
+                    var message = activationApplied
+                        ? install.Message
+                        : install.Message + " El mod queda bloqueado porque Penumbra rechazó su estado persistente.";
+                    return (new RegenerationExecution(install, activationApplied),
+                        activationApplied ? PluginPhase.Ready : PluginPhase.ErrorRecoverable,
+                        message);
+                }, cancellationToken).ConfigureAwait(false);
+
+            var result = execution.Install;
+
             if (result.Succeeded && result.ModDirectory is { } directory)
             {
+                _managedInstallationMissing = false;
                 _managedModDirectory = directory;
+                if (execution.ActivationApplied)
+                {
+                    _preparedSessionDirectory = directory;
+                }
                 _categories.Refresh(directory);
+                MarkTranslationFilesRebuilt();
             }
-            Log.Information("Regeneración: {Succeeded}. {Message}", result.Succeeded, result.Message);
+            _regeneration = RegenerationPlanner.Decide(
+                fingerprint,
+                configuration.LastSuccessfulFingerprint,
+                configuration.AutoRegenerationEnabled,
+                _managedInstallationMissing);
+            Log.Information(
+                "Regeneración: {Succeeded}; activación segura: {ActivationApplied}. {Message}",
+                result.Succeeded,
+                execution.ActivationApplied,
+                result.Message);
         }
         catch (OperationCanceledException)
         {
@@ -842,6 +1478,60 @@ public sealed class Plugin : IAsyncDalamudPlugin
         catch (Exception exception)
         {
             Log.Error(exception, "La regeneración de la traducción falló.");
+        }
+    }
+
+    private void ShowTranslationRestartNotification()
+    {
+        _translationRestartNotification?.DismissNow();
+        var notification = NotificationManager.AddNotification(new Notification
+        {
+            Title = "Reinicio necesario",
+            Content = "La traducción ya está preparada en Penumbra. Reinicia el juego para cargar sus textos desde el inicio.",
+            Type = NotificationType.Warning,
+            Icon = new CrystalNotificationIcon(TextureProvider.GetFromManifestResource(
+                typeof(Plugin).Assembly,
+                "FFXIVSpanishTranslationManager.logo-git.png")),
+            InitialDuration = TimeSpan.FromSeconds(12),
+        });
+        notification.Click += _ =>
+        {
+            _windowOpen = true;
+            notification.DismissNow();
+        };
+        _translationRestartNotification = notification;
+    }
+
+    private void ObserveTranslationRuntimeState(CategorySyncSnapshot snapshot)
+    {
+        var wasRequired = _restartTracker.IsRestartRequired;
+        _restartTracker.Observe(snapshot);
+        UpdateTranslationRestartNotification(wasRequired);
+    }
+
+    private void MarkTranslationFilesRebuilt()
+    {
+        var wasRequired = _restartTracker.IsRestartRequired;
+        _restartTracker.MarkFilesRebuilt();
+        UpdateTranslationRestartNotification(wasRequired);
+    }
+
+    private void UpdateTranslationRestartNotification(bool wasRequired)
+    {
+        var isRequired = _restartTracker.IsRestartRequired;
+        if (isRequired == wasRequired)
+        {
+            return;
+        }
+
+        if (isRequired)
+        {
+            ShowTranslationRestartNotification();
+        }
+        else
+        {
+            _translationRestartNotification?.DismissNow();
+            _translationRestartNotification = null;
         }
     }
 
@@ -854,4 +1544,6 @@ public sealed class Plugin : IAsyncDalamudPlugin
             CompatibilityMode = PatchCompatibilityMode.BestEffortVersionMismatch,
             Meta = metadata,
         };
+
+    private sealed record RegenerationExecution(ModInstallResult Install, bool ActivationApplied);
 }

@@ -13,6 +13,12 @@ public sealed class PluginConfiguration : IPluginConfiguration
 
     public bool AutoRegenerationEnabled { get; set; } = true;
 
+    /// <summary>
+    /// User's desired state. A verified installation persists this choice in Base/Default so
+    /// Penumbra can apply translation resources during early game startup.
+    /// </summary>
+    public bool? ManagedModEnabled { get; set; }
+
     public BuildFingerprint? LastSuccessfulFingerprint { get; set; }
 
     public static PluginConfiguration Migrate(PluginConfiguration? savedConfiguration)

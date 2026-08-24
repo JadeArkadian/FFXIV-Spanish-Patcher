@@ -550,6 +550,35 @@ Prueba humana completa:
 
 Gate humano: aprobación expresa de funcionalidad, visual y convivencia.
 
+### Etapa 11 — vigilancia del contrato IPC de Penumbra
+
+Añadir como último trabajo de desarrollo un comprobador único, reutilizable en local y en GitHub
+Actions, que avise de cambios incompatibles en la API pública de Penumbra. No introducir una
+dependencia binaria de `Penumbra.Api` ni simularla mediante Dependabot: el plugin consume contratos
+IPC por nombre y firma, por lo que se debe vigilar el contrato publicado, no una dependencia NuGet.
+
+El comprobador debe:
+
+1. consultar únicamente los canales oficiales estable y testing de Penumbra;
+2. comparar la versión breaking esperada y la versión feature mínima admitida;
+3. verificar los nombres y las firmas completas de todos los endpoints IPC usados por el plugin;
+4. analizar JSON, fuentes y documentación XML sin cargar ni ejecutar binarios descargados;
+5. distinguir una actualización compatible, una ruptura de contrato y un fallo de red o de
+   infraestructura;
+6. ofrecer el mismo resultado mediante un comando .NET local y un workflow programado ejecutable
+   también de forma manual;
+7. tratar stable como comprobación estricta y testing como aviso temprano sin bloquear el CI normal;
+8. abrir o actualizar una única incidencia de GitHub ante una incompatibilidad, sin duplicarla en
+   cada ejecución;
+9. mantener las pruebas ordinarias offline mediante contratos sintéticos o fixtures propios; el
+   acceso en vivo queda reservado al job programado y al comando local explícito.
+
+No avisar por cada cambio de versión de Penumbra. Solo generar alerta cuando cambie la versión
+breaking o desaparezca o cambie una parte del contrato realmente consumida. La validación en tiempo
+de ejecución continúa siendo la última defensa si un cambio llega al usuario antes de ser revisado.
+
+Commit: `ci(penumbra): monitor IPC contract compatibility`.
+
 ## 9. Matriz mínima de pruebas
 
 | Área | Unitarias | Integración sintética | Cliente real |

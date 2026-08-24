@@ -1,0 +1,80 @@
+namespace FFXIVSpanishPatcher.Plugin;
+
+public enum ManagedModHeaderStatus
+{
+    Regenerating,
+    Active,
+    BestEffort,
+    Disabled,
+    RestartRequired,
+    Blocked,
+    NotInstalled,
+}
+
+public sealed record ManagedModHeaderSnapshot(ManagedModHeaderStatus Status, string Label);
+
+/// <summary>Projects one non-redundant header summary from the verified persistent state.</summary>
+public static class ManagedModHeaderStatusModel
+{
+    public static ManagedModHeaderSnapshot Create(
+        PluginStateSnapshot state,
+        DalamudStartupWaitSnapshot startupWait,
+        PenumbraAvailability penumbra,
+        CategorySyncSnapshot categories,
+        RegenerationDecision? regeneration,
+        PluginConfiguration? configuration,
+        BuildFingerprint? currentFingerprint,
+        bool installationMissing,
+        bool translationRestartRequired)
+    {
+        if (startupWait.Status == DalamudStartupWaitStatus.RestartRequired || translationRestartRequired)
+        {
+            return new(ManagedModHeaderStatus.RestartRequired, "↻ REINICIO NECESARIO");
+        }
+
+        if (state.Phase is PluginPhase.Checking or PluginPhase.Generating or PluginPhase.Installing or PluginPhase.Reloading)
+        {
+            return new(ManagedModHeaderStatus.Regenerating, "… REGENERANDO");
+        }
+
+        if (configuration?.LastSuccessfulFingerprint is null || installationMissing)
+        {
+            return new(ManagedModHeaderStatus.NotInstalled, "⦻ NO INSTALADA");
+        }
+
+        if (configuration.ManagedModEnabled == false)
+        {
+            return new(ManagedModHeaderStatus.Disabled, "— TRADUCCIÓN DESACTIVADA");
+        }
+
+        if (!startupWait.IsReady || !penumbra.IsReady || !categories.SessionActivationAllowed)
+        {
+            return new(ManagedModHeaderStatus.Blocked, "⦻ TRADUCCIÓN BLOQUEADA");
+        }
+
+        if (categories.ModEnabled != true || categories.UsesSessionLease)
+        {
+            return new(ManagedModHeaderStatus.Blocked, "⦻ TRADUCCIÓN BLOQUEADA");
+        }
+
+        if (IsBestEffort(currentFingerprint))
+        {
+            return new(ManagedModHeaderStatus.BestEffort, "≈ ACTIVA · BEST EFFORT");
+        }
+
+        return new(ManagedModHeaderStatus.Active, "✓ TRADUCCIÓN ACTIVA");
+    }
+
+    private static bool IsBestEffort(BuildFingerprint? fingerprint)
+        => fingerprint is not null
+            && !IsUnknown(fingerprint.InstalledGameVersion)
+            && !IsUnknown(fingerprint.RecommendedGameVersion)
+            && !StringComparer.Ordinal.Equals(
+                fingerprint.InstalledGameVersion,
+                fingerprint.RecommendedGameVersion);
+
+    private static bool IsUnknown(string? value)
+        => String.IsNullOrWhiteSpace(value)
+            || StringComparer.OrdinalIgnoreCase.Equals(value, "desconocida")
+            || StringComparer.OrdinalIgnoreCase.Equals(value, "sin datos");
+}

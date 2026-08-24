@@ -8,6 +8,12 @@ public interface IPenumbraIpcClient : IAsyncDisposable
     Task<PenumbraAvailability> GetAvailabilityAsync(CancellationToken cancellationToken);
 
     event Action<PenumbraAvailability>? AvailabilityChanged;
+
+    /// <summary>Raised after Penumbra removes a mod from its managed list and filesystem.</summary>
+    event Action<string>? ModDeleted;
+
+    /// <summary>Raised when Penumbra changes a mod's managed directory.</summary>
+    event Action<string, string>? ModMoved;
 }
 
 /// <summary>Stage-2 boundary for the transactional installer; filesystem work arrives in stage 4.</summary>
@@ -32,7 +38,7 @@ public interface IPenumbraModRegistry
     int SetEnabled(string directoryName, bool enabled);
 }
 
-/// <summary>IPC boundary for the single Penumbra collection and category group managed by this plugin.</summary>
+/// <summary>IPC boundary for this mod's enabled state and category group in Base/Default.</summary>
 public interface IPenumbraCategoryTransport : IDisposable
 {
     event Action<Guid, string, bool>? ModSettingChanged;
@@ -41,9 +47,25 @@ public interface IPenumbraCategoryTransport : IDisposable
 
     PenumbraModSettingsRead GetCurrentSettings(Guid collectionId, string modDirectory);
 
+    PenumbraTemporaryModSettingsRead GetTemporarySettings(Guid collectionId, string modDirectory, int key);
+
     IReadOnlyDictionary<string, IReadOnlyList<string>>? GetAvailableSettings(string modDirectory);
 
+    int SetEnabled(Guid collectionId, string modDirectory, bool enabled);
+
     int SetSettings(Guid collectionId, string modDirectory, string groupName, IReadOnlyList<string> enabledOptions);
+
+    int SetTemporarySettings(
+        Guid collectionId,
+        string modDirectory,
+        bool inherit,
+        bool enabled,
+        int priority,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> options,
+        string source,
+        int key);
+
+    int RemoveTemporarySettings(Guid collectionId, string modDirectory, int key);
 }
 
 public sealed record PenumbraCollection(Guid Id, string Name);
@@ -51,8 +73,23 @@ public sealed record PenumbraCollection(Guid Id, string Name);
 public sealed record PenumbraModSettingsRead(
     int ResultCode,
     bool Enabled,
+    int Priority,
     IReadOnlyDictionary<string, IReadOnlyList<string>> Options,
     bool Inherited);
+
+public sealed record PenumbraTemporaryModSettingsRead(
+    int ResultCode,
+    bool Exists,
+    bool ForceInherit,
+    bool Enabled,
+    int Priority,
+    IReadOnlyDictionary<string, IReadOnlyList<string>> Options,
+    string Source);
+
+public sealed record ManagedModSessionPreparation(
+    bool Succeeded,
+    bool DesiredEnabled,
+    CategorySyncSnapshot Snapshot);
 
 public interface ITranslationTreeBuilder
 {
@@ -93,7 +130,8 @@ public sealed record PenumbraAvailability(
 public sealed record ModInstallRequest(
     string CandidateTreePath,
     string ModRootPath,
-    BuildFingerprint Fingerprint);
+    BuildFingerprint Fingerprint,
+    bool EnableInDefaultCollection = true);
 
 public sealed record ModInstallResult(
     bool Succeeded,

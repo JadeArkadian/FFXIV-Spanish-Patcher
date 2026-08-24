@@ -173,7 +173,7 @@ public static class PluginStateMachine
             {
                 (_, PluginPhase.Disposed) => true,
                 (PluginPhase.Starting, PluginPhase.PenumbraUnavailable or PluginPhase.WelcomeRequired or PluginPhase.Checking or PluginPhase.ErrorFatal) => true,
-                (PluginPhase.PenumbraUnavailable, PluginPhase.Checking or PluginPhase.ErrorFatal) => true,
+                (PluginPhase.PenumbraUnavailable, PluginPhase.Checking or PluginPhase.Ready or PluginPhase.ErrorFatal) => true,
                 (PluginPhase.WelcomeRequired, PluginPhase.Checking) => true,
                 (PluginPhase.Checking, PluginPhase.UpToDate or PluginPhase.Generating or PluginPhase.AwaitingCompatibilityConsent or PluginPhase.PenumbraUnavailable or PluginPhase.ErrorRecoverable or PluginPhase.Cancelled) => true,
                 (PluginPhase.AwaitingCompatibilityConsent, PluginPhase.Generating or PluginPhase.Cancelled) => true,

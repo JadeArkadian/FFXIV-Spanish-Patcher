@@ -109,6 +109,36 @@ public sealed class PenumbraIpcClientTests
     }
 
     [Fact]
+    public async Task ProbeAvailability_RecoversWhenInitializedEventWasMissed()
+    {
+        var transport = new FakeTransport { ApiVersionException = new IpcNotReadyError("Penumbra.ApiVersion.V5") };
+        await using var client = CreateClient(transport);
+
+        var unavailable = client.ProbeAvailability();
+        transport.ApiVersionException = null;
+        var ready = client.ProbeAvailability();
+
+        Assert.Equal(PenumbraAvailabilityStatus.Unavailable, unavailable.Status);
+        Assert.True(ready.IsReady);
+    }
+
+    [Fact]
+    public async Task InitializedBeforeApiRegistration_CanRecoverThroughFallbackProbe()
+    {
+        var transport = new FakeTransport { ApiVersionException = new IpcNotReadyError("Penumbra.ApiVersion.V5") };
+        await using var client = CreateClient(transport);
+        var observed = new List<PenumbraAvailability>();
+        client.AvailabilityChanged += observed.Add;
+
+        transport.RaiseInitialized();
+        transport.ApiVersionException = null;
+        var recovered = client.ProbeAvailability();
+
+        Assert.Equal(PenumbraAvailabilityStatus.Unavailable, Assert.Single(observed).Status);
+        Assert.True(recovered.IsReady);
+    }
+
+    [Fact]
     public async Task DisposedThenInitialized_PublishesUnavailableThenReconnects()
     {
         var transport = new FakeTransport();
@@ -137,9 +167,41 @@ public sealed class PenumbraIpcClientTests
         transport.RaiseDisposed();
         transport.RaiseEnabledChanged();
         transport.RaiseModDirectoryChanged();
+        transport.RaiseModDeleted("FFXIVSpanish");
+        transport.RaiseModMoved("old", "new");
 
         Assert.True(transport.IsDisposed);
         Assert.Empty(observed);
+    }
+
+    [Fact]
+    public async Task ModDeleted_ForwardsDirectoryIdentityAndStopsAfterDispose()
+    {
+        var transport = new FakeTransport();
+        var client = CreateClient(transport);
+        var observed = new List<string>();
+        client.ModDeleted += observed.Add;
+
+        transport.RaiseModDeleted("FFXIVSpanish");
+        await client.DisposeAsync();
+        transport.RaiseModDeleted("ignored");
+
+        Assert.Equal(["FFXIVSpanish"], observed);
+    }
+
+    [Fact]
+    public async Task ModMoved_ForwardsOldAndNewDirectoryAndStopsAfterDispose()
+    {
+        var transport = new FakeTransport();
+        var client = CreateClient(transport);
+        var observed = new List<(string Old, string New)>();
+        client.ModMoved += (oldName, newName) => observed.Add((oldName, newName));
+
+        transport.RaiseModMoved("FFXIVSpanish", "NombreLocal");
+        await client.DisposeAsync();
+        transport.RaiseModMoved("ignored", "ignored-too");
+
+        Assert.Equal([("FFXIVSpanish", "NombreLocal")], observed);
     }
 
     [Fact]
@@ -180,6 +242,8 @@ public sealed class PenumbraIpcClientTests
         public event Action? Disposed;
         public event Action<bool>? EnabledChanged;
         public event Action<string, bool>? ModDirectoryChanged;
+        public event Action<string>? ModDeleted;
+        public event Action<string, string>? ModMoved;
 
         public (int Breaking, int Features) GetApiVersion()
         {
@@ -245,6 +309,9 @@ public sealed class PenumbraIpcClientTests
         public void RaiseDisposed() => Disposed?.Invoke();
         public void RaiseEnabledChanged() => EnabledChanged?.Invoke(IsEnabled);
         public void RaiseModDirectoryChanged() => ModDirectoryChanged?.Invoke(ModDirectory, true);
+        public void RaiseModDeleted(string directoryName) => ModDeleted?.Invoke(directoryName);
+        public void RaiseModMoved(string oldDirectoryName, string newDirectoryName)
+            => ModMoved?.Invoke(oldDirectoryName, newDirectoryName);
         public void Dispose() => IsDisposed = true;
     }
 
