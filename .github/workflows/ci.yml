@@ -55,71 +55,23 @@ jobs:
           global-json-file: global.json
 
       - name: Publish ${{ matrix.rid }}
-        run: >
-          dotnet restore src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj
-          --locked-mode
-          &&
-          dotnet publish src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj
-          -c Release -r ${{ matrix.rid }} --self-contained --no-restore
-          -p:PublishSingleFile=true
-          -p:IncludeNativeLibrariesForSelfExtract=true
-          -p:ExternalTranslations=${{ matrix.external_translations }}
-          -o publish/${{ matrix.rid }}
+        shell: bash
+        run: ./.github/scripts/ci/publish-native.sh "${{ matrix.rid }}" "${{ matrix.external_translations }}"
 
       - name: Smoke Windows executable
         if: runner.os == 'Windows'
         shell: pwsh
-        run: |
-          $stdout = Join-Path $env:RUNNER_TEMP 'FFXIVSpanishPatcher-smoke-stdout.log'
-          $stderr = Join-Path $env:RUNNER_TEMP 'FFXIVSpanishPatcher-smoke-stderr.log'
-          $app = Join-Path $env:GITHUB_WORKSPACE 'publish/win-x64/FFXIVSpanishPatcher.exe'
-          $process = Start-Process -FilePath $app -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
-          Start-Sleep -Seconds 10
-          if ($process.HasExited) {
-            Get-Content $stdout, $stderr -ErrorAction SilentlyContinue
-            throw "FFXIVSpanishPatcher exited during Windows smoke test with code $($process.ExitCode)."
-          }
-          Stop-Process -Id $process.Id -Force
+        run: ./.github/scripts/ci/smoke-windows.ps1
 
       - name: Smoke macOS executable
         if: runner.os == 'macOS'
         shell: bash
-        run: |
-          set -euo pipefail
-          app="$GITHUB_WORKSPACE/publish/osx-arm64/FFXIVSpanishPatcher"
-          log="$RUNNER_TEMP/FFXIVSpanishPatcher-smoke.log"
-          chmod +x "$app"
-          "$app" >"$log" 2>&1 &
-          app_pid=$!
-          sleep 10
-          if ! kill -0 "$app_pid" 2>/dev/null; then
-            cat "$log"
-            wait "$app_pid" || true
-            echo "FFXIVSpanishPatcher exited during macOS smoke test." >&2
-            exit 1
-          fi
-          kill "$app_pid"
-          wait "$app_pid" || true
+        run: ./.github/scripts/ci/smoke-unix.sh osx-arm64
 
       - name: Smoke Linux executable
         if: runner.os == 'Linux'
         shell: bash
-        run: |
-          set -euo pipefail
-          app="$GITHUB_WORKSPACE/publish/linux-x64/FFXIVSpanishPatcher"
-          log="$RUNNER_TEMP/FFXIVSpanishPatcher-smoke.log"
-          chmod +x "$app"
-          xvfb-run -a "$app" >"$log" 2>&1 &
-          app_pid=$!
-          sleep 10
-          if ! kill -0 "$app_pid" 2>/dev/null; then
-            cat "$log"
-            wait "$app_pid" || true
-            echo "FFXIVSpanishPatcher exited during Linux smoke test." >&2
-            exit 1
-          fi
-          kill "$app_pid"
-          wait "$app_pid" || true
+        run: ./.github/scripts/ci/smoke-unix.sh linux-x64
 
       - name: Upload smoke log
         if: always()

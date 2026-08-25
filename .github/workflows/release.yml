@@ -15,21 +15,17 @@ permissions:
 jobs:
   validate-tag:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       tag: ${{ steps.version.outputs.tag }}
       version: ${{ steps.version.outputs.version }}
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
       - name: Validate tag and derive version
         id: version
-        run: |
-          set -euo pipefail
-          TAG="${GITHUB_REF_NAME}"
-          if [[ ! "$TAG" =~ ^v(0|[1-9][0-9]{0,2})\.(0|[1-9][0-9]{0,2})\.(0|[1-9][0-9]{0,2})$ ]]; then
-            echo "::error::Release tags must match vX.Y.Z, with each number from 0 to 999."
-            exit 1
-          fi
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+        run: ./.github/scripts/release/validate-tag.sh
 
   publish:
     needs: validate-tag
@@ -58,23 +54,13 @@ jobs:
 
       - name: Publish ${{ matrix.rid }}
         shell: bash
-        run: >
-          dotnet restore src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj
-          --locked-mode
-          &&
-          dotnet publish src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj
-          -c Release -r ${{ matrix.rid }} --self-contained --no-restore
-          -p:PublishSingleFile=true
-          -p:IncludeNativeLibrariesForSelfExtract=true
-          -p:ExternalTranslations=${{ matrix.external_translations }}
-          -p:Version=${{ needs.validate-tag.outputs.version }}
-          -p:InformationalVersion=${{ needs.validate-tag.outputs.tag }}
-          -p:AssemblyVersion=${{ needs.validate-tag.outputs.version }}.0
-          -p:FileVersion=${{ needs.validate-tag.outputs.version }}.0
-          -p:RepositorySlug=${{ github.repository }}
-          -p:LatestReleaseApiUrl=https://api.github.com/repos/${{ github.repository }}/releases/latest
-          -p:LatestReleasePageUrl=https://github.com/${{ github.repository }}/releases/latest
-          -o publish/${{ matrix.rid }}
+        run: >-
+          ./.github/scripts/release/publish-native.sh
+          "${{ matrix.rid }}"
+          "${{ matrix.external_translations }}"
+          "${{ needs.validate-tag.outputs.version }}"
+          "${{ needs.validate-tag.outputs.tag }}"
+          "${{ github.repository }}"
 
       # Keep the Windows publish native, then pass it to a Linux job for non-interactive signing.
       - name: Upload unsigned Windows publish
@@ -89,38 +75,10 @@ jobs:
 
       - name: Package Linux or macOS
         if: matrix.rid != 'win-x64'
-        run: |
-          set -euo pipefail
-          VERSION="${{ needs.validate-tag.outputs.version }}"
-          RID="${{ matrix.rid }}"
-          OUT="publish/$RID"
-          ASSET="FFXIVSpanishPatcher-$VERSION-$RID.zip"
-          rm -f "$OUT"/*.pdb
-          if [[ "$RID" == osx-* ]]; then
-            # Assemble a proper .app bundle so macOS shows the icon (Dock/Finder) and a real app name.
-            APP="FFXIVSpanishPatcher.app"
-            rm -rf "$APP"
-            mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-            cp "$OUT/FFXIVSpanishPatcher" "$APP/Contents/MacOS/FFXIVSpanishPatcher"
-            chmod +x "$APP/Contents/MacOS/FFXIVSpanishPatcher"
-            cp src/FFXIVSpanishPatcher.App/Assets/icon.icns "$APP/Contents/Resources/icon.icns"
-            sed "s/__VERSION__/$VERSION/g" build/macos/Info.plist > "$APP/Contents/Info.plist"
-            # Ad-hoc sign (inner Mach-O, then the bundle). Required for arm64 to launch and removes
-            # the "is damaged" Gatekeeper error. Not notarized: users still "Open Anyway" once.
-            codesign --force --timestamp=none --sign - "$APP/Contents/MacOS/FFXIVSpanishPatcher"
-            codesign --force --timestamp=none --sign - "$APP"
-            codesign --verify --strict --verbose=2 "$APP"
-            # ditto is Apple's archiver; it preserves the code signature and bundle layout.
-            ditto -c -k --keepParent "$APP" "$ASSET"
-          else
-            cp README.md "$OUT/README.md"
-            ( cd "$OUT" && zip -r "../../$ASSET" . )
-          fi
-          if command -v sha256sum >/dev/null; then
-            sha256sum "$ASSET" > "$ASSET.sha256"
-          else
-            shasum -a 256 "$ASSET" > "$ASSET.sha256"
-          fi
+        run: >-
+          ./.github/scripts/release/package-unix.sh
+          "${{ needs.validate-tag.outputs.version }}"
+          "${{ matrix.rid }}"
 
       - name: Attach to release
         if: matrix.rid != 'win-x64'
@@ -139,27 +97,11 @@ jobs:
         id: nexus-description
         if: matrix.rid != 'win-x64' && matrix.nexus_file_id != ''
         shell: bash
-        run: |
-          VERSION="${{ needs.validate-tag.outputs.version }}"
-          RID="${{ matrix.rid }}"
-
-          case "$RID" in
-            win-x64)
-              DESCRIPTION="Versión $VERSION para Windows 11. Si la descarga aún no está disponible en Nexus (validación manual pendiente), puedes bajarla ya desde GitHub: https://github.com/${{ github.repository }}/releases/latest"
-              ;;
-            linux-x64)
-              DESCRIPTION="Versión $VERSION para Linux (x64)"
-              ;;
-            osx-arm64)
-              DESCRIPTION="Versión $VERSION para macOS Apple Silicon"
-              ;;
-            *)
-              echo "::error::RID no soportado: $RID"
-              exit 1
-              ;;
-          esac
-
-          echo "description=$DESCRIPTION" >> "$GITHUB_OUTPUT"
+        run: >-
+          ./.github/scripts/release/prepare-nexus-description.sh
+          "${{ needs.validate-tag.outputs.version }}"
+          "${{ matrix.rid }}"
+          "${{ github.repository }}"
 
       - name: Upload to Nexus Mods
         if: matrix.rid != 'win-x64' && matrix.nexus_file_id != ''
@@ -194,56 +136,10 @@ jobs:
         env:
           WINDOWS_SELF_SIGNING_PFX_BASE64: ${{ secrets.WINDOWS_SELF_SIGNING_PFX_BASE64 }}
           WINDOWS_SELF_SIGNING_PFX_PASSWORD: ${{ secrets.WINDOWS_SELF_SIGNING_PFX_PASSWORD }}
-        run: |
-          set -euo pipefail
-          if [[ -z "$WINDOWS_SELF_SIGNING_PFX_BASE64" || -z "$WINDOWS_SELF_SIGNING_PFX_PASSWORD" ]]; then
-            echo "::warning::Windows self-signing skipped: configure WINDOWS_SELF_SIGNING_PFX_BASE64 and WINDOWS_SELF_SIGNING_PFX_PASSWORD."
-            exit 0
-          fi
-
-          CERT_DIR="$(mktemp -d)"
-          trap 'rm -rf "$CERT_DIR"' EXIT
-          PFX="$CERT_DIR/FFXIVSpanishPatcher-self-signed.pfx"
-          CERT="$CERT_DIR/FFXIVSpanishPatcher-self-signed.pem"
-          EXE="publish/win-x64/FFXIVSpanishPatcher.exe"
-
-          printf '%s' "$WINDOWS_SELF_SIGNING_PFX_BASE64" | base64 --decode > "$PFX"
-          openssl pkcs12 -in "$PFX" -clcerts -nokeys \
-            -passin "pass:$WINDOWS_SELF_SIGNING_PFX_PASSWORD" -out "$CERT"
-
-          EXPECTED_FINGERPRINT="$(openssl x509 \
-            -in docs/security/FFXIVSpanishPatcher-self-signed.pem \
-            -noout -fingerprint -sha256)"
-          ACTUAL_FINGERPRINT="$(openssl x509 -in "$CERT" -noout -fingerprint -sha256)"
-          if [[ "$ACTUAL_FINGERPRINT" != "$EXPECTED_FINGERPRINT" ]]; then
-            echo "::error::Windows signing certificate does not match documented public certificate."
-            exit 1
-          fi
-
-          sudo apt-get update
-          sudo apt-get install --yes osslsigncode
-          osslsigncode sign \
-            -pkcs12 "$PFX" \
-            -pass "$WINDOWS_SELF_SIGNING_PFX_PASSWORD" \
-            -h sha256 \
-            -n "FFXIVSpanish Patcher" \
-            -i "https://ffxivspanish.carrd.co/" \
-            -in "$EXE" \
-            -out "$EXE.signed"
-          mv "$EXE.signed" "$EXE"
-          osslsigncode verify -in "$EXE" -CAfile "$CERT"
+        run: ./.github/scripts/release/self-sign-windows.sh
 
       - name: Package Windows
-        run: |
-          set -euo pipefail
-          VERSION="${{ needs.validate-tag.outputs.version }}"
-          OUT="publish/win-x64"
-          ASSET="FFXIVSpanishPatcher-$VERSION-win-x64.zip"
-
-          rm -f "$OUT"/*.pdb
-          cp README.md "$OUT/README.md"
-          ( cd "$OUT" && zip -r "../../$ASSET" . )
-          sha256sum "$ASSET" > "$ASSET.sha256"
+        run: ./.github/scripts/release/package-windows.sh "${{ needs.validate-tag.outputs.version }}"
 
       - name: Attach Windows to release
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
