@@ -2,6 +2,23 @@
 
 Resumen de todos los cambios relevantes del proyecto.
 
+## v0.4.2
+
+- ***Stormblood* al 100 %**💪🥳🎉⚔️: **31.689/31.689 líneas traducidas** , frente a las 17.854 (56,3 %) de
+  v0.4.1.
+- Cerrado el tramo final de la historia principal de *Stormblood* con tres lotes:
+  `quest-stmbda-msq-005` (**63 hojas**), `-006` (**114 hojas**) y `-007` (**92 hojas**). Cubren
+  desde la Estepa de Azim y Reunión hasta Ala Mhigo, Rhalgr y los epílogos de parche 4.x.
+- Completadas las **59 hojas** de las tribus **ananta** y **namazu** de *Stormblood*
+  (`quest-ananta-namazu-001`, **2.111 filas**).
+- Traducidas las **8 hojas** de `custom-cts-009-001` (Palacio de los Muertos 4, tintes, gremio de
+  aventureros).
+- Localizada la hoja **`Hud`** de la interfaz (gracias a Ophelia Manito por la pequeña contribución)
+- Revisada la calidad de la traducción y arreglo de varios fallos de traducción realizados a lo largo de las versiones 0.4.X
+- Recuento global recalculado desde el corpus: **588.999/809.234 líneas traducibles (72,8 %)** y
+  **4.604/6.987 hojas completadas (65,9 %)**. El denominador baja respecto a v0.4.1 porque la cifra
+  anterior no cuadraba con la suma de los dominios; ahora ambas coinciden.
+
 ## v0.4.1
 
 - Actualizado el corte del corpus a **567.505/814.328 líneas traducibles (69,7%)** y
