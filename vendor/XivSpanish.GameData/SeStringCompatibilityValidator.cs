@@ -146,11 +146,30 @@ public static partial class SeStringCompatibilityValidator
         var violations = new List<SeStringViolation>();
         if (HasPayloads(source))
         {
-            violations.Add(new SeStringViolation(
-                SeStringViolationKind.InvalidStandardMacro,
-                GenderToken(target),
-                target.IndexOf(SeStringStandardMacros.GenderOpen, StringComparison.Ordinal),
-                "standard target macros may only be added when the source SeString is plain text"));
+            // Mixed target: a gender conditional added on top of the source's own payloads. The
+            // conditional itself is target-owned, so it is stripped before the payload multiset,
+            // order, nesting and control bytes are checked exactly as for any other target.
+            if (!SeStringStandardMacros.TrySplitGenderMacros(target, out var stripped, out var macros, out var splitReason)
+                || macros.Count == 0)
+            {
+                violations.Add(new SeStringViolation(
+                    SeStringViolationKind.InvalidStandardMacro,
+                    GenderToken(target),
+                    target.IndexOf(SeStringStandardMacros.GenderOpen, StringComparison.Ordinal),
+                    splitReason ?? "invalid standard target macro"));
+                return new SeStringCompatibilityReport(violations);
+            }
+
+            var withoutMacros = StripMarkers(stripped);
+            var sourceAtoms = ExtractAtoms(source);
+            var targetAtoms = ExtractAtoms(withoutMacros);
+
+            CheckStrayDelimiters(withoutMacros, targetAtoms, violations);
+            CheckMultiset(sourceAtoms, targetAtoms, violations);
+            CheckRunNesting(targetAtoms, violations);
+            CheckOrder(sourceAtoms, targetAtoms, violations);
+            CheckControlChars(source, withoutMacros, violations);
+            CheckStaleRunLength(source, withoutMacros, sourceAtoms, targetAtoms, violations);
             return new SeStringCompatibilityReport(violations);
         }
 
@@ -166,6 +185,30 @@ public static partial class SeStringCompatibilityValidator
 
         CheckControlChars(source, target, violations);
         return new SeStringCompatibilityReport(violations);
+    }
+
+    private static string StripMarkers(string text)
+    {
+        var builder = new System.Text.StringBuilder(text.Length);
+        for (var i = 0; i < text.Length; i++)
+        {
+            if (text[i] != '\uFFF9')
+            {
+                builder.Append(text[i]);
+                continue;
+            }
+
+            var close = text.IndexOf('\uFFFA', i);
+            if (close < 0)
+            {
+                builder.Append(text[i]);
+                continue;
+            }
+
+            i = close;
+        }
+
+        return builder.ToString();
     }
 
     private static string? GenderToken(string target)
@@ -407,10 +450,16 @@ public static partial class SeStringCompatibilityValidator
     }
 
     // Non-whitespace C0 control characters in the tokenized text are raw macro expression bytes
-    // (e.g. the \x03 branch separators inside an <If> body). They are machinery, not text: the
-    // target must carry exactly the same sequence. Whitespace controls (\t \n \r) are ordinary
-    // text a translator may legitimately reflow, so they are excluded — the same definition as
+    // (e.g. the \x03 branch separators inside an <If> body, \x05 parameter bytes, \x0c/\x12
+    // expression bytes). They are machinery, not text: the target must carry exactly the same
+    // sequence. Whitespace controls (\t \n \r) are ordinary text a translator may legitimately
+    // reflow, so they are excluded — the same definition as
     // SeStringTokenizer.FindUnsafeControlReferences.
+    //
+    // The MULTISET is compared first so the diagnostic names exactly which raw bytes the target
+    // lost or invented (the custom-doma-001 incident: 6 hand-written rows silently dropped
+    // \x0c/\x05/\x12). Only when the multiset matches but the order differs does the message fall
+    // back to the full sequence dump.
     private static void CheckControlChars(string source, string target, List<SeStringViolation> violations)
     {
         var sourceControls = ControlChars(source);
@@ -420,11 +469,62 @@ public static partial class SeStringCompatibilityValidator
             return;
         }
 
+        var missing = MultisetDifference(sourceControls, targetControls);
+        var extra = MultisetDifference(targetControls, sourceControls);
+        if (missing.Count > 0 || extra.Count > 0)
+        {
+            var parts = new List<string>(2);
+            if (missing.Count > 0)
+            {
+                parts.Add($"lost from target: [{FormatControls(missing)}]");
+            }
+
+            if (extra.Count > 0)
+            {
+                parts.Add($"invented in target: [{FormatControls(extra)}]");
+            }
+
+            violations.Add(new SeStringViolation(
+                SeStringViolationKind.ControlCharMismatch,
+                null,
+                -1,
+                $"raw control byte multiset differs — {string.Join("; ", parts)} "
+                + $"(source has [{FormatControls(sourceControls)}], target has [{FormatControls(targetControls)}])"));
+            return;
+        }
+
         violations.Add(new SeStringViolation(
             SeStringViolationKind.ControlCharMismatch,
             null,
             -1,
-            $"raw control bytes differ: source has [{FormatControls(sourceControls)}], target has [{FormatControls(targetControls)}]"));
+            $"raw control bytes are reordered: source has [{FormatControls(sourceControls)}], "
+            + $"target has [{FormatControls(targetControls)}]"));
+    }
+
+    // Multiset difference left \ right: every occurrence of a control char in <paramref name="left"/>
+    // beyond its count in <paramref name="right"/>, in first-seen order.
+    private static List<char> MultisetDifference(List<char> left, List<char> right)
+    {
+        var counts = new Dictionary<char, int>();
+        foreach (var c in right)
+        {
+            counts[c] = counts.GetValueOrDefault(c) + 1;
+        }
+
+        var difference = new List<char>();
+        foreach (var c in left)
+        {
+            if (counts.GetValueOrDefault(c) > 0)
+            {
+                counts[c]--;
+            }
+            else
+            {
+                difference.Add(c);
+            }
+        }
+
+        return difference;
     }
 
     /// <summary>Base-name prefix of legacy opaque 0xFF run tokens whose mapped bytes embed the run-length prefix verbatim.</summary>

@@ -52,15 +52,28 @@ public sealed class PlayerGenderMacroTests
         Assert.Empty(ManifestSeStringGate.Check([entry]));
     }
 
+    // Since upstream eca5c2789 a target-owned gender conditional is allowed on top of a
+    // payload-bearing source: the conditional is stripped before the payload multiset, order,
+    // nesting and control bytes are checked. Payload loss is still rejected - see
+    // SeStringGenderAndControlByteTests.
     [Fact]
-    public void Validator_GenderMacroOnPayloadSource_Fails()
+    public void ManifestGate_GenderMacroOnPayloadSource_Passes()
     {
-        var report = SeStringCompatibilityValidator.Validate(
+        var entry = Entry(
             "Welcome, <Num>",
             "Hola, <Num> <Gender>Guerrera<GenderElse>Guerrero<GenderEnd>");
 
-        Assert.False(report.IsCompatible);
-        Assert.Equal(SeStringViolationKind.InvalidStandardMacro, Assert.Single(report.Violations).Kind);
+        Assert.Empty(ManifestSeStringGate.Check([entry]));
+    }
+
+    [Fact]
+    public void ManifestGate_GenderMacroDroppingASourcePayload_IsUnsafe()
+    {
+        var entry = Entry("Welcome, <Num>", "Hola, <Gender>Guerrera<GenderElse>Guerrero<GenderEnd>");
+
+        var violation = Assert.Single(ManifestSeStringGate.Check([entry]));
+
+        Assert.Contains(violation.Report.Violations, v => v.Kind == SeStringViolationKind.MissingPayload);
     }
 
     private static TranslationEntry Entry(string source, string target) => new()
