@@ -5,41 +5,19 @@ Resumen de todos los cambios relevantes del proyecto.
 ## v0.4.3
 
 Versión centrada en la **calidad** de lo ya traducido más que en volumen nuevo: una campaña de
-revisión trilingüe (EN + FR → ES) sobre el guion existente, además de dos líneas de misiones de job
-de *Stormblood*.
+revisión trilingüe (EN + FR → ES) sobre el guion existente y corrección de errores (gracias a quienes reportaron fallos)
 
 - **Misiones de job de *Stormblood***: traducidas las líneas completas de **samurái**
   (`quest-jobsam-001`, **889 filas**) y **mago rojo** (`quest-jobrdm-001`, **1.134 filas**), en doce
   sub-lotes de nivel 50 a 70.
-- **Campaña de revisión de calidad**: **232 pasadas de QA** sobre el guion ya publicado —
-  eventos estacionales y colaboraciones, títulos de misión, conversaciones con NPC y misiones de
-  clase—, corrigiendo género, tratamiento y sentido con el francés y el alemán como anclas.
-- **Género del personaje jugador**: se abandona la neutralización forzada y el texto vuelve a
-  flexionar donde el juego lo permite. Se derogó la familia «alma \<adjetivo\>» (alma aventurera,
-  heroica, amiga, forastera) en favor de la macro de género del propio juego, y se resolvieron
-  los `lass|lad`, `miss|sir` y los epítetos deícticos («héroe/heroína de Eorzea», «forastero/a»).
-- **Tratamiento**: realineados los registros de tuteo y voseo ratificados en la entrevista de
-  terminología; corregidos los personajes que tuteaban al jugador cuando no debían.
-- **Barridos de terminología y mayúsculas**: nombres de razas y de tribus bestia pasan a minúscula
-  como sustantivos comunes (**2.895 filas**); «copy of \<obra\>» pasa a «ejemplar» (**342 campos**);
-  «Impresario» a «Empresario teatral» (**154 campos**); GP pasa a **PR**; «job» se mantiene como
-  «job»; y se unificaron topónimos, honoríficos y nombres de naves y obras con su género en español.
-- **Tipografía del guion**: la raya de apertura de diálogo lleva siempre espacio (**1.246 filas**),
-  se restauró el guion de caja que se había perdido, y se separaron los puntos suspensivos pegados.
-- **Fugas de inglés**: cerrados los títulos de obra, las listas de esencias de Bozja y el bloque de
-  estadísticas de comida que seguían en inglés dentro de textos ya traducidos.
-- **Memoria de localización**: las 179 fichas de dudas sueltas se sustituyen por una única cola de
-  barridos; se escribieron en su capa de canon las 48 decisiones de la entrevista; y se
-  reanclaron 443 citas a lemas (con 110 citas muertas eliminadas), con un nuevo *lint* que impide
-  que las referencias entre documentos vuelvan a quedarse huérfanas.
+- **Campaña exhaustiva de revisión de calidad**: Muchos cambios para enumerarlos.. pero resumiendo:
+  > Se acaba con la formulacion de "alma aventurera" y similares
+  > Revisión de flexión de género del personaje
+  > Correcciones varias
 - **Herramientas**: el validador de SeString acepta una condicional de género propia de la
   traducción junto a los payloads del original, y añade diagnóstico por multiconjunto de bytes de
   control; el detector de fugas de inglés de `BatchVerify` acota su lista de excepciones por hoja.
-- Recuento global recalculado desde el corpus: **596.958/815.173 líneas traducibles (73,2 %)** y
-  **4.627/6.987 hojas completadas (66,2 %)**, frente al 72,8 % y 65,9 % de v0.4.2. *Elementos
-  comunes* sube del **84,8 % al 85,3 %**. Las cifras de *A Realm Reborn*, *Heavensward* y
-  *Stormblood* se mueven unas pocas líneas porque el denominador se ha vuelto a medir contra el
-  cliente instalado; las tres siguen al **100 %**.
+
 
 ## v0.4.2
 
