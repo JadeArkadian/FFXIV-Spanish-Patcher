@@ -100,16 +100,37 @@ public static class SeStringTree
         string? detokenReason;
         if (SeStringStandardMacros.HasReservedDelimiter(target))
         {
-            if (tok.Tokens.Count != 0)
+            if (tok.Tokens.Count == 0)
             {
-                reason = "standard target macros may only be added when the source SeString is plain text";
-                return false;
+                if (!SeStringStandardMacros.TryParse(target, out rebuilt, out detokenReason))
+                {
+                    reason = detokenReason ?? "could not parse standard target macros";
+                    return false;
+                }
             }
-
-            if (!SeStringStandardMacros.TryParse(target, out rebuilt, out detokenReason))
+            else
             {
-                reason = detokenReason ?? "could not parse standard target macros";
-                return false;
+                // Mixed target: the source carries real payloads AND the target adds a gender
+                // conditional. Carry the conditional through the payload detokenizer as a marker,
+                // then splice the synthesized If node back in, so the source's payload multiset and
+                // run nesting are validated exactly as in the normal path.
+                if (!SeStringStandardMacros.TrySplitGenderMacros(target, out var markedTarget, out var macros, out detokenReason))
+                {
+                    reason = detokenReason ?? "could not parse standard target macros";
+                    return false;
+                }
+
+                if (!SeStringTreeTokenizer.TryDetokenize(markedTarget, tok.Tokens, out rebuilt, out detokenReason))
+                {
+                    reason = detokenReason ?? "could not detokenize target";
+                    return false;
+                }
+
+                if (!SeStringStandardMacros.SpliceMarkers(rebuilt, macros, out detokenReason))
+                {
+                    reason = detokenReason ?? "could not place standard target macros";
+                    return false;
+                }
             }
         }
         else if (!SeStringTreeTokenizer.TryDetokenize(target, tok.Tokens, out rebuilt, out detokenReason))

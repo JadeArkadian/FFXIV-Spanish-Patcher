@@ -250,8 +250,6 @@ public static class ExdPatcher
                 ReadNulTerminatedBytes(stringArea, (int)strOffset));
         }
 
-        var fieldTargeted = new Dictionary<int, StringReplacement>();
-
         // Resolves the string-column ordinal a non-empty field-targeted replacement should write.
         // The label resolves to <paramref name="labeled"/>, but a corpus extracted before the
         // offset-correct field resolver can carry field labels PERMUTED relative to the on-disk
@@ -272,8 +270,7 @@ public static class ExdPatcher
             var found = -1;
             for (var ordinal = 0; ordinal < columnSource.Length; ordinal++)
             {
-                if (fieldTargeted.ContainsKey(ordinal)
-                    || !string.Equals(columnSource[ordinal], source, StringComparison.Ordinal))
+                if (!string.Equals(columnSource[ordinal], source, StringComparison.Ordinal))
                 {
                     continue;
                 }
@@ -289,13 +286,12 @@ public static class ExdPatcher
             return found >= 0 ? found : labeled;
         }
 
-        // Partition replacements:
-        //  - fieldTargeted[ordinal]: a replacement whose Field resolves to that exact column. It
-        //    is applied to ONLY that column (fixing the substring collision: a Singular source
-        //    that is a prefix of the Plural string can no longer hijack the Plural column).
-        //  - contentMatched: non-empty source, no usable field → legacy content matching across
-        //    the remaining (non-field-targeted) columns.
-        //  - emptyWrites: empty source, no usable field → legacy write-at-offset.
+        // Partition replacements. Keep the field-labelled candidates together first: a generated
+        // sheet may have two physical String columns swapped relative to its member declaration.
+        // A non-empty source identifies its real column exactly, while an explicitly empty source
+        // identifies the blank partner left behind by that swap (Snipe ActionText/VFXAdditional).
+        // Resolving the pair as a unit prevents the empty write from consuming ActionText's column.
+        var fieldCandidates = new List<(int LabeledOrdinal, StringReplacement Replacement)>();
         var contentMatched = new List<StringReplacement>();
         var emptyWrites = new Queue<StringReplacement>();
         foreach (var rep in rowReplacements)
@@ -303,15 +299,8 @@ public static class ExdPatcher
             if (rep.Field is not null && fieldToOrdinal.TryGetValue(rep.Field, out var ordinal)
                 && stringColumnOffsets[ordinal] + 4 <= fixedData.Length)
             {
-                // A non-empty source verifies/self-corrects its target column by exact content;
-                // an empty source (write-at-offset) keeps the literal label — an empty column has
-                // no content to match against, so retargeting it is undefined.
-                var target = rep.Source.Length == 0 ? ordinal : ResolveFieldOrdinal(ordinal, rep.Source);
-                if (!fieldTargeted.ContainsKey(target))
-                {
-                    fieldTargeted[target] = rep;
-                    continue;
-                }
+                fieldCandidates.Add((ordinal, rep));
+                continue;
             }
 
             if (rep.Source.Length == 0)
@@ -321,6 +310,65 @@ public static class ExdPatcher
             else
             {
                 contentMatched.Add(rep);
+            }
+        }
+
+        var fieldTargets = new int[fieldCandidates.Count];
+        for (var candidateIndex = 0; candidateIndex < fieldCandidates.Count; candidateIndex++)
+        {
+            var candidate = fieldCandidates[candidateIndex];
+            fieldTargets[candidateIndex] = candidate.Replacement.Source.Length == 0
+                ? candidate.LabeledOrdinal
+                : ResolveFieldOrdinal(candidate.LabeledOrdinal, candidate.Replacement.Source);
+        }
+
+        // An empty-source field normally keeps its literal label. If that label was claimed by a
+        // non-empty source which self-corrected from a different EMPTY labelled column, these two
+        // fields form a proven permutation: move the empty write to the vacated blank column.
+        // Do not guess beyond this exact pair; a source-less replacement alone has no evidence to
+        // choose among multiple empty columns.
+        for (var emptyIndex = 0; emptyIndex < fieldCandidates.Count; emptyIndex++)
+        {
+            var emptyCandidate = fieldCandidates[emptyIndex];
+            if (emptyCandidate.Replacement.Source.Length != 0)
+            {
+                continue;
+            }
+
+            for (var sourceIndex = 0; sourceIndex < fieldCandidates.Count; sourceIndex++)
+            {
+                var sourceCandidate = fieldCandidates[sourceIndex];
+                if (sourceCandidate.Replacement.Source.Length == 0
+                    || fieldTargets[sourceIndex] != emptyCandidate.LabeledOrdinal
+                    || sourceCandidate.LabeledOrdinal == emptyCandidate.LabeledOrdinal
+                    || !string.Equals(columnSource[sourceCandidate.LabeledOrdinal], string.Empty, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                fieldTargets[emptyIndex] = sourceCandidate.LabeledOrdinal;
+                break;
+            }
+        }
+
+        var fieldTargeted = new Dictionary<int, StringReplacement>();
+        for (var candidateIndex = 0; candidateIndex < fieldCandidates.Count; candidateIndex++)
+        {
+            var replacement = fieldCandidates[candidateIndex].Replacement;
+            if (fieldTargeted.TryAdd(fieldTargets[candidateIndex], replacement))
+            {
+                continue;
+            }
+
+            // Preserve the legacy fallback for two manifest rows that genuinely target the same
+            // column. The first field-targeted replacement remains authoritative.
+            if (replacement.Source.Length == 0)
+            {
+                emptyWrites.Enqueue(replacement);
+            }
+            else
+            {
+                contentMatched.Add(replacement);
             }
         }
 

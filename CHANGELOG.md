@@ -2,6 +2,23 @@
 
 Resumen de todos los cambios relevantes del proyecto.
 
+## v0.4.3
+
+Versión centrada en la **calidad** de lo ya traducido más que en volumen nuevo: una campaña de
+revisión trilingüe (EN + FR → ES) sobre el guion existente y corrección de errores (gracias a quienes reportaron fallos)
+
+- **Misiones de job de *Stormblood***: traducidas las líneas completas de **samurái**
+  (`quest-jobsam-001`, **889 filas**) y **mago rojo** (`quest-jobrdm-001`, **1.134 filas**), en doce
+  sub-lotes de nivel 50 a 70.
+- **Campaña exhaustiva de revisión de calidad**: Muchos cambios para enumerarlos.. pero resumiendo:
+  > Se acaba con la formulacion de "alma aventurera" y similares
+  > Revisión de flexión de género del personaje
+  > Correcciones varias
+- **Herramientas**: el validador de SeString acepta una condicional de género propia de la
+  traducción junto a los payloads del original, y añade diagnóstico por multiconjunto de bytes de
+  control; el detector de fugas de inglés de `BatchVerify` acota su lista de excepciones por hoja.
+
+
 ## v0.4.2
 
 - ***Stormblood* al 100 %**💪🥳🎉⚔️: **31.689/31.689 líneas traducidas** , frente a las 17.854 (56,3 %) de
