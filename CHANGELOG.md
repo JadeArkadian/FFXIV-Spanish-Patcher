@@ -38,40 +38,11 @@ Esta versión arrannca con la traducción de Shadowbringer y todo el contenido d
 
 ### Patcher
 
-- **Paquete Penumbra por categorías** (formato v4): el mod se emite con **diez opciones
+- **Paquete Penumbra por categorías** (formato v4 de Penumbra): el mod se emite con **diez opciones
   independientes** — Misiones · Nombres y lugares · Clases y jobs · Objetos · Objetos de evento ·
   Coleccionables · Acciones · Logros · Registro · Interfaz—, que se activan y desactivan por
   separado desde Penumbra. Las hojas sin categoría asignada caen en *Interfaz* en lugar de quedar
   fuera del paquete.
-
-- **Identidad estable del mod**: cada árbol generado lleva un marcador propio
-  (`ffxivspanish.identity.json`) independiente de `meta.json`, así que renombrar el mod o editar sus
-  datos en Penumbra ya no impide reconocerlo al reimportar.
-
-- **Texto de la interfaz aclarado**: las categorías que el instalador marca por defecto lo son
-  **en la primera importación**; reimportar respeta lo que el usuario tuviera activado.
-
-### Notas técnicas
-
-- **Instantánea EXD base regenerada** desde el cliente parcheado: de 4.762 a **7.038 ficheros
-  `.exd`** (más 6.905 `.exh`). Sin este paso las filas nuevas del parche no tenían columna donde
-  escribirse y quedaban fuera del paquete.
-
-- **Deriva de etiquetas de columna en `Snipe`**: el parche reasignó los nombres de sus columnas de
-  texto (`Unknown15`→`Hint1`, `VFXAdditional`→`ActionText`, …). Se retiraron **47 filas fantasma**
-  que habían quedado bajo la etiqueta antigua con origen vacío: reclamaban la columna que
-  necesitaban las filas vivas y siempre fallaban al empaquetar. Verificado fila a fila que el
-  desplazamiento no cruzó texto entre campos.
-
-- **3.110 filas no localizables** (claves de diálogo `TEXT_*`, tokens de guion, rutas de recurso,
-  códigos de zona) marcadas como tales en lugar de quedarse indefinidamente como pendientes, que
-  inflaba las cifras de avance.
-
-- Recuento global recalculado desde el corpus: **613.802/829.147 líneas traducibles (74,0 %)** y
-  **4.761/7.021 hojas completadas (67,8 %)**. El porcentaje baja unas décimas respecto a v0.4.2
-  pese a las más de 20.000 líneas nuevas, porque el parche añadió 7.414 líneas traducibles al
-  denominador. Se corrigieron además cabeceras de avance que llevaban tiempo desfasadas respecto
-  al corpus.
 
 ## v0.4.3
 
