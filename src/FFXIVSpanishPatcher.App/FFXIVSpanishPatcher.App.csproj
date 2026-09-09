@@ -67,6 +67,7 @@
     <AvaloniaResource Include="..\..\docs\assets\arr-icon.png" Link="Assets\arr-icon.png" />
     <AvaloniaResource Include="..\..\docs\assets\hw-icon.png" Link="Assets\hw-icon.png" />
     <AvaloniaResource Include="..\..\docs\assets\stb-icon.png" Link="Assets\stb-icon.png" />
+    <AvaloniaResource Include="..\..\docs\assets\shb-icon.png" Link="Assets\shb-icon.png" />
     <AvaloniaResource Include="..\..\docs\assets\logo-git.png" Link="Assets\logo-git.png" />
   </ItemGroup>
 

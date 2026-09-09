@@ -115,16 +115,17 @@ public class MainWindowSmokeTests
         Assert.NotNull(window.FindControl<ConsoleLogTextBlock>("ConsoleText"));
         Assert.Contains(
             window.GetVisualDescendants().OfType<TextBlock>(),
-            textBlock => textBlock.Text == "Edición Stormblood");
+            textBlock => textBlock.Text == "Edición Shadowbringers");
         Assert.DoesNotContain(
             window.GetVisualDescendants().OfType<TextBlock>(),
-            textBlock => textBlock.Text == "Edición Heavensward");
+            textBlock => textBlock.Text == "Edición Stormblood");
         Assert.Equal(
-            "Empieza Stormblood.",
+            "Empieza Shadowbringers.",
             window.FindControl<TextBlock>("MilestoneTitle")?.Text);
         Assert.NotNull(window.FindControl<Image>("MilestoneArrIcon")?.Source);
         Assert.NotNull(window.FindControl<Image>("MilestoneHeavenswardIcon")?.Source);
         Assert.NotNull(window.FindControl<Image>("MilestoneStormbloodIcon")?.Source);
+        Assert.NotNull(window.FindControl<Image>("MilestoneShadowbringersIcon")?.Source);
         AssertVerticallyAligned(
             window,
             "GameCheckContent",
