@@ -2,6 +2,77 @@
 
 Resumen de todos los cambios relevantes del proyecto.
 
+## v0.5.0
+
+Esta versión arrannca con la traducción de Shadowbringer y todo el contenido del parche final de Dawntrail
+(Beastmaster y capitulo final de la MSQ).
+
+### Traducción
+
+- ***Shadowbringers*, tramo grande** (`shb-mix-001`): **105 hojas, 8.780 filas**. Cubre entregas
+  del Cristalario, conversación de PNJ por Norvrandt, las cinemáticas `VoiceMan` de la 05000 a la
+  05505, las misiones de rol de sanador (`LucKba`) y las tribus pixie (`BanPix`) y qiqirn
+  (`BanQiq`).
+
+- **Contenido nuevo del parche 7.56**: **11.332 filas** procesadas en ocho lotes, sin dejar
+  ninguna fila pendiente de revisión.
+
+  - **Domador de bestias / Adiestrador (ADI)**: el kit completo del job — **1.610 filas** entre 
+  acciones, rasgos, estados y descripciones—, más las **49** de nombres de familiar y ataque básico.
+
+  - **Minijuego del Crisol de los Indómitos**: **1.139 filas** de objetos, mascotas, bonificaciones 
+  y rótulos de tableros
+
+  - **Arco narrativo del Cuarto reflejo**: **473 filas** con Alphinaud, Estinien y Visna.
+
+  - **Objetos, criaturas y mundo**: **1.428 filas**; **816** de interfaz y mensajes de sistema, 
+  **1.218** de créditos, y **140** de revalidación de las filas que el parche modificó.
+
+- **Reclasificadas 26 hojas** que el tracker daba por «sin texto localizable»: el parche las pobló
+  con **3.144 filas** de texto real, casi todas guion del job nuevo y del arco del Cuarto.
+
+- **Correcciones de coherencia** arrastradas de versiones anteriores: barridos de `señor Chai` →
+  **maestro Chai**, restos de inglés en nombres de criatura (`crab de lava`, `drake domesticado`,
+  `vampire bat`, `serpent marino`…), y el bloque de efectos de la *Hamburguesa del Archon*, que era
+  la única de 592 descripciones de comida que seguía mostrando `EXP Bonus:` y `Duration:` en inglés.
+
+### Patcher
+
+- **Paquete Penumbra por categorías** (formato v4): el mod se emite con **diez opciones
+  independientes** — Misiones · Nombres y lugares · Clases y jobs · Objetos · Objetos de evento ·
+  Coleccionables · Acciones · Logros · Registro · Interfaz—, que se activan y desactivan por
+  separado desde Penumbra. Las hojas sin categoría asignada caen en *Interfaz* en lugar de quedar
+  fuera del paquete.
+
+- **Identidad estable del mod**: cada árbol generado lleva un marcador propio
+  (`ffxivspanish.identity.json`) independiente de `meta.json`, así que renombrar el mod o editar sus
+  datos en Penumbra ya no impide reconocerlo al reimportar.
+
+- **Texto de la interfaz aclarado**: las categorías que el instalador marca por defecto lo son
+  **en la primera importación**; reimportar respeta lo que el usuario tuviera activado.
+
+### Notas técnicas
+
+- **Instantánea EXD base regenerada** desde el cliente parcheado: de 4.762 a **7.038 ficheros
+  `.exd`** (más 6.905 `.exh`). Sin este paso las filas nuevas del parche no tenían columna donde
+  escribirse y quedaban fuera del paquete.
+
+- **Deriva de etiquetas de columna en `Snipe`**: el parche reasignó los nombres de sus columnas de
+  texto (`Unknown15`→`Hint1`, `VFXAdditional`→`ActionText`, …). Se retiraron **47 filas fantasma**
+  que habían quedado bajo la etiqueta antigua con origen vacío: reclamaban la columna que
+  necesitaban las filas vivas y siempre fallaban al empaquetar. Verificado fila a fila que el
+  desplazamiento no cruzó texto entre campos.
+
+- **3.110 filas no localizables** (claves de diálogo `TEXT_*`, tokens de guion, rutas de recurso,
+  códigos de zona) marcadas como tales en lugar de quedarse indefinidamente como pendientes, que
+  inflaba las cifras de avance.
+
+- Recuento global recalculado desde el corpus: **613.802/829.147 líneas traducibles (74,0 %)** y
+  **4.761/7.021 hojas completadas (67,8 %)**. El porcentaje baja unas décimas respecto a v0.4.2
+  pese a las más de 20.000 líneas nuevas, porque el parche añadió 7.414 líneas traducibles al
+  denominador. Se corrigieron además cabeceras de avance que llevaban tiempo desfasadas respecto
+  al corpus.
+
 ## v0.4.3
 
 Versión centrada en la **calidad** de lo ya traducido más que en volumen nuevo: una campaña de
