@@ -115,16 +115,17 @@ public class MainWindowSmokeTests
         Assert.NotNull(window.FindControl<ConsoleLogTextBlock>("ConsoleText"));
         Assert.Contains(
             window.GetVisualDescendants().OfType<TextBlock>(),
-            textBlock => textBlock.Text == "Edición Stormblood");
+            textBlock => textBlock.Text == "Edición Shadowbringers");
         Assert.DoesNotContain(
             window.GetVisualDescendants().OfType<TextBlock>(),
-            textBlock => textBlock.Text == "Edición Heavensward");
+            textBlock => textBlock.Text == "Edición Stormblood");
         Assert.Equal(
-            "Empieza Stormblood.",
+            "Empieza Shadowbringers.",
             window.FindControl<TextBlock>("MilestoneTitle")?.Text);
         Assert.NotNull(window.FindControl<Image>("MilestoneArrIcon")?.Source);
         Assert.NotNull(window.FindControl<Image>("MilestoneHeavenswardIcon")?.Source);
         Assert.NotNull(window.FindControl<Image>("MilestoneStormbloodIcon")?.Source);
+        Assert.NotNull(window.FindControl<Image>("MilestoneShadowbringersIcon")?.Source);
         AssertVerticallyAligned(
             window,
             "GameCheckContent",
@@ -146,6 +147,34 @@ public class MainWindowSmokeTests
         {
             Directory.Delete(visualGameRoot, recursive: true);
         }
+    }
+
+    [AvaloniaFact]
+    public void MainWindow_ExplainsThatCategoriesOnlySetPenumbraDefaults()
+    {
+        var viewModel = new MainViewModel(
+            new NoopShell(),
+            new ListTranslationSource([]),
+            NullUpdateCheckService.Instance)
+        {
+            TranslationsReady = true,
+            IsAdvancedOpen = true,
+        };
+        foreach (var category in CategoryCatalog.All)
+        {
+            viewModel.Categories.Add(new CategoryViewModel(category, count: 1));
+        }
+
+        var window = new MainWindow { DataContext = viewModel };
+        window.Show();
+
+        var texts = window.GetVisualDescendants().OfType<TextBlock>().Select(textBlock => textBlock.Text).ToArray();
+        Assert.Contains("Categorías activadas en primera importación de Penumbra", texts);
+        Assert.Contains("El paquete siempre incluye traducción completa.", texts);
+        Assert.DoesNotContain("Elige qué grupos incluir", texts);
+        Assert.DoesNotContain("Categorías activadas al importar en Penumbra", texts);
+
+        window.Close();
     }
 
     [AvaloniaTheory]

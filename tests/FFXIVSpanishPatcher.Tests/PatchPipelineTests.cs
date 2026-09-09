@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Text;
+using System.Text.Json;
 using FFXIVSpanishPatcher.Pipeline;
 using XivSpanish.GameData;
 using XivSpanish.Translation;
@@ -115,16 +116,30 @@ public sealed class PatchPipelineTests : IDisposable
         // row 1 (content) + row 2 (empty-offset write) + row 262 (content) + row 3256 (broadcast) = 4
         Assert.Equal(4, result.Applied);
         Assert.True(File.Exists(result.OutputPath));
+        Assert.Equal(3, result.Statistics.CategoryStatistics["interfaz"].CandidateEntries);
+        Assert.Equal(4, result.Statistics.CategoryStatistics["interfaz"].AppliedWrites);
+        Assert.Equal(1, result.Statistics.CategoryStatistics["interfaz"].PatchedPages);
 
-        // The package is a valid Penumbra mod: manifests + the redirected EXD file.
+        // The package is a valid categorized Penumbra v4 mod: one Multi group plus payload.
         using var archive = ZipFile.OpenRead(result.OutputPath!);
         var names = archive.Entries.Select(e => e.FullName).ToHashSet();
         Assert.Contains("meta.json", names);
-        Assert.Contains("default_mod.json", names);
-        Assert.Contains("files/exd/addon_0_en.exd", names);
+        Assert.Contains(TranslationModIdentity.MarkerFileName, names);
+        Assert.DoesNotContain("default_mod.json", names);
+        Assert.DoesNotContain(names, name => name.StartsWith("group_", StringComparison.Ordinal));
+        Assert.Contains("files/categories/09-interfaz/exd/addon_0_en.exd", names);
+
+        using var metadata = JsonDocument.Parse(ReadEntryBytes(archive, "meta.json"));
+        Assert.Equal(4, metadata.RootElement.GetProperty("FileVersion").GetInt32());
+        var groups = metadata.RootElement.GetProperty("Groups");
+        var group = Assert.Single(groups.EnumerateArray());
+        Assert.Equal("Categorías de traducción", group.GetProperty("Name").GetString());
+        Assert.Equal("Multi", group.GetProperty("Type").GetString());
+        Assert.Equal(10, group.GetProperty("Options").GetArrayLength());
+        Assert.Equal((1 << 10) - 1, group.GetProperty("DefaultSettings").GetInt32());
 
         // The patched EXD carries the Spanish targets and no longer the English source.
-        var patched = ReadEntryText(archive, "files/exd/addon_0_en.exd");
+        var patched = ReadEntryText(archive, "files/categories/09-interfaz/exd/addon_0_en.exd");
         Assert.Contains("Armero independiente", patched);
         Assert.Contains("Texto generado", patched);
         Assert.Contains("Potencia de magia curativa", patched);
@@ -157,7 +172,7 @@ public sealed class PatchPipelineTests : IDisposable
         Assert.Equal(0, result.Skipped);
 
         using var archive = ZipFile.OpenRead(result.OutputPath!);
-        var patched = ReadEntryBytes(archive, "files/" + exdPath);
+        var patched = ReadExdEntryBytes(archive, exdPath);
         var patchedRaw = ExdRowReader.ReadRawStrings(patched, 4, [0])
             .Single(row => row.RowId == 121u)
             .Raw;
@@ -272,18 +287,21 @@ public sealed class PatchPipelineTests : IDisposable
     }
 
     [Fact]
-    public void Run_WithSelectedCategoryThatHasNoEntries_PackagesNothing()
+    public void Run_WithSelectedCategoryThatHasNoEntries_PackagesFullModWithOnlyThatDefault()
     {
-        // Addon maps to the "interfaz" domain; selecting only "items" leaves no candidates.
+        // Addon maps to Interfaz, but a selection only changes Penumbra defaults.
         var pipeline = new PatchPipeline(new ListTranslationSource(ApprovedManifest()), new FakePatchBackendFactory(BuildSource()));
 
         var result = pipeline.Run(
             Request(categories: ["items"]),
             cancellationToken: TestContext.Current.CancellationToken);
 
-        Assert.False(result.Success);
-        Assert.Equal(PatchOutcome.NothingToPackage, result.Outcome);
-        Assert.False(File.Exists(Path.Combine(_temp, "out.pmp")));
+        Assert.True(result.Success);
+        using var archive = ZipFile.OpenRead(result.OutputPath!);
+        Assert.NotNull(archive.GetEntry("files/categories/09-interfaz/exd/addon_0_en.exd"));
+        using var metadata = JsonDocument.Parse(ReadEntryBytes(archive, "meta.json"));
+        var group = metadata.RootElement.GetProperty("Groups")[0];
+        Assert.Equal(1 << 3, group.GetProperty("DefaultSettings").GetInt32());
     }
 
     [Fact]
@@ -297,6 +315,44 @@ public sealed class PatchPipelineTests : IDisposable
 
         Assert.True(result.Success);
         Assert.Equal(4, result.Applied);
+        using var archive = ZipFile.OpenRead(result.OutputPath!);
+        using var metadata = JsonDocument.Parse(ReadEntryBytes(archive, "meta.json"));
+        Assert.Equal(1 << 9, metadata.RootElement.GetProperty("Groups")[0].GetProperty("DefaultSettings").GetInt32());
+    }
+
+    [Fact]
+    public void Run_CategorySelectionChangesOnlyDefaultSettings_NotPackagePayload()
+    {
+        const string itemPath = "exd/item_0_en.exd";
+        var source = new FakeExdSource()
+            .AddPage(ExdPath, SyntheticExd.BuildExd([(1u, "Independent Arms Mender")]))
+            .AddLayout("Addon", new ExdLayout(4, [0], 1))
+            .AddPage(itemPath, SyntheticExd.BuildExd([(1u, "Potion")]))
+            .AddLayout("Item", new ExdLayout(4, [0], 1));
+        var entries = new[]
+        {
+            Approved(1u, "Independent Arms Mender", "Armero independiente"),
+            Approved("Item", 1u, string.Empty, itemPath, "Potion", "Poción"),
+        };
+        var pipeline = new PatchPipeline(new ListTranslationSource(entries), new FakePatchBackendFactory(source));
+        var all = pipeline.Run(
+            Request() with { OutputPath = Path.Combine(_temp, "all.pmp") },
+            cancellationToken: TestContext.Current.CancellationToken);
+        var itemsOnly = pipeline.Run(
+            Request(categories: ["items"]) with { OutputPath = Path.Combine(_temp, "items.pmp") },
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.True(all.Success);
+        Assert.True(itemsOnly.Success);
+        using var allArchive = ZipFile.OpenRead(all.OutputPath!);
+        using var itemsArchive = ZipFile.OpenRead(itemsOnly.OutputPath!);
+        var allPayload = allArchive.Entries.Where(entry => entry.FullName.EndsWith(".exd", StringComparison.Ordinal)).Select(entry => entry.FullName).Order().ToArray();
+        var itemsPayload = itemsArchive.Entries.Where(entry => entry.FullName.EndsWith(".exd", StringComparison.Ordinal)).Select(entry => entry.FullName).Order().ToArray();
+        Assert.Equal(allPayload, itemsPayload);
+        using var allMetadata = JsonDocument.Parse(ReadEntryBytes(allArchive, "meta.json"));
+        using var itemsMetadata = JsonDocument.Parse(ReadEntryBytes(itemsArchive, "meta.json"));
+        Assert.Equal((1 << 10) - 1, allMetadata.RootElement.GetProperty("Groups")[0].GetProperty("DefaultSettings").GetInt32());
+        Assert.Equal(1 << 3, itemsMetadata.RootElement.GetProperty("Groups")[0].GetProperty("DefaultSettings").GetInt32());
     }
 
     [Fact]
@@ -315,7 +371,7 @@ public sealed class PatchPipelineTests : IDisposable
         Assert.Equal(2, result.Applied);
 
         using var archive = ZipFile.OpenRead(result.OutputPath!);
-        var patched = ReadEntryBytes(archive, "files/exd/item_9500_en.exd");
+        var patched = ReadExdEntryBytes(archive, ItemExdPath);
         var fields = new[] { "Singular", "Plural", "Name" };
         var values = ExdRowReader.ReadRawStrings(patched, 12, [0, 4, 8])
             .Where(row => row.RowId == 9553)
@@ -583,6 +639,11 @@ public sealed class PatchPipelineTests : IDisposable
         stream.CopyTo(memory);
         return memory.ToArray();
     }
+
+    private static byte[] ReadExdEntryBytes(ZipArchive archive, string exdGamePath)
+        => ReadEntryBytes(
+            archive,
+            archive.Entries.Single(entry => entry.FullName.EndsWith('/' + exdGamePath, StringComparison.Ordinal)).FullName);
 
     private sealed class ThrowingBackendFactory : IPatchBackendFactory
     {

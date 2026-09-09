@@ -2,6 +2,48 @@
 
 Resumen de todos los cambios relevantes del proyecto.
 
+## v0.5.0
+
+Esta versión arrannca con la traducción de Shadowbringer y todo el contenido del parche final de Dawntrail
+(Beastmaster y capitulo final de la MSQ).
+
+### Traducción
+
+- ***Shadowbringers*, tramo grande** (`shb-mix-001`): **105 hojas, 8.780 filas**. Cubre entregas
+  del Cristalario, conversación de PNJ por Norvrandt, las cinemáticas `VoiceMan` de la 05000 a la
+  05505, las misiones de rol de sanador (`LucKba`) y las tribus pixie (`BanPix`) y qiqirn
+  (`BanQiq`).
+
+- **Contenido nuevo del parche 7.56**: **11.332 filas** procesadas en ocho lotes, sin dejar
+  ninguna fila pendiente de revisión.
+
+  - **Domador de bestias / Adiestrador (ADI)**: el kit completo del job — **1.610 filas** entre 
+  acciones, rasgos, estados y descripciones—, más las **49** de nombres de familiar y ataque básico.
+
+  - **Minijuego del Crisol de los Indómitos**: **1.139 filas** de objetos, mascotas, bonificaciones 
+  y rótulos de tableros
+
+  - **Arco narrativo del Cuarto reflejo**: **473 filas** con Alphinaud, Estinien y Visna.
+
+  - **Objetos, criaturas y mundo**: **1.428 filas**; **816** de interfaz y mensajes de sistema, 
+  **1.218** de créditos, y **140** de revalidación de las filas que el parche modificó.
+
+- **Reclasificadas 26 hojas** que el tracker daba por «sin texto localizable»: el parche las pobló
+  con **3.144 filas** de texto real, casi todas guion del job nuevo y del arco del Cuarto.
+
+- **Correcciones de coherencia** arrastradas de versiones anteriores: barridos de `señor Chai` →
+  **maestro Chai**, restos de inglés en nombres de criatura (`crab de lava`, `drake domesticado`,
+  `vampire bat`, `serpent marino`…), y el bloque de efectos de la *Hamburguesa del Archon*, que era
+  la única de 592 descripciones de comida que seguía mostrando `EXP Bonus:` y `Duration:` en inglés.
+
+### Patcher
+
+- **Paquete Penumbra por categorías** (formato v4 de Penumbra): el mod se emite con **diez opciones
+  independientes** — Misiones · Nombres y lugares · Clases y jobs · Objetos · Objetos de evento ·
+  Coleccionables · Acciones · Logros · Registro · Interfaz—, que se activan y desactivan por
+  separado desde Penumbra. Las hojas sin categoría asignada caen en *Interfaz* en lugar de quedar
+  fuera del paquete.
+
 ## v0.4.3
 
 Versión centrada en la **calidad** de lo ya traducido más que en volumen nuevo: una campaña de

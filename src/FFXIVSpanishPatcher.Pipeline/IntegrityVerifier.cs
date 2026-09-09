@@ -4,7 +4,7 @@ using XivSpanish.GameData;
 namespace FFXIVSpanishPatcher.Pipeline;
 
 /// <summary>
-/// Mandatory post-build structural check of a generated <c>.pmp</c>.
+/// Mandatory post-build structural check of a generated Penumbra v4 <c>.pmp</c>.
 /// Returns the list of problems found; an empty list means the package is structurally sound.
 /// </summary>
 public interface IIntegrityVerifier
@@ -13,10 +13,8 @@ public interface IIntegrityVerifier
 }
 
 /// <summary>
-/// Default verifier: re-opens the zip and asserts the Penumbra manifests are present, every declared
-/// redirect file is in the archive, no entry uses an absolute/traversal path, and every declared
-/// <c>.exd</c> still begins with the <c>EXDF</c> magic (i.e. the patcher produced a structurally
-/// valid page, not a corrupt one).
+/// Default verifier: re-opens the ZIP, validates the v4 category manifest against the generated
+/// redirects, rejects legacy manifests and unsafe paths, and checks every declared EXD magic.
 /// </summary>
 public sealed class IntegrityVerifier : IIntegrityVerifier
 {
@@ -32,20 +30,34 @@ public sealed class IntegrityVerifier : IIntegrityVerifier
         using var archive = ZipFile.OpenRead(pmpPath);
         var entries = archive.Entries.ToDictionary(e => e.FullName, StringComparer.Ordinal);
 
-        foreach (var manifest in new[] { "meta.json", "default_mod.json" })
+        if (!entries.TryGetValue("meta.json", out var meta))
         {
-            if (!entries.ContainsKey(manifest))
-            {
-                problems.Add($"{manifest} missing at package root");
-            }
+            problems.Add("meta.json missing at package root");
+            return problems;
+        }
+
+        if (entries.ContainsKey("default_mod.json"))
+        {
+            problems.Add("legacy default_mod.json must not be in a v4 package");
         }
 
         foreach (var name in entries.Keys)
         {
-            if (name.StartsWith('/') || name.Contains(':') || name.Contains(".."))
+            if (!PenumbraV4ManifestVerifier.IsSafeRelativePath(name))
             {
                 problems.Add($"unsafe package path: {name}");
             }
+        }
+
+        try
+        {
+            using var stream = meta.Open();
+            using var document = System.Text.Json.JsonDocument.Parse(stream);
+            problems.AddRange(PenumbraV4ManifestVerifier.Verify(document.RootElement, declaredFiles, entries.ContainsKey));
+        }
+        catch (System.Text.Json.JsonException exception)
+        {
+            problems.Add($"invalid meta.json: {exception.Message}");
         }
 
         foreach (var modRelative in declaredFiles.Values)

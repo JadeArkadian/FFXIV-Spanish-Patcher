@@ -107,7 +107,7 @@ public partial class MainViewModel : ObservableObject
     public int SelectedCategoryCount => Categories.Count(category => category.IsEnabled && category.IsSelected);
     public bool HasSelectedCategories => SelectedCategoryCount > 0;
     public string CategorySummary =>
-        $"{SelectedCategoryCount} de {AvailableCategoryCount} categorías seleccionadas";
+        $"{SelectedCategoryCount} de {AvailableCategoryCount} categorías activadas en primera importación";
     public bool ShowCategorySelectionError => TranslationsReady && !HasSelectedCategories;
     public bool IsAdvancedClosed => !IsAdvancedOpen;
 
@@ -355,7 +355,7 @@ public partial class MainViewModel : ObservableObject
             var entries = _translations.Load();
             var counts = entries
                 .Where(entry => PackageableStatus.IsPackageable(entry, PackageableStatus.Default))
-                .GroupBy(TranslationCategories.DomainOf)
+                .GroupBy(TranslationCategoryCatalog.DomainOf)
                 .ToDictionary(group => group.Key, group => group.Count(), StringComparer.OrdinalIgnoreCase);
 
             Dispatcher.UIThread.Post(() =>
@@ -511,13 +511,17 @@ public partial class MainViewModel : ObservableObject
     {
         var version = $"v{_buildInfo.PackageVersion}"
                       + (string.IsNullOrEmpty(InstalledGameVersion) ? "" : $"-{InstalledGameVersion}");
-        var domains = string.Join(
+        var includedDomains = string.Join(
+            "\n",
+            enabled.Select(category => $"* {category.Label}"));
+        var enabledByDefaultDomains = string.Join(
             "\n",
             enabled.Where(category => category.IsSelected).Select(category => $"* {category.Label}"));
         var description = new PackageMeta().Description
                           + $"\n\nVersión del patcher: v{_buildInfo.PackageVersion}"
                           + $"\nVersión de FFXIV: {InstalledGameVersion ?? "desconocida"}"
-                          + $"\n\nCategorías incluidas:\n{domains}";
+                          + $"\n\nCategorías incluidas:\n{includedDomains}"
+                          + $"\n\nCategorías activadas en primera importación de Penumbra:\n{enabledByDefaultDomains}";
         return new PackageMeta
         {
             Version = version,

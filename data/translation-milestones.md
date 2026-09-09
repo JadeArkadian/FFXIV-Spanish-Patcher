@@ -1,5 +1,31 @@
 # Hitos de traducción
 
+## v0.5.0 — Empieza Shadowbringers
+
+Con **A Realm Reborn**, **Heavensward** y **Stormblood** ya completos, esta edición abre la
+traducción de **Shadowbringers**: **8.639/44.105 líneas (19,6 %)** de la expansión, frente al 0 %
+con el que partía. Llega además todo el contenido del **parche 7.56** de *Dawntrail*: el job de
+**domador de bestias**, su minijuego del Crisol de los Indómitos y el capítulo final de la historia.
+
+| Área | Estado |
+| --- | --- |
+| Entregas del Cristalario y diálogo de Norvrandt | Completos y revisados |
+| Cinemáticas de Shadowbringers | En curso (de la 05000 a la 05505) |
+| Misiones de rol de sanador | Completas y revisadas |
+| Misiones tribales de Shadowbringers | Pixies y qiqirn completas |
+| Domador de bestias y minijuego del Crisol | Completos y revisados |
+| Capítulo final de la historia de Dawntrail | Completo y revisado |
+
+El avance global alcanza **613.802/829.147 líneas traducibles (74,0 %)** y **4.761/7.021 hojas
+completadas (67,8 %)**.
+
+> El parche reorganizó columnas de varias hojas
+
+### Qué viene después
+
+- Seguir con la historia principal de *Shadowbringers* y su contenido restante.
+- Revisión continua de terminología y coherencia entre expansiones.
+
 ## v0.4.0 — Empieza Stormblood
 
 Con **A Realm Reborn** y **Heavensward** ya completos, esta edición abre la traducción de

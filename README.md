@@ -4,6 +4,12 @@
   <img src="docs/assets/logo-git.png" alt="FFXIV en español" width="360">
 </p>
 
+> [!NOTE]
+> **El proyecto queda en pausa por vacaciones hasta el 14 de noviembre de 2026.**
+> Durante ese tiempo no habrá versiones nuevas ni avances en la traducción, y las incidencias y
+> mensajes quedarán en espera. La última versión publicada sigue funcionando con normalidad:
+> puedes descargarla y generar el `.pmp` como siempre. ¡Gracias por la paciencia!
+
 Parcheador de español para **Final Fantasy XIV**.
 
 Web del proyecto: <https://ffxivspanish.carrd.co/>
@@ -24,8 +30,8 @@ traducibles exactas.
 
 | Métrica | Valor | Avance |
 | --- | ---: | --- |
-| Avance total por líneas | 596.958/815.173 (73,2%) | ![73,2%](https://geps.dev/progress/73.2?barColor=7ee787) |
-| Hojas OK | 4.627/6.987 (66,2%) | ![66,2%](https://geps.dev/progress/66.2?barColor=f0883e) |
+| Avance total por líneas | 613.802/829.147 (74,0%) | ![74,0%](https://geps.dev/progress/74.0?barColor=7ee787) |
+| Hojas OK | 4.761/7.021 (67,8%) | ![67,8%](https://geps.dev/progress/67.8?barColor=f0883e) |
 
 El desglose por expansión agrupa misiones, cinemáticas y conversaciones con NPC. La interfaz, los
 objetos, el combate, los sistemas y el contenido narrativo que abarca varias expansiones se reúnen
@@ -36,11 +42,11 @@ en **Elementos comunes**, sin contarlos de nuevo en cada expansión.
 | <img src="docs/assets/arr-icon.png" alt="A Realm Reborn" width="40"> | **A Realm Reborn** | 38.897/38.897 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
 | <img src="docs/assets/hw-icon.png" alt="Heavensward" width="40"> | **Heavensward** | 25.268/25.268 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
 | <img src="docs/assets/stb-icon.png" alt="Stormblood" width="40"> | **Stormblood** | 31.664/31.664 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
-| <img src="docs/assets/shb-icon.png" alt="Shadowbringers" width="40"> | **Shadowbringers** | 0/44.246 (0,0%) | ![0,0%](https://geps.dev/progress/0?barColor=da3633) |
+| <img src="docs/assets/shb-icon.png" alt="Shadowbringers" width="40"> | **Shadowbringers** | 8.639/44.105 (19,6%) | ![19,6%](https://geps.dev/progress/19.6?barColor=da3633) |
 | <img src="docs/assets/ew-icon.png" alt="Endwalker" width="40"> | **Endwalker** | 2/47.150 (0,0%) | ![0,0%](https://geps.dev/progress/0?barColor=da3633) |
-| <img src="docs/assets/dt-icon.png" alt="Dawntrail" width="40"> | **Dawntrail** | 1.143/41.505 (2,8%) | ![2,8%](https://geps.dev/progress/2.8?barColor=da3633) |
+| <img src="docs/assets/dt-icon.png" alt="Dawntrail" width="40"> | **Dawntrail** | 2.642/45.367 (5,8%) | ![5,8%](https://geps.dev/progress/5.8?barColor=da3633) |
 | <img src="docs/assets/ec-icon.png" alt="Evercold" width="40"> | **Evercold** | — (progreso desconocido) | ![0,0%](https://geps.dev/progress/0?barColor=da3633) |
-| — | **Elementos comunes** | 499.984/586.443 (85,3%) | ![85,3%](https://geps.dev/progress/85.3?barColor=7ee787) |
+| — | **Elementos comunes** | 506.690/596.696 (84,9%) | ![84,9%](https://geps.dev/progress/84.9?barColor=7ee787) |
 
 Evercold todavía no se ha publicado. Se muestra al 0 % hasta que exista contenido con el que medir
 su progreso real.
@@ -99,7 +105,8 @@ nada, no se crea un paquete vacío. Consulta la consola para conocer la cobertur
 1. Abre `FFXIVSpanishPatcher`.
 2. Si detecta la instalación de FFXIV, la ruta aparecerá automáticamente.
 3. Si no la detecta, pulsa **Examinar** y selecciona la carpeta del juego.
-4. Abre **Opciones avanzadas y categorías** si no quieres incluirlo todo. Debe quedar al menos una
+4. Abre **Opciones avanzadas y categorías** para decidir qué categorías quedarán activadas al
+   importar en Penumbra. El paquete siempre incluye traducción completa; debe quedar al menos una
    categoría marcada.
 5. Pulsa **Crear traducción para Penumbra**.
 6. Si la versión difiere, revisa el aviso y decide si quieres generar *best effort*.
@@ -124,7 +131,7 @@ Documentos/FFXIVSpanish Patcher/Output
 
 1. Abre Penumbra dentro del juego.
 2. Importa el `.pmp` generado por el parcheador.
-3. Activa el mod.
+3. Activa el mod en colección **Base/Default** y marca las categorías que quieras aplicar.
 4. En los ajustes de Dalamud, activa **Wait for plugins before game loads**.
 5. Reinicia el juego.
 
@@ -172,8 +179,8 @@ Una captura y el lugar exacto donde aparece el texto ayudan mucho.
 ### He cargado el mod en Penumbra pero no veo cambios
 
 En los ajustes de Dalamud, marca **Wait for plugins before game loads** y reinicia el juego. En
-Penumbra, comprueba también que el paquete esté instalado, activo y habilitado para el personaje o
-colección que estás usando.
+Penumbra, comprueba también que el paquete esté instalado, activo en colección **Base/Default** y
+que las categorías necesarias estén marcadas.
 
 Si no se hacen estos pasos, Penumbra puede cargar tarde y los textos no se aplicarán.
 

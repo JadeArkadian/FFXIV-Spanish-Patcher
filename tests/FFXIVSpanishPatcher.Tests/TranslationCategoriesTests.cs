@@ -179,4 +179,18 @@ public sealed class TranslationCategoriesTests
         Assert.True(TranslationCategories.IsSelected(ForSheet("Item"), selection));
         Assert.False(TranslationCategories.IsSelected(ForSheet("Quest"), selection));
     }
+
+    [Fact]
+    public void PenumbraCatalog_HasTenStableOptionsAndBuildsDefaults()
+    {
+        Assert.Equal(
+            ["misiones", "nombres", "clases", "items", "eventos", "coleccionables", "acciones", "logros", "registro", "interfaz"],
+            TranslationCategoryCatalog.All.Select(category => category.Domain));
+        Assert.Equal((1 << 10) - 1, TranslationCategoryCatalog.BuildDefaultSettings(selectedDomains: null));
+        Assert.Equal((1 << 3) | (1 << 9), TranslationCategoryCatalog.BuildDefaultSettings(["items", "INTERFAZ"]));
+    }
+
+    [Fact]
+    public void PenumbraCatalog_UnknownSheetFallsIntoVisibleInterfaceOption()
+        => Assert.Equal("interfaz", TranslationCategoryCatalog.DomainOf(ForSheet("SomeNewSheet")));
 }

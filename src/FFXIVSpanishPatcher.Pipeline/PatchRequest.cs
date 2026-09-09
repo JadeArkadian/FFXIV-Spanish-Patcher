@@ -26,8 +26,9 @@ public sealed record PatchRequest
     public string? GamePath { get; init; }
 
     /// <summary>
-    /// Selected category domains (see <see cref="TranslationCategories"/>). Null means "all
-    /// categories": every packageable entry is included. Compared case-insensitively.
+    /// Category domains enabled by default in Penumbra's Multi group. Null enables all ten.
+    /// Every packageable entry is always emitted, regardless of this selection. Compared
+    /// case-insensitively.
     /// </summary>
     public IReadOnlyCollection<string>? Categories { get; init; }
 
