@@ -4,6 +4,12 @@
   <img src="docs/assets/logo-git.png" alt="FFXIV en español" width="360">
 </p>
 
+> [!NOTE]
+> **El proyecto queda en pausa por vacaciones hasta el 14 de noviembre de 2026.**
+> Durante ese tiempo no habrá versiones nuevas ni avances en la traducción, y las incidencias y
+> mensajes quedarán en espera. La última versión publicada sigue funcionando con normalidad:
+> puedes descargarla y generar el `.pmp` como siempre. ¡Gracias por la paciencia!
+
 Parcheador de español para **Final Fantasy XIV**.
 
 Web del proyecto: <https://ffxivspanish.carrd.co/>
