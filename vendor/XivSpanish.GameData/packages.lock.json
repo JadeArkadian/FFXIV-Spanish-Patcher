@@ -4,9 +4,9 @@
     "net10.0": {
       "Lumina": {
         "type": "Direct",
-        "requested": "[7.6.1, )",
-        "resolved": "7.6.1",
-        "contentHash": "c3WhtkGaYwy6Bf2OFCOa5W/bGRlexDCLFALy9hBpIp7IQqPmAzmqQO9pg0cDQUvN+JelON06JkrJ0mK9PP40Ew==",
+        "requested": "[7.7.0, )",
+        "resolved": "7.7.0",
+        "contentHash": "VzCpeDuMf3aqORvvb6YbiVZqUou/WWA6kX7f2zyfAHXMmfg9RxoRtr3btAmkMKsJlHX7jBiozq+Y60NDXOnr2Q==",
         "dependencies": {
           "BCnEncoder.Net": "2.2.1",
           "Microsoft.Extensions.ObjectPool": "10.0.0"
