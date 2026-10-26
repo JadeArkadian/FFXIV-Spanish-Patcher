@@ -20,6 +20,9 @@
     <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
     <PublishTrimmed>true</PublishTrimmed>
     <TrimMode>full</TrimMode>
+    <!-- Use the canonical NuGet package. The SDK's implicit library-packs copy has the same
+         version but a different hash across SDK distributions, which breaks locked restore. -->
+    <DisableImplicitLibraryPacksFolder>true</DisableImplicitLibraryPacksFolder>
     <!-- Lumina is rooted below because the pipeline intentionally reflects over generated sheet
          metadata; suppress the package-level trim warning from Lumina's unannotated internals. -->
     <NoWarn>$(NoWarn);IL2104</NoWarn>
