@@ -68,9 +68,9 @@
       },
       "Microsoft.NET.ILLink.Tasks": {
         "type": "Direct",
-        "requested": "[10.0.11, )",
-        "resolved": "10.0.11",
-        "contentHash": "IBf7lbovvjGWVWXZX5cJ/cO0WXbId0Zq4BuSeT94mGZuOAP66oMeH9PTBZ9Jpp3Jb6jtK0qm/NyUbPRo1gC/wQ=="
+        "requested": "[10.0.13, )",
+        "resolved": "10.0.13",
+        "contentHash": "/SQKjpQfO+01Sr27wfL9EhWP0js9IzGCVwm7AAye4pZOEM3EmLGKbR30ptFdUOfjbKTv0Xk4b0/N4Aajhz176A=="
       },
       "Tmds.DBus.Protocol": {
         "type": "Direct",
