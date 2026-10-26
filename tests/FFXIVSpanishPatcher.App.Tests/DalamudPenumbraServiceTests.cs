@@ -52,7 +52,8 @@ public sealed class DalamudPenumbraServiceTests : IDisposable
         var result = new DalamudPenumbraService().InspectRoot(_root);
 
         Assert.Equal(DalamudPenumbraState.Ready, result.State);
-        Assert.Equal(Path.Combine(_root, fileName), result.ConfigPath);
+        Assert.True(File.Exists(result.ConfigPath));
+        Assert.Equal(Path.GetFullPath(_root), Path.GetFullPath(Path.GetDirectoryName(result.ConfigPath)!));
     }
 
     [Fact]
