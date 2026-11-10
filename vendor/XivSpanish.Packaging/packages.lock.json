@@ -17,8 +17,8 @@
       },
       "Lumina": {
         "type": "Transitive",
-        "resolved": "7.6.1",
-        "contentHash": "c3WhtkGaYwy6Bf2OFCOa5W/bGRlexDCLFALy9hBpIp7IQqPmAzmqQO9pg0cDQUvN+JelON06JkrJ0mK9PP40Ew==",
+        "resolved": "7.7.2",
+        "contentHash": "tIjvhV2yyk8kHJa4Wxd0AH+y7P1tgmzvOU9uOUwdy/dUcBocWzEAWJlUnuHXOFnsEBaAE3iA+vHWYfkqVcc7TA==",
         "dependencies": {
           "BCnEncoder.Net": "2.2.1",
           "Microsoft.Extensions.ObjectPool": "10.0.0"
@@ -43,7 +43,7 @@
       "xivspanish.gamedata": {
         "type": "Project",
         "dependencies": {
-          "Lumina": "[7.6.1, )",
+          "Lumina": "[7.7.2, )",
           "Lumina.Excel": "[7.5.0, )",
           "XivSpanish.Core": "[0.0.0, )"
         }
