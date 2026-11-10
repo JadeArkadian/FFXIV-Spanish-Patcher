@@ -353,8 +353,8 @@
       },
       "Tmds.DBus.Protocol": {
         "type": "Transitive",
-        "resolved": "0.95.1",
-        "contentHash": "IbGhqZAqqgB/DkT70+lAk4MNv95tZtsTMFQ+S3uGy0aTfOkGVeFjeNJsX8dBI/3+CPnO5XW6lRQKGeFEgHElKw=="
+        "resolved": "0.95.2",
+        "contentHash": "4zlJSYYZGCKnF5xE1L5VEm5YsfjLTz5jlWBgvBxHA7yk8Lnys/6WWpeD+CWmNm4QmawR+x0xIbGGZNcMxcy8nQ=="
       },
       "xunit.analyzers": {
         "type": "Transitive",
@@ -439,7 +439,7 @@
           "CommunityToolkit.Mvvm": "[8.4.2, )",
           "FFXIVSpanishPatcher.Pipeline": "[0.0.0, )",
           "Markdig": "[1.6.0, )",
-          "Tmds.DBus.Protocol": "[0.95.1, )"
+          "Tmds.DBus.Protocol": "[0.95.2, )"
         }
       },
       "ffxivspanishpatcher.pipeline": {
