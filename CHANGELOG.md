@@ -2,6 +2,25 @@
 
 Resumen de todos los cambios relevantes del proyecto.
 
+## v0.5.1
+
+### Traducción
+
+- Actualizado el corpus embebido a la versión de juego **2026.11.03.0000.0000**.
+- Procesado el delta del parche: **576 filas de 27 hojas** resueltas (**324 aprobadas y 252
+  `rejected`**). La validación manual en cliente sigue pendiente.
+- Completado el lote `quest-job-sb-aoz-001`: **63 hojas** de misiones de jobs de *Stormblood*, la
+  línea del Mago Azul y textos comunes; **4.772 filas aprobadas** y **18 `rejected`**. El smoke-test
+  en cliente sigue pendiente.
+- Avance parcial en las misiones de *Shadowbringers*: **33 hojas y 2.842 filas** aplicadas y
+  auditadas; la tanda sigue abierta.
+- Recalculado el progreso global desde los trackers: **627.275/827.240 líneas traducibles (75,8 %)**
+  y **4.975/7.024 hojas OK (70,8 %)**.
+
+### Patcher
+
+- Actualizado el SDK de .NET a **11.0.100**.
+
 ## v0.5.0
 
 Esta versión arrannca con la traducción de Shadowbringer y todo el contenido del parche final de Dawntrail
