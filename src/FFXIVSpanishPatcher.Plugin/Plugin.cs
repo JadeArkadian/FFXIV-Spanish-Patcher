@@ -58,6 +58,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
     private readonly DalamudStartupWaitService _startupWaitService = new(typeof(IDalamudPluginInterface).Assembly);
     private PluginConfiguration? _configuration;
     private IPluginConfigurationStore? _configurationStore;
+    private bool _configurationReadOnly;
     private PenumbraAvailability _penumbraAvailability = new(
         PenumbraAvailabilityStatus.Unavailable, 0, 0, null,
         "Penumbra aún no se ha comprobado.");
@@ -109,9 +110,12 @@ public sealed class Plugin : IAsyncDalamudPlugin
     {
         _configurationStore = new DalamudPluginConfigurationStore(PluginInterface);
         _configuration = _configurationStore.Load();
-        if (_configuration.Version != PluginConfiguration.CurrentVersion)
+        _configurationReadOnly = _configurationStore.IsReadOnly;
+        if (_configurationReadOnly)
         {
-            throw new InvalidOperationException("La configuración del plugin no pudo migrarse.");
+            Log.Warning(
+                "La configuración usa la versión futura {ConfigurationVersion}; se usarán los ajustes conocidos sin guardar cambios.",
+                _configuration.Version);
         }
 
         RefreshStartupWait(initialCheck: true);
@@ -907,9 +911,17 @@ public sealed class Plugin : IAsyncDalamudPlugin
         if (ImGui.BeginChild("Automatización", size, true, DashboardCardFlags))
         {
             DrawCardHeading("AJUSTES", "Automatización");
+            if (_configurationReadOnly && _configuration is { } futureConfiguration)
+            {
+                ImGui.TextColored(Gold,
+                    $"Configuración v{futureConfiguration.Version}: se usarán los ajustes conocidos, pero los ajustes del plugin no se guardarán. Actualízalo para volver a editarlos.");
+                ImGui.Spacing();
+            }
+
             if (_configuration is { } configuration && _configurationStore is { } store)
             {
                 var autoRegeneration = configuration.AutoRegenerationEnabled;
+                ImGui.BeginDisabled(_configurationReadOnly);
                 if (DrawFramedCheckbox("Mantener la traducción instalada y actualizada automáticamente", ref autoRegeneration))
                 {
                     configuration.AutoRegenerationEnabled = autoRegeneration;
@@ -917,6 +929,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
                     RefreshRegenerationDecision();
                     TryStartAutomaticRegeneration();
                 }
+                ImGui.EndDisabled();
             }
 
             ImGui.TextDisabled("Administra únicamente Base/Default; no altera otras colecciones.");

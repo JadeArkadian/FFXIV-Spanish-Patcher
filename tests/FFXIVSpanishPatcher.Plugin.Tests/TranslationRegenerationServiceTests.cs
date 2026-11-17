@@ -104,6 +104,7 @@ public sealed class TranslationRegenerationServiceTests
     private sealed class Store : IPluginConfigurationStore
     {
         public PluginConfiguration? Saved { get; private set; }
+        public bool IsReadOnly => false;
         public PluginConfiguration Load() => new();
         public void Save(PluginConfiguration configuration) => Saved = configuration;
     }

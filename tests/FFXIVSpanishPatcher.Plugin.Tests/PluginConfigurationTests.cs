@@ -45,12 +45,10 @@ public sealed class PluginConfigurationTests
         Assert.Same(fingerprint, configuration.LastSuccessfulFingerprint);
     }
 
-    [Theory]
-    [InlineData(-1)]
-    [InlineData(2)]
-    public void Migrate_UnsupportedVersion_Throws(int version)
+    [Fact]
+    public void Migrate_NegativeVersion_Throws()
     {
-        var saved = new PluginConfiguration { Version = version };
+        var saved = new PluginConfiguration { Version = -1 };
 
         Assert.Throws<InvalidOperationException>(() => PluginConfiguration.Migrate(saved));
     }
@@ -94,6 +92,7 @@ public sealed class PluginConfigurationTests
     private sealed class RecordingStore : IPluginConfigurationStore
     {
         public PluginConfiguration? Saved { get; private set; }
+        public bool IsReadOnly => false;
         public PluginConfiguration Load() => new();
         public void Save(PluginConfiguration configuration) => Saved = configuration;
     }

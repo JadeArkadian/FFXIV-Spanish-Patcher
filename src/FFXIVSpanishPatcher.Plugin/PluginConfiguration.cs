@@ -7,7 +7,7 @@ namespace FFXIVSpanishPatcher.Plugin;
 [Serializable]
 public sealed class PluginConfiguration : IPluginConfiguration
 {
-    public const int CurrentVersion = 1;
+    public const int CurrentVersion = 2;
 
     public int Version { get; set; } = CurrentVersion;
 
@@ -21,6 +21,12 @@ public sealed class PluginConfiguration : IPluginConfiguration
 
     public BuildFingerprint? LastSuccessfulFingerprint { get; set; }
 
+    /// <summary>Retained for compatibility with configurations written by newer plugin builds.</summary>
+    public bool PluginUpdateNotificationsEnabled { get; set; } = true;
+
+    /// <summary>Last plugin version whose update notification was shown.</summary>
+    public string? LastNotifiedPluginUpdateVersion { get; set; }
+
     public static PluginConfiguration Migrate(PluginConfiguration? savedConfiguration)
     {
         if (savedConfiguration is null)
@@ -32,8 +38,7 @@ public sealed class PluginConfiguration : IPluginConfiguration
 
         if (configuration.Version > CurrentVersion)
         {
-            throw new InvalidOperationException(
-                $"La configuración usa versión futura {configuration.Version}; esta versión admite hasta {CurrentVersion}.");
+            return configuration;
         }
 
         if (configuration.Version < 0)
@@ -47,6 +52,12 @@ public sealed class PluginConfiguration : IPluginConfiguration
             configuration.Version = 1;
         }
 
+        if (configuration.Version == 1)
+        {
+            configuration.PluginUpdateNotificationsEnabled = true;
+            configuration.Version = 2;
+        }
+
         return configuration;
     }
 }
@@ -54,6 +65,8 @@ public sealed class PluginConfiguration : IPluginConfiguration
 /// <summary>Storage boundary; unit tests use configuration instances without touching Dalamud storage.</summary>
 public interface IPluginConfigurationStore
 {
+    bool IsReadOnly { get; }
+
     PluginConfiguration Load();
 
     void Save(PluginConfiguration configuration);
@@ -70,6 +83,11 @@ public static class BuildFingerprintPersistence
         }
 
         configuration.LastSuccessfulFingerprint = result.PersistedFingerprint;
+        if (store.IsReadOnly)
+        {
+            return false;
+        }
+
         store.Save(configuration);
         return true;
     }
@@ -77,12 +95,29 @@ public static class BuildFingerprintPersistence
 
 internal sealed class DalamudPluginConfigurationStore(IDalamudPluginInterface pluginInterface) : IPluginConfigurationStore
 {
+    private bool _isReadOnly;
+
+    public bool IsReadOnly => _isReadOnly;
+
     public PluginConfiguration Load()
     {
-        var configuration = PluginConfiguration.Migrate(pluginInterface.GetPluginConfig() as PluginConfiguration);
-        pluginInterface.SavePluginConfig(configuration);
+        var savedConfiguration = pluginInterface.GetPluginConfig() as PluginConfiguration;
+        _isReadOnly = savedConfiguration is not null
+            && savedConfiguration.Version > PluginConfiguration.CurrentVersion;
+        var configuration = PluginConfiguration.Migrate(savedConfiguration);
+        if (!_isReadOnly)
+        {
+            pluginInterface.SavePluginConfig(configuration);
+        }
+
         return configuration;
     }
 
-    public void Save(PluginConfiguration configuration) => pluginInterface.SavePluginConfig(configuration);
+    public void Save(PluginConfiguration configuration)
+    {
+        if (!_isReadOnly)
+        {
+            pluginInterface.SavePluginConfig(configuration);
+        }
+    }
 }
