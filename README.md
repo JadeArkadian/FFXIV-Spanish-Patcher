@@ -67,7 +67,8 @@ Penumbra y la regenera solo cuando cambia el juego o llega una versión nueva.
 3. Escribe `/ffxives`, pulsa **Instalar traducción** y reinicia el juego cuando lo pida.
 
 La guía completa, con categorías, actualizaciones y solución de problemas, está en
-[`docs/PLUGIN.md`](docs/PLUGIN.md).
+[`docs/PLUGIN.md`](docs/PLUGIN.md), y sus preguntas frecuentes en
+[`docs/PLUGIN_FAQ.md`](docs/PLUGIN_FAQ.md).
 
 ### Opción clásica: patcher de escritorio
 
@@ -183,6 +184,9 @@ este proyecto.
 Si el juego sigue en inglés, se cierra, tus macros dejan de funcionar o acaba de salir un parche de
 FFXIV, consulta [`docs/FAQ.md`](docs/FAQ.md).
 
+Las dudas sobre el plugin (por qué necesita Penumbra, si hace falta el patcher, cómo se actualiza)
+están en [`docs/PLUGIN_FAQ.md`](docs/PLUGIN_FAQ.md).
+
 ## Qué se traduce
 
 La aplicación permite activar o desactivar bloques de traducción:
@@ -246,6 +250,6 @@ dotnet publish src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj -c Rel
 ```
 
 El diseño técnico está en `docs/DESIGN.md`, la guía del plugin en `docs/PLUGIN.md`, las preguntas
-frecuentes en `docs/FAQ.md`, la política
+frecuentes en `docs/FAQ.md` y `docs/PLUGIN_FAQ.md`, la política
 *best effort* en `docs/COMPATIBILITY.md`, la edición del historial en `docs/TRANSLATION_MILESTONES.md` y la
 validación de releases en `docs/RELEASE_CHECKLIST.md`.

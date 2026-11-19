@@ -1,7 +1,8 @@
 # FFXIV Spanish Translation Manager — plugin de Dalamud
 
-Guía de uso y soporte del plugin. Para el patcher de escritorio, consulta el
-[`README.md`](../README.md).
+Guía de uso y soporte del plugin. Las dudas habituales (por qué necesita Penumbra, si hace falta el
+patcher, qué pasa al desinstalarlo) están en [`PLUGIN_FAQ.md`](PLUGIN_FAQ.md). Para el patcher de
+escritorio, consulta el [`README.md`](../README.md).
 
 ## Qué hace
 
@@ -157,7 +158,8 @@ versión anterior.
 ## Solución de problemas
 
 Las dudas comunes al plugin y al patcher (macros, cierres del juego, parches de FFXIV, errores de
-traducción) están en [`FAQ.md`](FAQ.md). Aquí se tratan las propias del plugin.
+traducción) están en [`FAQ.md`](FAQ.md), y las preguntas generales sobre el plugin en
+[`PLUGIN_FAQ.md`](PLUGIN_FAQ.md). Aquí se tratan los problemas propios del plugin.
 
 ### El gestor pide instalar Penumbra
 

@@ -2,7 +2,8 @@
 
 Dudas comunes al plugin de Dalamud y al patcher de escritorio. Los problemas propios de la
 instalación del plugin (Penumbra ausente, carga temprana, reinicios) están en
-[`PLUGIN.md`](PLUGIN.md#solución-de-problemas).
+[`PLUGIN.md`](PLUGIN.md#solución-de-problemas), y las preguntas sobre el plugin en sí (por qué
+necesita Penumbra, si hace falta el patcher, cómo se actualiza) en [`PLUGIN_FAQ.md`](PLUGIN_FAQ.md).
 
 ## El juego sigue en inglés
 

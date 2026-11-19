@@ -67,6 +67,8 @@ vendorizado propio bajo `vendor/`.
 - `docs/DESIGN.md` - diseno historico/arquitectura, incluida la del plugin.
 - `docs/PLUGIN.md` - guia de usuario y soporte del plugin.
 - `docs/FAQ.md` - preguntas frecuentes comunes a plugin y patcher; el README solo lo enlaza.
+- `docs/PLUGIN_FAQ.md` - preguntas frecuentes propias del plugin (por que Penumbra, patcher vs
+  plugin, actualizaciones, privacidad, desinstalar).
 - `README.md`, `CONTRIBUTING.md`, `AI_USAGE.md`, `NOTICE.md` - docs publicas/legal/uso.
 
 ## `vendor/`: codigo propio
