@@ -2,12 +2,6 @@
   "version": 1,
   "dependencies": {
     "net10.0": {
-      "Microsoft.NET.ILLink.Tasks": {
-        "type": "Direct",
-        "requested": "[10.0.15, )",
-        "resolved": "10.0.15",
-        "contentHash": "u0WnRcZgBZYHlVFpbe/3Adpmb9rmNJ8/fmEwqc/xjB7fFppq+gfaLJd3Sdaw+J02zV0eP/T9dneQ3Dv5jWw6bw=="
-      },
       "ZstdSharp.Port": {
         "type": "Direct",
         "requested": "[0.8.8, )",
