@@ -33,6 +33,43 @@ public sealed record ModIdentityResolution(
 }
 
 /// <summary>
+/// Remembers the last resolution so the plugin does not read every mod's <c>meta.json</c> on the
+/// game thread each time Penumbra's availability is reconciled. The remembered answer is reused
+/// only while Penumbra reports the same mod root and the same set of mod directories and the
+/// candidates are still on disk; a mod added, deleted, moved or rediscovered changes that set and
+/// forces a fresh scan. Edits that keep the set intact (this plugin's own regeneration) must call
+/// <see cref="Invalidate"/>. The transactional installer never uses this: it always scans.
+/// </summary>
+public sealed class CachedModIdentityResolver(IPenumbraModRegistry registry)
+{
+    private readonly PenumbraModIdentityService _service = new(registry);
+    private volatile Entry? _entry;
+
+    public ModIdentityResolution Resolve(string modRootPath)
+    {
+        var directories = registry.GetModList().Keys.Order(StringComparer.Ordinal).ToArray();
+        if (_entry is { } entry
+            && StringComparer.Ordinal.Equals(entry.ModRootPath, modRootPath)
+            && entry.Directories.AsSpan().SequenceEqual(directories)
+            && entry.Resolution.Candidates.All(candidate => Directory.Exists(candidate.FullPath)))
+        {
+            return entry.Resolution;
+        }
+
+        var resolution = _service.Resolve(modRootPath);
+        // An unsafe root is a condition of the filesystem, not of the mod list: never remember it.
+        _entry = resolution.Kind == ModIdentityResolutionKind.Unsafe
+            ? null
+            : new Entry(modRootPath, directories, resolution);
+        return resolution;
+    }
+
+    public void Invalidate() => _entry = null;
+
+    private sealed record Entry(string ModRootPath, string[] Directories, ModIdentityResolution Resolution);
+}
+
+/// <summary>
 /// Finds only an unequivocal installation within Penumbra's own mod root. Paths supplied by IPC
 /// are treated as untrusted even though Penumbra normally supplies them.
 /// </summary>
@@ -116,29 +153,42 @@ public sealed class PenumbraModIdentityService(IPenumbraModRegistry registry)
         {
             using var document = JsonDocument.Parse(File.ReadAllBytes(metaPath));
             var root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object)
+            {
+                return false;
+            }
+
             var tagged = root.TryGetProperty("ModTags", out var tags)
                 && tags.ValueKind == JsonValueKind.Array
-                && tags.EnumerateArray().Any(tag => StringComparer.Ordinal.Equals(tag.GetString(), PenumbraModIdentity.ManagedTag));
+                && tags.EnumerateArray().Any(tag => StringComparer.Ordinal.Equals(StringOrNull(tag), PenumbraModIdentity.ManagedTag));
             if (!tagged && !TranslationModIdentity.HasValidMarker(fullPath) && !HasV050CategoryFingerprint(root))
             {
                 return false;
             }
 
-            var fileVersion = root.TryGetProperty("FileVersion", out var version) && version.TryGetInt32(out var value)
-                ? value
-                : 0;
+            var fileVersion = IntOrNull(root, "FileVersion") ?? 0;
             candidate = new ModIdentityCandidate(Path.GetFileName(fullPath), fullPath, fileVersion);
             return true;
         }
-        catch (JsonException)
-        {
-            return false;
-        }
-        catch (IOException)
+        // Every mod in the library is read here, and almost all belong to someone else: content
+        // this plugin cannot parse or open means "not ours", never a failure of the whole scan.
+        catch (Exception exception) when (exception is JsonException or IOException or UnauthorizedAccessException)
         {
             return false;
         }
     }
+
+    // TryGetInt32() and GetString() throw on a value of another kind, and other authors'
+    // metadata may hold any of them.
+    private static int? IntOrNull(JsonElement parent, string property)
+        => parent.TryGetProperty(property, out var value)
+            && value.ValueKind == JsonValueKind.Number
+            && value.TryGetInt32(out var number)
+                ? number
+                : null;
+
+    private static string? StringOrNull(JsonElement element)
+        => element.ValueKind == JsonValueKind.String ? element.GetString() : null;
 
     /// <summary>
     /// v0.5 packages cannot carry our private tag. Their human-readable name, author and website
@@ -156,7 +206,7 @@ public sealed class PenumbraModIdentityService(IPenumbraModRegistry registry)
 
         var matchingGroups = groups.EnumerateArray().Where(item => item.ValueKind == JsonValueKind.Object
             && item.TryGetProperty("Name", out var name)
-            && StringComparer.Ordinal.Equals(name.GetString(), TranslationCategoryCatalog.GroupName)).ToArray();
+            && StringComparer.Ordinal.Equals(StringOrNull(name), TranslationCategoryCatalog.GroupName)).ToArray();
         if (matchingGroups.Length != 1)
         {
             return false;
@@ -165,7 +215,7 @@ public sealed class PenumbraModIdentityService(IPenumbraModRegistry registry)
         var group = matchingGroups[0];
         if (group.ValueKind != JsonValueKind.Object
             || !group.TryGetProperty("Type", out var type)
-            || !StringComparer.Ordinal.Equals(type.GetString(), "Multi")
+            || !StringComparer.Ordinal.Equals(StringOrNull(type), "Multi")
             || !group.TryGetProperty("Options", out var options)
             || options.ValueKind != JsonValueKind.Array)
         {
@@ -179,7 +229,7 @@ public sealed class PenumbraModIdentityService(IPenumbraModRegistry registry)
         {
             if (option.ValueKind != JsonValueKind.Object
                 || !option.TryGetProperty("Name", out var name)
-                || !expected.TryGetValue(name.GetString() ?? string.Empty, out var category)
+                || !expected.TryGetValue(StringOrNull(name) ?? string.Empty, out var category)
                 || !option.TryGetProperty("Files", out var files)
                 || files.ValueKind != JsonValueKind.Object)
             {
@@ -207,9 +257,7 @@ public sealed class PenumbraModIdentityService(IPenumbraModRegistry registry)
     }
 
     private static bool IsFileVersion(JsonElement metadata, int expected)
-        => metadata.TryGetProperty("FileVersion", out var version)
-            && version.TryGetInt32(out var value)
-            && value == expected;
+        => IntOrNull(metadata, "FileVersion") == expected;
 
     private static bool IsExpectedRedirect(string gamePath, string? modPath, string prefix)
         => gamePath.StartsWith("exd/", StringComparison.Ordinal)

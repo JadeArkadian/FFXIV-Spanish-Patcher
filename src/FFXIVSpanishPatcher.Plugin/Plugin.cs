@@ -60,6 +60,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
     private readonly CategorySyncService _categories = new(
         new DalamudPenumbraCategoryTransport(PluginInterface),
         new DalamudPluginDiagnosticLogger(Log));
+    private readonly CachedModIdentityResolver _identity;
     private readonly IGameDataBackend _buildInputs = new DalamudBuildInputProvider(typeof(Plugin).Assembly, DataManager);
     private readonly DalamudStartupWaitService _startupWaitService = new(typeof(IDalamudPluginInterface).Assembly);
     private PluginConfiguration? _configuration;
@@ -110,6 +111,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
 
     public Plugin()
     {
+        _identity = new CachedModIdentityResolver(_penumbra);
         _openCommand = new CommandInfo((_, _) => _windowOpen = true)
         {
             HelpMessage = "Abre FFXIV Spanish Translation Manager.",
@@ -316,7 +318,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
         var reconciliationSucceeded = false;
         try
         {
-            var identity = new PenumbraModIdentityService(_penumbra).Resolve(availability.ModDirectory);
+            var identity = _identity.Resolve(availability.ModDirectory);
             if (!_initialIdentityResolved)
             {
                 _initialIdentityResolved = true;
@@ -1602,7 +1604,9 @@ public sealed class Plugin : IAsyncDalamudPlugin
         if (_startupWait.IsReady
             && !_automaticRegenerationPaused
             && _regeneration?.RequiresBuild == true
-            && _penumbraAvailability.IsReady)
+            && _penumbraAvailability.IsReady
+            // Several Penumbra events can arrive while one regeneration runs; only the first starts it.
+            && _regenerationTask is not { IsCompleted: false })
         {
             Log.Information("Se inicia la regeneración automática de la traducción.");
             StartRegeneration();
@@ -1794,6 +1798,12 @@ public sealed class Plugin : IAsyncDalamudPlugin
         finally
         {
             _generationProgress = null;
+            if (attempted)
+            {
+                // The installation rewrites the tree without necessarily changing the mod list.
+                _identity.Invalidate();
+            }
+
             if (attempted && !succeeded)
             {
                 _automaticRegenerationPaused = true;
