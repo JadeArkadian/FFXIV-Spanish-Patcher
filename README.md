@@ -24,8 +24,8 @@ traducibles exactas.
 
 | Métrica | Valor | Avance |
 | --- | ---: | --- |
-| Avance total por líneas | 627.275/827.240 (75,8%) | ![75,8%](https://geps.dev/progress/75.8?barColor=7ee787) |
-| Hojas OK | 4.975/7.024 (70,8%) | ![70,8%](https://geps.dev/progress/70.8?barColor=7ee787) |
+| Avance total por líneas | 659.014/827.118 (79,7%) | ![79,7%](https://geps.dev/progress/79.7?barColor=7ee787) |
+| Hojas OK | 5.673/7.024 (80,8%) | ![80,8%](https://geps.dev/progress/80.8?barColor=7ee787) |
 
 El desglose por expansión agrupa misiones, cinemáticas y conversaciones con NPC. La interfaz, los
 objetos, el combate, los sistemas y el contenido narrativo que abarca varias expansiones se reúnen
@@ -35,12 +35,12 @@ en **Elementos comunes**, sin contarlos de nuevo en cada expansión.
 | :---: | --- | ---: | --- |
 | <img src="docs/assets/arr-icon.png" alt="A Realm Reborn" width="40"> | **A Realm Reborn** | 38.897/38.897 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
 | <img src="docs/assets/hw-icon.png" alt="Heavensward" width="40"> | **Heavensward** | 25.268/25.268 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
-| <img src="docs/assets/stb-icon.png" alt="Stormblood" width="40"> | **Stormblood** | 31.664/31.664 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
-| <img src="docs/assets/shb-icon.png" alt="Shadowbringers" width="40"> | **Shadowbringers** | 13.802/44.105 (31,3%) | ![31,3%](https://geps.dev/progress/31.3?barColor=da3633) |
+| <img src="docs/assets/stb-icon.png" alt="Stormblood" width="40"> | **Stormblood** | 31.661/31.664 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
+| <img src="docs/assets/shb-icon.png" alt="Shadowbringers" width="40"> | **Shadowbringers** | 44.094/44.105 (99,0%) | ![100,0%](https://geps.dev/progress/99?barColor=7ee787) |
 | <img src="docs/assets/ew-icon.png" alt="Endwalker" width="40"> | **Endwalker** | 2/47.150 (0,0%) | ![0,0%](https://geps.dev/progress/0?barColor=da3633) |
 | <img src="docs/assets/dt-icon.png" alt="Dawntrail" width="40"> | **Dawntrail** | 2.654/43.016 (6,2%) | ![6,2%](https://geps.dev/progress/6.2?barColor=da3633) |
 | <img src="docs/assets/ec-icon.png" alt="Evercold" width="40"> | **Evercold** | — (progreso desconocido) | ![0,0%](https://geps.dev/progress/0?barColor=da3633) |
-| — | **Elementos comunes** | 514.988/597.140 (86,2%) | ![86,2%](https://geps.dev/progress/86.2?barColor=7ee787) |
+| — | **Elementos comunes** | 516.438/597.018 (86,5%) | ![86,5%](https://geps.dev/progress/86.5?barColor=7ee787) |
 
 Evercold todavía no se ha publicado. Se muestra al 0 % hasta que exista contenido con el que medir
 su progreso real.
