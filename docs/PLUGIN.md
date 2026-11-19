@@ -157,9 +157,9 @@ versión anterior.
 
 ## Solución de problemas
 
-Las dudas comunes al plugin y al patcher (macros, cierres del juego, parches de FFXIV, errores de
-traducción) están en [`FAQ.md`](FAQ.md), y las preguntas generales sobre el plugin en
-[`PLUGIN_FAQ.md`](PLUGIN_FAQ.md). Aquí se tratan los problemas propios del plugin.
+Los problemas comunes al plugin y al patcher (macros, cierres del juego, errores de traducción)
+están en [`PATCHER_FAQ.md`](PATCHER_FAQ.md#problemas-en-el-juego), y las preguntas generales sobre
+el plugin en [`PLUGIN_FAQ.md`](PLUGIN_FAQ.md). Aquí se tratan los problemas propios del plugin.
 
 ### El gestor pide instalar Penumbra
 

@@ -1,8 +1,10 @@
 # Preguntas frecuentes del plugin
 
 Dudas habituales sobre **FFXIV Spanish Translation Manager**, el plugin de Dalamud. Cómo instalarlo
-y usarlo está en [`PLUGIN.md`](PLUGIN.md); los problemas comunes al plugin y al patcher (macros,
-cierres del juego, errores de traducción) están en [`FAQ.md`](FAQ.md).
+y usarlo está en [`PLUGIN.md`](PLUGIN.md); las preguntas propias del patcher de escritorio están en
+[`PATCHER_FAQ.md`](PATCHER_FAQ.md). Su sección
+[Problemas en el juego](PATCHER_FAQ.md#problemas-en-el-juego) (macros, cierres, errores de
+traducción) vale también para quien usa el plugin.
 
 ## Sobre el plugin
 

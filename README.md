@@ -181,11 +181,13 @@ este proyecto.
 
 ## Preguntas frecuentes y solución de problemas
 
-Si el juego sigue en inglés, se cierra, tus macros dejan de funcionar o acaba de salir un parche de
-FFXIV, consulta [`docs/FAQ.md`](docs/FAQ.md).
+Cada forma de instalar la traducción tiene sus preguntas frecuentes:
 
-Las dudas sobre el plugin (por qué necesita Penumbra, si hace falta el patcher, cómo se actualiza)
-están en [`docs/PLUGIN_FAQ.md`](docs/PLUGIN_FAQ.md).
+- **Plugin**: [`docs/PLUGIN_FAQ.md`](docs/PLUGIN_FAQ.md).
+- **Patcher**: [`docs/PATCHER_FAQ.md`](docs/PATCHER_FAQ.md).
+
+Si el juego sigue en inglés, se cierra o tus macros dejan de funcionar, la respuesta es la misma con
+las dos: [Problemas en el juego](docs/PATCHER_FAQ.md#problemas-en-el-juego).
 
 ## Qué se traduce
 
@@ -250,6 +252,6 @@ dotnet publish src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj -c Rel
 ```
 
 El diseño técnico está en `docs/DESIGN.md`, la guía del plugin en `docs/PLUGIN.md`, las preguntas
-frecuentes en `docs/FAQ.md` y `docs/PLUGIN_FAQ.md`, la política
+frecuentes en `docs/PATCHER_FAQ.md` y `docs/PLUGIN_FAQ.md`, la política
 *best effort* en `docs/COMPATIBILITY.md`, la edición del historial en `docs/TRANSLATION_MILESTONES.md` y la
 validación de releases en `docs/RELEASE_CHECKLIST.md`.

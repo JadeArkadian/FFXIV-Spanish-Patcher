@@ -66,9 +66,11 @@ vendorizado propio bajo `vendor/`.
 - `dalamud/` - repo custom de Dalamud: `README.md` y el `pluginmaster.json` que escribe la release.
 - `docs/DESIGN.md` - diseno historico/arquitectura, incluida la del plugin.
 - `docs/PLUGIN.md` - guia de usuario y soporte del plugin.
-- `docs/FAQ.md` - preguntas frecuentes comunes a plugin y patcher; el README solo lo enlaza.
+- `docs/PATCHER_FAQ.md` - preguntas frecuentes del patcher; su seccion "Problemas en el juego"
+  (ingles, cierres, macros) vale tambien para el plugin. El README solo lo enlaza.
 - `docs/PLUGIN_FAQ.md` - preguntas frecuentes propias del plugin (por que Penumbra, patcher vs
-  plugin, actualizaciones, privacidad, desinstalar).
+  plugin, actualizaciones, desinstalar). Misma estructura que `docs/PATCHER_FAQ.md`: mantenerlos
+  parejos.
 - `README.md`, `CONTRIBUTING.md`, `AI_USAGE.md`, `NOTICE.md` - docs publicas/legal/uso.
 
 ## `vendor/`: codigo propio
