@@ -42,21 +42,47 @@ public sealed record ModIdentityResolution(
 /// </summary>
 public sealed class CachedModIdentityResolver(IPenumbraModRegistry registry)
 {
-    private readonly PenumbraModIdentityService _service = new(registry);
     private volatile Entry? _entry;
 
     public ModIdentityResolution Resolve(string modRootPath)
+        => TryGetCached(modRootPath, out var resolution, out var directories)
+            ? resolution
+            : Scan(modRootPath, directories);
+
+    /// <summary>
+    /// The cheap half: one Penumbra call and a few directory checks, no metadata read. True with
+    /// the answer when it is already known; false with the directory set that <see cref="Scan"/>
+    /// must read. An unusable mod root is answered here, so it never needs a scan.
+    /// </summary>
+    public bool TryGetCached(string modRootPath, out ModIdentityResolution resolution, out string[] directories)
     {
-        var directories = registry.GetModList().Keys.Order(StringComparer.Ordinal).ToArray();
+        directories = registry.GetModList().Keys.Order(StringComparer.Ordinal).ToArray();
+        if (PenumbraModIdentityService.CheckRoot(modRootPath, out _) is { } unsafeRoot)
+        {
+            resolution = unsafeRoot;
+            return true;
+        }
+
         if (_entry is { } entry
             && StringComparer.Ordinal.Equals(entry.ModRootPath, modRootPath)
             && entry.Directories.AsSpan().SequenceEqual(directories)
             && entry.Resolution.Candidates.All(candidate => Directory.Exists(candidate.FullPath)))
         {
-            return entry.Resolution;
+            resolution = entry.Resolution;
+            return true;
         }
 
-        var resolution = _service.Resolve(modRootPath);
+        resolution = null!;
+        return false;
+    }
+
+    /// <summary>
+    /// The expensive half: reads the metadata of every listed mod and remembers the answer. It
+    /// makes no Penumbra call, so the plugin runs it off the game thread.
+    /// </summary>
+    public ModIdentityResolution Scan(string modRootPath, string[] directories)
+    {
+        var resolution = PenumbraModIdentityService.Resolve(modRootPath, directories);
         // An unsafe root is a condition of the filesystem, not of the mod list: never remember it.
         _entry = resolution.Kind == ModIdentityResolutionKind.Unsafe
             ? null
@@ -76,14 +102,21 @@ public sealed class CachedModIdentityResolver(IPenumbraModRegistry registry)
 public sealed class PenumbraModIdentityService(IPenumbraModRegistry registry)
 {
     public ModIdentityResolution Resolve(string modRootPath)
+        => Resolve(modRootPath, registry.GetModList().Keys);
+
+    /// <summary>
+    /// The filesystem half of the resolution: reads the metadata of the given mod directories.
+    /// It makes no Penumbra call, so it may run off the game thread.
+    /// </summary>
+    public static ModIdentityResolution Resolve(string modRootPath, IEnumerable<string> directoryNames)
     {
-        if (!TryGetSafeRoot(modRootPath, out var root, out var rootError))
+        if (CheckRoot(modRootPath, out var root) is { } unsafeRoot)
         {
-            return new ModIdentityResolution(ModIdentityResolutionKind.Unsafe, [], rootError);
+            return unsafeRoot;
         }
 
         var candidates = new List<ModIdentityCandidate>();
-        foreach (var (directoryName, _) in registry.GetModList())
+        foreach (var directoryName in directoryNames)
         {
             if (!IsSafeDirectoryName(directoryName))
             {
@@ -118,6 +151,12 @@ public sealed class PenumbraModIdentityService(IPenumbraModRegistry registry)
             && string.Equals(directoryName, Path.GetFileName(directoryName), StringComparison.Ordinal)
             && directoryName.IndexOfAny(['/', '\\']) < 0
             && directoryName is not "." and not "..";
+
+    /// <summary>Null when the mod root is usable; otherwise the <c>Unsafe</c> resolution that says why.</summary>
+    public static ModIdentityResolution? CheckRoot(string modRootPath, out string root)
+        => TryGetSafeRoot(modRootPath, out root, out var error)
+            ? null
+            : new ModIdentityResolution(ModIdentityResolutionKind.Unsafe, [], error);
 
     private static bool TryGetSafeRoot(string path, out string root, out string error)
     {

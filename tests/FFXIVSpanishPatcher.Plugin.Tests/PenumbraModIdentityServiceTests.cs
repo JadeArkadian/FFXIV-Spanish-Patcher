@@ -83,6 +83,38 @@ public sealed class PenumbraModIdentityServiceTests : IDisposable
         Assert.Equal(ModIdentityResolutionKind.NewInstallation, resolver.Resolve(_modRoot).Kind);
     }
 
+    [Fact]
+    public void CachedResolver_SeparatesTheCheapCheckFromTheFileScan()
+    {
+        WriteManagedMod("FFXIVSpanish");
+        var registry = Registry("FFXIVSpanish");
+        var resolver = new CachedModIdentityResolver(registry);
+
+        // Nothing known yet: the check hands back what to read instead of reading it.
+        Assert.False(resolver.TryGetCached(_modRoot, out _, out var directories));
+        Assert.Equal(["FFXIVSpanish"], directories);
+
+        // The scan needs no registry call, which is what lets it run off the game thread.
+        registry.ThrowOnGetModList = true;
+        var scanned = resolver.Scan(_modRoot, directories);
+        registry.ThrowOnGetModList = false;
+
+        Assert.Equal(ModIdentityResolutionKind.AdoptExisting, scanned.Kind);
+        Assert.True(resolver.TryGetCached(_modRoot, out var cached, out _));
+        Assert.Same(scanned, cached);
+    }
+
+    [Fact]
+    public void CachedResolver_AnswersAnUnusableRootWithoutAskingForAScan()
+    {
+        var resolver = new CachedModIdentityResolver(Registry("FFXIVSpanish"));
+        var missingRoot = Path.Combine(_modRoot, "no-existe");
+
+        // A scan here would only fail again; answering now keeps the caller from retrying forever.
+        Assert.True(resolver.TryGetCached(missingRoot, out var resolution, out _));
+        Assert.Equal(ModIdentityResolutionKind.Unsafe, resolution.Kind);
+    }
+
     private void WriteManagedMod(string directory)
         => WriteMod(directory, JsonSerializer.Serialize(new
         {
@@ -105,7 +137,10 @@ public sealed class PenumbraModIdentityServiceTests : IDisposable
     {
         public Dictionary<string, string> Mods { get; init; } = [];
 
-        public IReadOnlyDictionary<string, string> GetModList() => Mods;
+        public bool ThrowOnGetModList { get; set; }
+
+        public IReadOnlyDictionary<string, string> GetModList()
+            => ThrowOnGetModList ? throw new InvalidOperationException("IPC fuera del hilo del juego.") : Mods;
 
         public int AddMod(string directoryName) => 0;
 

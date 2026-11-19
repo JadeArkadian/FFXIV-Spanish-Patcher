@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using FFXIVSpanishPatcher.Pipeline;
@@ -196,6 +197,10 @@ internal sealed class TranslationManagerSession : IAsyncDisposable
     private string? _preparedSessionDirectory;
 
     private Task? _regenerationTask;
+    private Task? _identityScan;
+    private (CategorySyncStatus Status, string Message)? _lastCategoryLog;
+    // Dalamud warns at 50 ms; logging from 15 ms shows where the time goes before it gets there.
+    private const double ReconciliationLogThresholdMilliseconds = 15;
 
     // Set when a regeneration is cancelled or fails. Automatic triggers then stay quiet until the
     // user asks again, so a cancelled update is not restarted behind their back and a failing one
@@ -401,7 +406,21 @@ internal sealed class TranslationManagerSession : IAsyncDisposable
         var reconciliationSucceeded = false;
         try
         {
-            var identity = _identity.Resolve(availability.ModDirectory);
+            var modRoot = availability.ModDirectory;
+            if (!_identity.TryGetCached(modRoot, out var identity, out var modDirectories))
+            {
+                if (Framework.IsInFrameworkUpdateThread)
+                {
+                    // Reading every mod's metadata would stall this frame. Do it on a worker and
+                    // let its result resume the reconciliation on a later tick.
+                    StartIdentityScan(modRoot, modDirectories);
+                    return;
+                }
+
+                // A guaranteed Boot load reconciles on its own worker: nothing to stall.
+                identity = _identity.Scan(modRoot, modDirectories);
+            }
+
             if (!_initialIdentityResolved)
             {
                 _initialIdentityResolved = true;
@@ -460,6 +479,34 @@ internal sealed class TranslationManagerSession : IAsyncDisposable
         }
     }
 
+    private void StartIdentityScan(string modRoot, string[] modDirectories)
+    {
+        if (_identityScan is { IsCompleted: false })
+        {
+            return; // Its result already resumes the reconciliation.
+        }
+
+        _identityScan = Task.Run(() =>
+        {
+            try
+            {
+                var started = Stopwatch.GetTimestamp();
+                _identity.Scan(modRoot, modDirectories);
+                Log.Information(
+                    "Biblioteca de Penumbra leída fuera del hilo del juego: {Count} mods en {Milliseconds:0} ms.",
+                    modDirectories.Length,
+                    Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+                // The answer is cached now; the next tick picks it up without reading any file.
+                RetryPenumbraNow();
+            }
+            catch (Exception exception)
+            {
+                // Not rescheduled: a scan that fails would fail again on every tick.
+                Log.Warning(exception, "No se pudo leer la biblioteca de mods de Penumbra.");
+            }
+        });
+    }
+
     private void OnPenumbraModDeleted(string directoryName)
     {
         if (String.IsNullOrWhiteSpace(_managedModDirectory)
@@ -500,7 +547,14 @@ internal sealed class TranslationManagerSession : IAsyncDisposable
 
     private void OnCategorySnapshotChanged(CategorySyncSnapshot categories)
     {
-        Log.Information("Categorías: {Status}. {Message}", categories.Status, categories.Message);
+        // Every click reads Penumbra back twice; the line is worth writing only when it says something new.
+        var categoryLog = (categories.Status, categories.Message);
+        if (categoryLog != _lastCategoryLog)
+        {
+            _lastCategoryLog = categoryLog;
+            Log.Information("Categorías: {Status}. {Message}", categories.Status, categories.Message);
+        }
+
         ObserveTranslationRuntimeState(categories);
         if (!categories.UsesSessionLease
             || categories.ModEnabled is not { } enabled
@@ -567,7 +621,18 @@ internal sealed class TranslationManagerSession : IAsyncDisposable
         {
             _penumbraRetryPending = false;
             _penumbraRetryAttempt++;
-            ApplyPenumbraAvailability(_penumbra.ProbeAvailability(), restartRetryBudget: false);
+            var started = Stopwatch.GetTimestamp();
+            var availability = _penumbra.ProbeAvailability();
+            var probe = Stopwatch.GetElapsedTime(started);
+            ApplyPenumbraAvailability(availability, restartRetryBudget: false);
+            var total = Stopwatch.GetElapsedTime(started);
+            if (total.TotalMilliseconds >= ReconciliationLogThresholdMilliseconds)
+            {
+                Log.Information(
+                    "Reconciliación con Penumbra: {Total:0} ms en el hilo del juego (sondeo {Probe:0} ms).",
+                    total.TotalMilliseconds,
+                    probe.TotalMilliseconds);
+            }
         }
     }
 
