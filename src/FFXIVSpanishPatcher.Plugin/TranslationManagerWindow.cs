@@ -151,6 +151,21 @@ internal sealed class TranslationManagerWindow : IDisposable
     private static Vector2 PopupSize(float width, float height)
         => Vector2.Min(new Vector2(width, height) * Scale, ImGui.GetMainViewport().WorkSize * 0.9f);
 
+    /// <summary>
+    /// Sizes the popup about to open and centres it on the screen. Left alone, ImGui opens a popup
+    /// at the mouse, which puts a large reading panel wherever the button happened to be. The
+    /// position is applied every frame so a popup whose height is still settling stays centred.
+    /// </summary>
+    private static void PlaceNextPopup(float width, float height)
+    {
+        var viewport = ImGui.GetMainViewport();
+        ImGui.SetNextWindowSize(PopupSize(width, height), ImGuiCond.Appearing);
+        ImGui.SetNextWindowPos(
+            viewport.WorkPos + (viewport.WorkSize / 2f),
+            ImGuiCond.Always,
+            new Vector2(0.5f, 0.5f));
+    }
+
     private static void PushVisualStyle()
     {
         ImGui.PushStyleVar(ImGuiStyleVar.WindowRounding, 14f * Scale);
@@ -215,19 +230,26 @@ internal sealed class TranslationManagerWindow : IDisposable
         var rounding = 12f * Scale;
         var drawList = ImGui.GetWindowDrawList();
         drawList.ChannelsSetCurrent(0);
-        drawList.AddRectFilled(_cardStart, end, ImGui.GetColorU32(_cardBackground), rounding);
         if (_cardAccent is { } accent)
         {
-            // A state-coloured edge: the card's meaning is visible before any word is read.
+            // A state-coloured edge: the card's meaning is visible before any word is read. The
+            // whole panel is painted in the accent and the surface is laid over all but a strip,
+            // so the edge inherits the panel's rounded corners; a 5 px bar of its own cannot be
+            // rounded that much and its square ends would stick out of them.
+            drawList.AddRectFilled(_cardStart, end, ImGui.GetColorU32(accent), rounding);
             drawList.AddRectFilled(
-                _cardStart,
-                new Vector2(_cardStart.X + (5f * Scale), end.Y),
-                ImGui.GetColorU32(accent),
+                new Vector2(_cardStart.X + (5f * Scale), _cardStart.Y),
+                end,
+                ImGui.GetColorU32(_cardBackground),
                 rounding,
-                ImDrawFlags.RoundCornersLeft);
+                ImDrawFlags.RoundCornersRight);
+            drawList.AddRect(_cardStart, end, ImGui.GetColorU32(accent with { W = 0.45f }), rounding);
         }
-
-        drawList.AddRect(_cardStart, end, ImGui.GetColorU32(Line), rounding);
+        else
+        {
+            drawList.AddRectFilled(_cardStart, end, ImGui.GetColorU32(_cardBackground), rounding);
+            drawList.AddRect(_cardStart, end, ImGui.GetColorU32(Line), rounding);
+        }
         drawList.ChannelsMerge();
         // A zero-height item spanning the card tells ImGui how wide and tall the panel really is.
         ImGui.SetCursorScreenPos(new Vector2(_cardStart.X, end.Y));
@@ -355,17 +377,20 @@ internal sealed class TranslationManagerWindow : IDisposable
         ImGui.Image(logo.GetWrapOrEmpty().Handle, new Vector2(emblem, emblem), CrystalUvMin, CrystalUvMax);
 
         ImGui.SameLine(0f, 16f * Scale);
-        var top = ImGui.GetCursorPosY();
+        ImGui.BeginGroup();
         float titleHeight;
         using (_titleFont.Push())
         {
             titleHeight = ImGui.GetTextLineHeight();
         }
 
-        // The two text lines are centred on the emblem.
+        // The two text lines are centred on the emblem with a spacer item. Moving the cursor
+        // instead does not survive the SameLine between the two halves of the name: it returns to
+        // the line's original top and leaves the second half higher than the first.
         var block = titleHeight + ImGui.GetStyle().ItemSpacing.Y + ImGui.GetTextLineHeight();
-        ImGui.SetCursorPosY(top + MathF.Max(0f, (emblem - block) / 2f));
-        ImGui.BeginGroup();
+        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, Vector2.Zero);
+        ImGui.Dummy(new Vector2(0f, MathF.Max(0f, (emblem - block) / 2f)));
+        ImGui.PopStyleVar();
         using (_titleFont.Push())
         {
             ImGui.TextColored(Cyan, "FFXIV");
@@ -593,8 +618,9 @@ internal sealed class TranslationManagerWindow : IDisposable
 
         ImGui.Spacing();
         var modEnabled = _session.Configuration?.ManagedModEnabled ?? categories.ModEnabled.Value;
-        var stateUpdateRunning = _session.IsModStateUpdateRunning;
-        ImGui.BeginDisabled(stateUpdateRunning || (modEnabled == false && !categories.SessionActivationAllowed));
+        ImGui.BeginDisabled(
+            _session.IsModStateUpdateRunning
+            || (modEnabled == false && !categories.SessionActivationAllowed));
         if (DrawFramedCheckbox("Traducción activa", ref modEnabled))
         {
             _session.StartModStateUpdate(modEnabled);
@@ -602,7 +628,7 @@ internal sealed class TranslationManagerWindow : IDisposable
 
         ImGui.EndDisabled();
         ImGui.SameLine();
-        ImGui.TextDisabled(stateUpdateRunning ? "Sincronizando…" : "en Base/Default");
+        ImGui.TextDisabled("en Base/Default");
     }
 
     private void DrawStatusActions(TranslationManagerUiSnapshot ui, float width)
@@ -889,7 +915,7 @@ internal sealed class TranslationManagerWindow : IDisposable
 
     private static void DrawTextPopup(string title, string text)
     {
-        ImGui.SetNextWindowSize(PopupSize(760f, 470f), ImGuiCond.Appearing);
+        PlaceNextPopup(760f, 470f);
         if (!ImGui.BeginPopup(title))
         {
             return;
@@ -915,7 +941,7 @@ internal sealed class TranslationManagerWindow : IDisposable
 
     private void DrawMarkdownPopup()
     {
-        ImGui.SetNextWindowSize(PopupSize(860f, 620f), ImGuiCond.Appearing);
+        PlaceNextPopup(860f, 620f);
         if (!ImGui.BeginPopup("Hitos de traducción"))
         {
             return;
@@ -948,7 +974,7 @@ internal sealed class TranslationManagerWindow : IDisposable
 
     private void DrawHistoryPopup()
     {
-        ImGui.SetNextWindowSize(PopupSize(760f, 470f), ImGuiCond.Appearing);
+        PlaceNextPopup(760f, 470f);
         if (!ImGui.BeginPopup("Historial de sesión"))
         {
             return;
@@ -983,7 +1009,7 @@ internal sealed class TranslationManagerWindow : IDisposable
         }
 
         ImGui.OpenPopup("Confirmar categorías heredadas");
-        ImGui.SetNextWindowSize(PopupSize(560f, 0f), ImGuiCond.Appearing);
+        PlaceNextPopup(560f, 0f);
         if (!ImGui.BeginPopup("Confirmar categorías heredadas"))
         {
             return;
@@ -1014,7 +1040,7 @@ internal sealed class TranslationManagerWindow : IDisposable
 
     private void DrawStartupWaitConfirmationPopup()
     {
-        ImGui.SetNextWindowSize(PopupSize(600f, 0f), ImGuiCond.Appearing);
+        PlaceNextPopup(600f, 0f);
         if (!ImGui.BeginPopup("Activar carga temprana"))
         {
             return;
@@ -1051,7 +1077,7 @@ internal sealed class TranslationManagerWindow : IDisposable
 
     private void DrawGameRestartConfirmationPopup()
     {
-        ImGui.SetNextWindowSize(PopupSize(560f, 0f), ImGuiCond.Appearing);
+        PlaceNextPopup(560f, 0f);
         if (!ImGui.BeginPopupModal(
                 "Confirmar reinicio del juego",
                 ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoResize))
