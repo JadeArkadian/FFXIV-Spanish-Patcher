@@ -8,10 +8,13 @@ Parcheador de español para **Final Fantasy XIV**.
 
 Web del proyecto: <https://ffxivspanish.carrd.co/>
 
-Esta aplicación genera un mod `.pmp` para Penumbra usando los archivos de tu propia instalación del
-juego. No modifica los archivos originales de FFXIV y no incluye archivos del juego: extrae solo los
-datos necesarios, aplica las traducciones incluidas en el programa y crea un paquete listo para
-instalar.
+El proyecto crea un mod de Penumbra con la traducción usando los archivos de tu propia instalación
+del juego. No modifica los archivos originales de FFXIV y no incluye archivos del juego: extrae solo
+los datos necesarios y les aplica las traducciones incluidas en el programa.
+
+Hay dos formas de usarlo: un **plugin de Dalamud**, que instala y mantiene la traducción por ti, y
+el **patcher de escritorio**, que genera un paquete `.pmp` para importarlo a mano. Las dos producen
+el mismo mod.
 
 La traducción todavía está en progreso. Gran parte de la interfaz, nombres de personajes, NPC,
 monstruos, objetos y textos del sistema ya está traducida, pero parte del guion, conversaciones y
@@ -45,7 +48,36 @@ en **Elementos comunes**, sin contarlos de nuevo en cada expansión.
 Evercold todavía no se ha publicado. Se muestra al 0 % hasta que exista contenido con el que medir
 su progreso real.
 
-## Descargar
+## Instalar la traducción
+
+Las dos opciones necesitan Final Fantasy XIV con Dalamud y Penumbra.
+
+### Opción recomendada: plugin de Dalamud
+
+El plugin **FFXIV Spanish Translation Manager** genera la traducción dentro del juego, la instala en
+Penumbra y la regenera solo cuando cambia el juego o llega una versión nueva.
+
+1. En el juego, abre `/xlsettings` → **Experimental** → **Custom Plugin Repositories** y añade:
+
+   ```text
+   https://raw.githubusercontent.com/JadeArkadian/FFXIV-Spanish-Patcher/main/dalamud/pluginmaster.json
+   ```
+
+2. Abre `/xlplugins`, busca **FFXIV Spanish Translation Manager** e instálalo.
+3. Escribe `/ffxives`, pulsa **Instalar traducción** y reinicia el juego cuando lo pida.
+
+La guía completa, con categorías, actualizaciones y solución de problemas, está en
+[`docs/PLUGIN.md`](docs/PLUGIN.md).
+
+### Opción clásica: patcher de escritorio
+
+Aplicación independiente para Windows, Linux y macOS. Genera un `.pmp` que importas tú en Penumbra,
+y hay que repetir el proceso con cada versión nueva. Sus instrucciones están en la sección
+siguiente.
+
+## Patcher de escritorio
+
+### Descargar
 
 Ve a la página de **Releases** del proyecto y descarga el ZIP de tu sistema:
 
@@ -58,7 +90,7 @@ Descomprime el ZIP y ejecuta `FFXIVSpanishPatcher`.
 No hace falta instalar .NET ni ningún runtime aparte: el programa viene empaquetado como ejecutable
 autónomo.
 
-### Verificar descarga
+#### Verificar descarga
 
 Cada ZIP publicado incluye un fichero `*.zip.sha256` con su hash SHA-256. Descarga ambos ficheros
 en la misma carpeta y comprueba que coinciden:
@@ -80,7 +112,7 @@ En Windows, compara el resultado con el hash del fichero `.sha256` de la misma r
 Windows también llevan una firma autofirmada de FFXIVSpanish Patcher: permite detectar alteraciones,
 pero no sustituye un certificado emitido por una CA. Usa el SHA-256 como verificación principal.
 
-## Requisitos
+### Requisitos
 
 - Final Fantasy XIV instalado.
 - Penumbra instalado y funcionando en Dalamud.
@@ -94,7 +126,7 @@ En ese modo, las hojas, páginas y líneas que no existan se omiten y se contabi
 contenido válido, el resultado aparece como **Mod verificado con omisiones**; si no puede aplicarse
 nada, no se crea un paquete vacío. Consulta la consola para conocer la cobertura exacta.
 
-## Crear el mod
+### Crear el mod
 
 1. Abre `FFXIVSpanishPatcher`.
 2. Si detecta la instalación de FFXIV, la ruta aparecerá automáticamente.
@@ -121,7 +153,7 @@ Por defecto se guarda en:
 Documentos/FFXIVSpanish Patcher/Output
 ```
 
-## Instalar en Penumbra
+### Instalar en Penumbra
 
 1. Abre Penumbra dentro del juego.
 2. Importa el `.pmp` generado por el parcheador.
@@ -134,7 +166,7 @@ el juego sin traducir. Cuando puede localizar Dalamud y Penumbra, el patcher com
 está desactivado, ofrece activarlo y explica exactamente qué propiedad modificará. Si la detección o
 la escritura fallan, continúa sin mostrar errores relacionados con herramientas externas.
 
-## Actualizar o quitar el mod
+### Actualizar o quitar el mod
 
 Cuando salga una release nueva:
 
@@ -146,61 +178,10 @@ Cuando salga una release nueva:
 Después de un parche oficial de FFXIV, desactiva el mod antiguo hasta que haya una versión nueva de
 este proyecto.
 
-## Solución de problemas (Troubleshooting)
+## Preguntas frecuentes y solución de problemas
 
-### El juego se cierra en ciertos momentos
-
-Asegúrate de haber creado el mod con la última versión disponible del parcheador y con una versión
-compatible de Final Fantasy XIV. Si ya tenías un paquete anterior instalado, quítalo de Penumbra,
-genera un `.pmp` nuevo e instala ese paquete nuevo.
-
-Si sigue pasando, desinstala o desactiva el mod y envía una incidencia desde este formulario:
-
-https://tally.so/r/1ARKzp
-
-Incluye, si puedes, cuándo ocurre el cierre, qué estabas haciendo, la versión del juego, la versión
-del parcheador y si el problema desaparece al desactivar el mod.
-
-### Hay errores de traducción, textos solapados o partes en inglés
-
-La traducción sigue en progreso y puede haber textos con errores, mala colocación, mezcla de español
-e inglés o calidad irregular. Puedes ayudar enviando feedback desde este formulario:
-
-https://tally.so/r/1ARKzp
-
-Una captura y el lugar exacto donde aparece el texto ayudan mucho.
-
-### He cargado el mod en Penumbra pero no veo cambios
-
-En los ajustes de Dalamud, marca **Wait for plugins before game loads** y reinicia el juego. En
-Penumbra, comprueba también que el paquete esté instalado, activo en colección **Base/Default** y
-que las categorías necesarias estén marcadas.
-
-Si no se hacen estos pasos, Penumbra puede cargar tarde y los textos no se aplicarán.
-
-### El resultado dice «verificado con omisiones»
-
-El paquete se ha comprobado y es utilizable, pero algunas traducciones seleccionadas no existían o
-no pudieron aplicarse a la versión instalada. La consola separa `misses`, hojas, páginas y filas
-omitidas. Generar con la versión recomendada suele ofrecer la cobertura más completa.
-
-### Copiar varias líneas de la consola
-
-La consola es una única superficie seleccionable: arrastra el ratón a través de todas las líneas que
-necesites o usa **Seleccionar todo** / `Ctrl+A`, y copia con `Ctrl+C` o **Copiar log**.
-
-La consola conserva todas las líneas que emite el pipeline. Su documento es virtualizado: solo se
-componen visualmente las líneas visibles, por lo que desplazarse o seleccionar texto no depende del
-tamaño total del registro. `--debug` añade diagnóstico interno; no es necesario para ver el detalle
-normal de páginas y avisos.
-
-### Mis macros han dejado de funcionar
-
-Es un fallo conocido. Suele pasar cuando una macro invoca acciones por su nombre en inglés. Al
-aplicar la traducción, los nombres de esas acciones pasan a estar en español.
-
-Puedes traducir los nombres de las acciones dentro de tus macros o generar el mod sin aplicar la
-categoría de acciones, habilidades, rasgos y estados.
+Si el juego sigue en inglés, se cierra, tus macros dejan de funcionar o acaba de salir un parche de
+FFXIV, consulta [`docs/FAQ.md`](docs/FAQ.md).
 
 ## Qué se traduce
 
@@ -235,8 +216,8 @@ Lo más útil es incluir:
 
 ## Seguridad y límites
 
-- El parcheador no toca los archivos originales del juego.
-- El `.pmp` se instala como cualquier otro mod de Penumbra.
+- Ni el plugin ni el parcheador tocan los archivos originales del juego.
+- La traducción se instala como cualquier otro mod de Penumbra.
 - No se redistribuyen archivos de Square Enix.
 - El proyecto no está afiliado a Square Enix.
 - Usar mods en FFXIV depende de herramientas externas y queda bajo tu responsabilidad.
@@ -247,7 +228,9 @@ además por `AI_USAGE.md`.
 
 ## Compilar desde código
 
-Para desarrollo necesitas el SDK indicado en `global.json`.
+Para desarrollo necesitas el SDK indicado en `global.json`. El plugin se compila contra los
+ensamblados de Dalamud: hace falta tener XIVLauncher con Dalamud instalado o definir `DALAMUD_HOME`
+con una copia de su distribución.
 
 ```bash
 dotnet restore --locked-mode
@@ -262,6 +245,7 @@ dotnet publish src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj -c Rel
   --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
 ```
 
-El diseño técnico está en `docs/DESIGN.md`, la política *best effort* en
-`docs/COMPATIBILITY.md`, la edición del historial en `docs/TRANSLATION_MILESTONES.md` y la
+El diseño técnico está en `docs/DESIGN.md`, la guía del plugin en `docs/PLUGIN.md`, las preguntas
+frecuentes en `docs/FAQ.md`, la política
+*best effort* en `docs/COMPATIBILITY.md`, la edición del historial en `docs/TRANSLATION_MILESTONES.md` y la
 validación de releases en `docs/RELEASE_CHECKLIST.md`.

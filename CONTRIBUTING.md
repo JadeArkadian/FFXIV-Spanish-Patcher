@@ -45,6 +45,19 @@ behaviour. Missing sheets/pages/rows are recoverable when other content is usefu
 unconfirmed contamination, total read failure, output failure and integrity failure are fatal.
 Never add an option that disables final integrity verification.
 
+### Dalamud plugin changes
+
+The plugin under `src/FFXIVSpanishPatcher.Plugin` compiles against Dalamud's own assemblies. Install
+XIVLauncher with Dalamud, or point `DALAMUD_HOME` at a copy of the Dalamud distribution, before
+building the solution.
+
+The plugin reuses the pipeline: do not duplicate patching, SeString or verification logic in it. It
+manages only Penumbra's Base/Default collection, must never delete the user's mod (not on update,
+unload or uninstall), and must not copy code from Penumbra or other plugins. Automated tests use
+fakes; a change to loading, installation or Penumbra synchronisation also needs a manual check in a
+real game client. `docs/DESIGN.md` describes the architecture and `docs/PLUGIN.md` the behaviour
+users are told to expect.
+
 By contributing code, you confirm that:
 
 * You have the right to submit the contribution.

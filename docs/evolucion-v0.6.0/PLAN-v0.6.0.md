@@ -533,6 +533,11 @@ Commit: `ci(release): publish patcher and Dalamud plugin together`.
 
 ### Etapa 10 — documentación y release candidata
 
+Estado: documentación escrita el 2026-11-19. `dalamud/legal-and-credits.md` no se crea: el aviso
+legal del plugin es `LegalNotice` (Pipeline), compartido con el patcher. `AI_USAGE.md` no cambia.
+Pendiente la prueba humana completa, que exige instalar desde el repo custom y por tanto una
+primera release con plugin, y el gate de aprobación.
+
 Actualizar:
 
 - `README.md` breve con dos métodos: plugin recomendado y patcher clásico;

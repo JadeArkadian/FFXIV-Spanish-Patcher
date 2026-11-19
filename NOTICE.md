@@ -4,6 +4,9 @@
 
 FFXIVSpanish Patcher is an unofficial fan-made localization tool.
 
+This notice applies equally to the desktop application and to the Dalamud plugin
+(FFXIV Spanish Translation Manager) published from this repository.
+
 This project is not affiliated with, endorsed by, sponsored by, approved by, or supported by Square Enix.
 
 Final Fantasy XIV, FFXIV, Square Enix, and all related names, trademarks, logos, text, assets, characters, locations, and other intellectual property are the property of their respective owners.
@@ -42,6 +45,11 @@ selectable log surface and is distributed under the MIT License. Avalonia, Commu
 Lumina, Lumina.Excel, Tmds.DBus.Protocol, xUnit and other development/runtime dependencies remain
 subject to their respective licenses and copyright notices as distributed by their authors.
 ZstdSharp.Port provides the managed Zstandard codec and is distributed under the MIT License.
+
+The Dalamud plugin is built with Dalamud.NET.Sdk (MIT License) and DalamudPackager (EUPL-1.2). Both
+are build-time tools and are not redistributed. At runtime the plugin is loaded by Dalamud and talks
+to Penumbra through Penumbra's public IPC interface. No Dalamud or Penumbra source code or binaries
+are included in this repository or in the plugin package; both remain subject to their own licenses.
 
 The interface embeds Noto Serif for consistent editorial headings across Windows, Linux and macOS.
 Noto Serif is copyright The Noto Project Authors and is distributed under the SIL Open Font License

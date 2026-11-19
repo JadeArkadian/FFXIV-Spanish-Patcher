@@ -6,7 +6,9 @@ los `.md` de documentación pueden ir en español.
 ## Que es esto
 
 **FFXIVSpanish Patcher** es una app de escritorio para generar un mod `.pmp` de Penumbra con la
-traduccion al castellano de Final Fantasy XIV.
+traduccion al castellano de Final Fantasy XIV. Desde v0.6.0 el repo incluye tambien un **plugin de
+Dalamud** (FFXIV Spanish Translation Manager) que genera el mismo mod dentro del juego, lo instala
+en Penumbra y lo mantiene al dia.
 
 Landing page publica del proyecto: <https://ffxivspanish.carrd.co/>. Se usa como `Website` en el
 `meta.json` del `.pmp` generado.
@@ -34,13 +36,12 @@ vendorizado propio bajo `vendor/`.
 - `src/FFXIVSpanishPatcher.Pipeline` - orquestacion `load -> SeString gate -> extract -> patch ->
   package -> verify`, detector de ruta/version del juego, categorias, integridad y eventos
   `IProgress<PipelineEvent>`.
-- `src/FFXIVSpanishPatcher.Plugin` - entrypoint Dalamud v0.6.0; reutiliza Pipeline, verifica
-  lectura de EXH/EXD desde `IDataManager.GameData`, consulta de forma degradable la API pública
-  IPC v5 de Penumbra, contiene el instalador transaccional de árboles v4 y reconcilia de forma
-  pasiva el grupo de categorías de Base/Default. La conexión entre el generador real y el instalador
-  llega en la etapa 6 y la edición desde la ventana en la etapa 7. `Plugin.cs` es solo el punto de
-  entrada: la orquestación vive en `TranslationManagerSession`, la ventana ImGui en
-  `TranslationManagerWindow` y las notificaciones en `TranslationManagerNotifications`.
+- `src/FFXIVSpanishPatcher.Plugin` - plugin Dalamud v0.6.0; reutiliza Pipeline, lee EXH/EXD desde
+  `IDataManager.GameData`, consume de forma degradable la API pública IPC v5 de Penumbra, instala
+  árboles v4 de forma transaccional, regenera cuando cambia el fingerprint y sincroniza en ambos
+  sentidos activación y categorías de Base/Default. `Plugin.cs` es solo el punto de entrada: la
+  orquestación vive en `TranslationManagerSession`, la ventana ImGui en `TranslationManagerWindow`
+  y las notificaciones en `TranslationManagerNotifications`.
 - `vendor/XivSpanish.Core` - modelos de traduccion, JSONL, mapa de dominios, claves de origen.
 - `vendor/XivSpanish.GameData` - Lumina, EXH/EXD, `ExdPatcher`, lectura de filas, parser/tokenizer
   SeString, `GameLocator`.
@@ -62,7 +63,10 @@ vendorizado propio bajo `vendor/`.
 - `.github/workflows/release.yml` - tags `vX.Y.Z` publican zips self-contained para `win-x64`,
   `linux-x64` y `osx-arm64`.
 - `build/macos/Info.plist` - metadatos del bundle `.app`.
-- `docs/DESIGN.md` - diseno historico/arquitectura.
+- `dalamud/` - repo custom de Dalamud: `README.md` y el `pluginmaster.json` que escribe la release.
+- `docs/DESIGN.md` - diseno historico/arquitectura, incluida la del plugin.
+- `docs/PLUGIN.md` - guia de usuario y soporte del plugin.
+- `docs/FAQ.md` - preguntas frecuentes comunes a plugin y patcher; el README solo lo enlaza.
 - `README.md`, `CONTRIBUTING.md`, `AI_USAGE.md`, `NOTICE.md` - docs publicas/legal/uso.
 
 ## `vendor/`: codigo propio
@@ -239,19 +243,25 @@ Los tags validos son `vX.Y.Z` con cada numero `0..999`. El workflow:
 ## Estado actual
 
 El plan inicial F0-F7 esta completado y el proyecto ya esta en fase de mantenimiento/release. La
-evolucion v0.3.0 vive temporalmente en `docs/evolucion-v0.3.0/`; esa carpeta solo se elimina despues
+evolucion v0.6.0 vive temporalmente en `docs/evolucion-v0.6.0/`; esa carpeta solo se elimina despues
 de validar la implementacion y recibir aprobacion expresa. Pendiente normal de cada release:
 regenerar blob cuando cambie upstream, publicar tag y validar manualmente contra una instalacion real
 de FFXIV y Penumbra en las plataformas que toque. Usar `docs/RELEASE_CHECKLIST.md`.
 
 ## Plugin Dalamud v0.6.0
 
-La evolucion futura vive en `docs/evolucion-v0.6.0/`. El plugin reutiliza el motor de arbol Penumbra
-v4; no duplicar parcheo, SeString ni verificacion. Etapas 1-3 permiten prueba de carga, ZIP sin DLLs
-compartidas de Dalamud/Lumina y consulta IPC v5 degradable de Penumbra. La etapa 4 añade el núcleo
-transaccional para instalar/adoptar un árbol ya generado: no llama a `DeleteMod`, no borra al descargar
-el plugin y conserva/restaura la versión previa ante fallos. La etapa 5 administra únicamente las
-categorías de Base/Default y reconcilia los cambios externos; no toca colecciones individuales. La
-conexión al generador real y el smoke de instalación con traducciones se realiza en etapa 6. Cada
-etapa requiere tests, smoke humano y nueva aprobacion antes de su commit.
-Desinstalar o descargar el plugin nunca borra el mod de Penumbra.
+El plan vive en `docs/evolucion-v0.6.0/PLAN-v0.6.0.md`. Etapas 0-10 implementadas (la release del
+plugin aun no ha corrido en GitHub); queda la 11
+(vigilancia del contrato IPC de Penumbra) y la prueba humana completa de la etapa 10 instalando
+desde el repo custom, que solo es posible tras la primera release con plugin.
+
+Reglas que no cambian:
+
+- El plugin reutiliza el motor de arbol Penumbra v4; no duplicar parcheo, SeString ni verificacion.
+- El ZIP no lleva las DLLs que aporta Dalamud (`Dalamud`, `Lumina`, `Lumina.Excel`).
+- Sin dependencia binaria de `Penumbra.Api`: contratos IPC v5 por nombre, degradables.
+- Instalacion transaccional: no llama a `DeleteMod` y conserva/restaura la version previa ante fallos.
+- Administra unicamente Base/Default; no toca colecciones individuales.
+- Desinstalar o descargar el plugin nunca borra el mod de Penumbra.
+- Cada etapa requiere tests, smoke humano y nueva aprobacion antes de su commit.
+- `docs/PLUGIN.md` describe el comportamiento visible: actualizarlo cuando cambie.

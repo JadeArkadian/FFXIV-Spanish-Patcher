@@ -57,6 +57,19 @@ La verificación es siempre obligatoria. El pipeline construye un `.pmp` tempora
 lo verifica y solo entonces lo promueve atómicamente. Si la comprobación falla, conserva el paquete
 anterior, informa en consola y limpia staging y temporales.
 
+## Plugin de Dalamud
+
+El plugin usa el mismo pipeline y las mismas reglas de esta página, con dos diferencias:
+
+- **Sin confirmación previa.** Si la versión instalada difiere de la recomendada, genera en modo
+  *best effort* directamente, porque puede estar ejecutándose durante el arranque del juego. El
+  estado de la ventana pasa a **Traducción activa · best effort** y la tarjeta de compatibilidad
+  muestra ambas versiones.
+- **El resultado es un mod instalado, no un `.pmp`.** Donde esta página dice que no se publica un
+  paquete nuevo, en el plugin significa que no se instala nada y el mod anterior se conserva.
+
+La verificación sigue siendo obligatoria y no existe forma de saltarla desde el plugin.
+
 ## Prueba manual con una instalación antigua
 
 1. Mantener intacta la instalación de prueba y su `ffxivgame.ver`.

@@ -2,6 +2,48 @@
 
 Resumen de todos los cambios relevantes del proyecto.
 
+## v0.6.0
+
+Esta versión estrena el **plugin de Dalamud**: la traducción ya se puede instalar y mantener desde
+dentro del juego, sin generar ni importar paquetes a mano. El patcher de escritorio sigue disponible.
+
+### Plugin de Dalamud
+
+- **FFXIV Spanish Translation Manager**: nuevo plugin que genera la traducción dentro del juego, la
+  instala como mod de Penumbra y la mantiene al día. Se abre con `/ffxives` y se instala desde un
+  repositorio personalizado de Dalamud; la guía está en `docs/PLUGIN.md`.
+- **Regeneración automática**: al arrancar comprueba si ha cambiado el plugin, sus traducciones o la
+  versión de FFXIV, y solo entonces regenera el mod, antes de que el juego continúe. Se puede
+  desactivar.
+- **Categorías sincronizadas con Penumbra**: las diez categorías y el encendido del mod se pueden
+  cambiar desde el plugin o desde Penumbra; el otro lado se actualiza solo. Solo administra la
+  colección Base/Default.
+- **Instalación segura**: el mod nuevo se verifica antes de sustituir al anterior. Si la generación
+  falla o se cancela, la traducción instalada no cambia.
+- **Convivencia con el patcher**: adopta el mod creado por el patcher desde la v0.5.0 conservando
+  sus categorías. Desinstalar el plugin nunca borra el mod.
+- **Guía ante requisitos pendientes**: si falta Penumbra o el ajuste de Dalamud *Wait for plugins
+  before game loads*, el plugin explica qué hacer y puede activar el ajuste por ti.
+- **Versión de FFXIV distinta de la recomendada**: genera en modo *best effort* y lo indica en el
+  estado, en lugar de bloquearse.
+
+### Patcher
+
+- La descripción del mod generado ya no lista las categorías; en su lugar indica la **fecha y hora
+  de generación**.
+- El patcher ya no modifica el ajuste de Dalamud mientras el juego está abierto: avisa y espera a
+  que lo cierres.
+- Las filas que no existen en la instalación del juego se contabilizan como omisiones en lugar de
+  pasar desapercibidas.
+- Menor consumo de memoria al cargar las traducciones.
+
+### Distribución
+
+- Cada versión publica también el ZIP del plugin y actualiza el repositorio de Dalamud.
+- La versión de Windows del patcher **deja de publicarse en Nexus Mods** y queda solo en GitHub
+  Releases: su análisis de virus marcaba el ejecutable como poco fiable de forma recurrente. Linux y
+  macOS siguen en Nexus.
+
 ## v0.5.2
 
 Esta versión completa casi por entero el guion de misiones de *Shadowbringers*.

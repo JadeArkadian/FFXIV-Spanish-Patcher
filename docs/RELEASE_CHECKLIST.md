@@ -29,7 +29,7 @@ git diff --check
 
 - [ ] Cero errores.
 - [ ] Cero avisos de compilación.
-- [ ] Tests de pipeline, aplicación, Markdown, Dalamud y consola pasan.
+- [ ] Tests de pipeline, aplicación, Markdown, Dalamud, consola y plugin pasan.
 - [ ] El escenario de versión deliberadamente antigua pasa.
 - [ ] Un fallo de integridad conserva una salida anterior.
 
@@ -75,10 +75,30 @@ Publicar `win-x64`, `linux-x64` y `osx-arm64` con las mismas propiedades que el 
 - [ ] Integridad se ejecuta siempre.
 - [ ] Los archivos originales del juego permanecen intactos.
 
+## Plugin de Dalamud
+
+Antes del tag, con el plugin cargado como dev plugin o desde el artifact `dalamud-plugin` de CI:
+
+- [ ] Primera instalación: **Instalar traducción**, reinicio y textos en castellano.
+- [ ] Arranque sin cambios: no regenera.
+- [ ] Categorías y activación: un cambio en el plugin llega a Penumbra y al revés.
+- [ ] Cancelar una regeneración conserva la traducción instalada.
+- [ ] Penumbra desactivado y reactivado: el plugin se recupera sin recargar.
+- [ ] Adopta un mod creado con el patcher conservando sus categorías.
+- [ ] Desinstalar el plugin conserva el mod en Penumbra.
+- [ ] Windows y Linux (XIVLauncher.Core).
+
+Después del tag:
+
+- [ ] La release incluye `FFXIVSpanishTranslationManager-X.Y.Z.zip` y su `.sha256`.
+- [ ] `dalamud/pluginmaster.json` en `main` apunta a ese ZIP y declara la versión `X.Y.Z.0`.
+- [ ] Instalar desde el repositorio personalizado en `/xlplugins` funciona en una instalación limpia.
+- [ ] Actualizar desde la versión anterior regenera la traducción una sola vez.
+
 ## Cierre
 
-- [ ] Revisar `README.md`, `docs/DESIGN.md`, `docs/COMPATIBILITY.md`,
+- [ ] Revisar `README.md`, `docs/DESIGN.md`, `docs/PLUGIN.md`, `docs/FAQ.md`, `docs/COMPATIBILITY.md`,
   `docs/TRANSLATION_MILESTONES.md`, `CONTRIBUTING.md`, `NOTICE.md` y `AGENTS.md`.
 - [ ] Obtener aprobación explícita de la versión.
-- [ ] Solo después de esa aprobación, borrar `docs/evolucion-v0.3.0/`.
+- [ ] `docs/evolucion-v0.6.0/` solo se borra tras aprobación expresa, en un commit propio.
 - [ ] Crear el commit/tag final y verificar los assets publicados.
