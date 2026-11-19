@@ -19,4 +19,5 @@ coinciden, la release falla antes de publicar el ejecutable Windows.
 
 El ejecutable se publica de forma nativa en `windows-latest` y se transfiere como artifact interno a
 un job `ubuntu-latest`, donde `osslsigncode` lo firma y verifica sin modificar almacenes de confianza
-de Windows. Solo después se empaqueta y se sube a GitHub Releases y Nexus Mods.
+de Windows. Solo después se empaqueta y se sube a GitHub Releases. La versión de Windows no se
+publica en Nexus Mods: su análisis de virus marca el ejecutable como poco fiable de forma recurrente.

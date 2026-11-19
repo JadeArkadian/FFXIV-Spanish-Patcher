@@ -57,7 +57,8 @@ vendorizado propio bajo `vendor/`.
 - `tests/FFXIVSpanishPatcher.App.Tests` - tests headless de GUI/blob/viewmodel.
 - `tests/FFXIVSpanishPatcher.Plugin.Tests` - carga/cancelación, ZIP Dalamud, configuración, estado
   y contratos IPC de Penumbra con fakes.
-- `.github/workflows/ci.yml` - build + test en `main` y PR.
+- `.github/workflows/ci.yml` - build + test en `main` y PR; ejecuta tambien los scripts de
+  empaquetado del plugin y deja su ZIP como artifact.
 - `.github/workflows/release.yml` - tags `vX.Y.Z` publican zips self-contained para `win-x64`,
   `linux-x64` y `osx-arm64`.
 - `build/macos/Info.plist` - metadatos del bundle `.app`.
@@ -216,6 +217,11 @@ Los tags validos son `vX.Y.Z` con cada numero `0..999`. El workflow:
 - publica `osx-arm64` desde macOS;
 - monta `.app` en macOS, incluye `icon.icns` y firma ad-hoc;
 - adjunta zips a GitHub Release;
+- compila el plugin Dalamud con la misma version, pasa sus tests contra ese build y adjunta
+  `FFXIVSpanishTranslationManager-X.Y.Z.zip` a la misma release;
+- cuando todos los assets estan adjuntos, commitea `dalamud/pluginmaster.json` en `main` apuntando
+  a ese ZIP versionado (repo custom de Dalamud). Ese archivo lo escribe solo la release: no editarlo
+  a mano salvo para revertir una publicacion;
 - inyecta version, `RepositorySlug` y URLs de latest release en assembly metadata.
 
 ## No hacer

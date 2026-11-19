@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using System.Reflection;
 using System.Text.Json;
+using FFXIVSpanishPatcher.Pipeline;
 using FFXIVSpanishPatcher.Plugin;
 using Xunit;
 
@@ -25,18 +26,44 @@ public sealed class PluginPackageTests
         Assert.Contains("FFXIVSpanishTranslationManager.translation-milestones.md", resourceNames);
         Assert.DoesNotContain("FFXIVSpanishTranslationManager.legal-and-credits.md", resourceNames);
 
-        using var archive = ZipFile.OpenRead(ReleasePackagePath());
+        var packagePath = ReleasePackagePath();
+        using var archive = ZipFile.OpenRead(packagePath);
         var names = archive.Entries.Select(entry => entry.FullName).ToArray();
         Assert.Contains("FFXIVSpanishTranslationManager.dll", names);
         Assert.Contains("FFXIVSpanishTranslationManager.json", names);
         Assert.DoesNotContain(names, name => name is "Dalamud.dll" or "Lumina.dll" or "Lumina.Excel.dll"
             or "Microsoft.Extensions.ObjectPool.dll");
+        // A folder inside the ZIP is a leftover such as bin/Release/publish, which would bring
+        // back every excluded assembly under another path.
+        Assert.DoesNotContain(names, name => name.Contains('/') || name.Contains('\\'));
+
+        // The corpus inside the plugin DLL is already compressed, so the ZIP weighs about as much
+        // as that DLL. Much more than that means something was packed twice.
+        var pluginDll = archive.GetEntry("FFXIVSpanishTranslationManager.dll")!;
+        var packageSize = new FileInfo(packagePath).Length;
+        Assert.True(
+            packageSize < pluginDll.Length + (8 * 1024 * 1024),
+            $"El ZIP del plugin pesa {packageSize} bytes, demasiado para una DLL de {pluginDll.Length}.");
 
         using var manifest = JsonDocument.Parse(archive.GetEntry("FFXIVSpanishTranslationManager.json")!.Open());
         Assert.Equal("FFXIVSpanishTranslationManager", manifest.RootElement.GetProperty("InternalName").GetString());
         Assert.Equal(15, manifest.RootElement.GetProperty("DalamudApiLevel").GetInt32());
         Assert.True(manifest.RootElement.GetProperty("LoadSync").GetBoolean());
         Assert.True(manifest.RootElement.GetProperty("CanUnloadAsync").GetBoolean());
+    }
+
+    [Fact]
+    public void ReleasePackage_ManifestAssemblyAndModMetadataShareOneVersion()
+    {
+        var assembly = typeof(PluginLoadProbe).Assembly;
+        using var archive = ZipFile.OpenRead(ReleasePackagePath());
+        using var manifest = JsonDocument.Parse(archive.GetEntry("FFXIVSpanishTranslationManager.json")!.Open());
+        var manifestVersion = manifest.RootElement.GetProperty("AssemblyVersion").GetString();
+
+        // Dalamud compares the manifest with the loaded assembly to decide whether an update is
+        // pending, and the generated mod carries the same number in its own metadata.
+        Assert.Equal(assembly.GetName().Version!.ToString(), manifestVersion);
+        Assert.Equal(PackageMetadataFactory.PackageVersionFromAssembly(assembly) + ".0", manifestVersion);
     }
 
     [Fact]

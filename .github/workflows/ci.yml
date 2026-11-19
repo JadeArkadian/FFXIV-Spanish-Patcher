@@ -22,17 +22,10 @@ jobs:
         with:
           global-json-file: global.json
 
-      # The plugin projects compile against Dalamud's own assemblies, which Dalamud.NET.Sdk reads
-      # from DALAMUD_HOME. They are a build-time reference only and are never redistributed. The
-      # release track floats on purpose: an API-level bump must fail here until the SDK is updated.
+      # The plugin projects compile against Dalamud's own assemblies; see the script for why the
+      # release track floats.
       - name: Download Dalamud reference assemblies
-        run: |
-          dalamud="$RUNNER_TEMP/dalamud"
-          mkdir -p "$dalamud"
-          curl -fsSL --retry 3 -o "$RUNNER_TEMP/dalamud.zip" https://goatcorp.github.io/dalamud-distrib/latest.zip
-          unzip -q "$RUNNER_TEMP/dalamud.zip" -d "$dalamud"
-          test -f "$dalamud/Dalamud.dll"
-          echo "DALAMUD_HOME=$dalamud" >> "$GITHUB_ENV"
+        run: ./.github/scripts/ci/setup-dalamud.sh
 
       - name: Restore
         run: dotnet restore --locked-mode
@@ -44,6 +37,22 @@ jobs:
       # data/translations.dat is versioned, so no corpus sync is needed in CI.
       - name: Test
         run: dotnet test --no-build -c Release --verbosity minimal
+
+      # Runs the same packaging scripts as a release, so they cannot rot until tag day. The
+      # repository file is only generated and validated here; nothing is published.
+      - name: Package Dalamud plugin
+        run: |
+          ./.github/scripts/release/package-plugin.sh 0.0.0 dev
+          ./.github/scripts/release/write-pluginmaster.sh 0.0.0 v0.0.0 "${{ github.repository }}" "$RUNNER_TEMP/pluginmaster.json"
+
+      - name: Upload Dalamud plugin package
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dalamud-plugin
+          path: FFXIVSpanishTranslationManager-0.0.0.zip
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
 
   # Native smoke for binaries users download. Cross-publish proves only that the executable was
   # produced; these runners prove it stays alive on its target OS before merge or release.

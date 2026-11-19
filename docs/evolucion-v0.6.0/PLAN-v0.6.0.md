@@ -479,6 +479,10 @@ Commit: `feat(plugin): add translation manager workflows`.
 Aplicar diseño aprobado con fuentes, iconos, draw lists y notificaciones. Crear `icon.png` cuadrado y
 capturas del installer.
 
+Estado: cerrada por decisión del usuario el 2026-11-19. Rediseño de la ventana, `icon.png` y
+notificaciones implementados. Sin capturas del installer (`ImageUrls`): al tamaño que admite Dalamud
+no se llega a leer que el texto está en castellano, así que no aportan nada.
+
 Validación humana:
 
 - 100 %, 125 %, 150 %, 200 %;
@@ -493,6 +497,12 @@ No aceptar “funciona” como equivalencia de “se parece a la maqueta”.
 Commit: `feat(plugin): match approved Dalamud visual design`.
 
 ### Etapa 9 — CI, release y pluginmaster
+
+Estado: implementada el 2026-11-19 y probada en local; pendiente de su primera ejecución real en
+GitHub. La prueba de rollback necesita dos releases publicadas. Diferencia con lo planeado: el
+plugin se compila en Ubuntu, no en un job Windows, porque es IL sin código nativo y es donde la CI
+ya lo compila y prueba. `main` no tiene protección de rama, así que el commit automático usa el
+token del propio workflow.
 
 CI de PR/main:
 
