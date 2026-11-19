@@ -2,6 +2,37 @@
 
 Resumen de todos los cambios relevantes del proyecto.
 
+## v0.5.2
+
+Esta versión completa casi por entero el guion de misiones de *Shadowbringers*.
+
+### Traducción
+
+- Completado el lote `quest-shb-002`: **574 hojas** de misiones de *Shadowbringers* y tribus
+  aliadas; **23.908 filas** traducidas en 57 unidades, más **1.064** resueltas por gemelos ya
+  aprobados. Auditado al 2 % (486 filas, 12 corregidas). El smoke-test en cliente sigue pendiente.
+- Completado `quest-shb-luc-001`: **81 hojas** de los arcos de *Luc* (Norvrandt); **4.875 filas**
+  nuevas y **210** reutilizadas por gemelos. Auditado al 3 % sin defectos de payload, fidelidad ni
+  canon.
+
+- Completado `quest-banshb-002`: **44 hojas y 1.155 filas** de las misiones diarias de las tribus
+  qiqirn y enanos de *Shadowbringers*.
+
+- Completado `custom-fes-004`: **38 hojas y 924 filas** de eventos estacionales y colaboraciones
+  (2019-2025).
+
+- Resueltas las dudas acumuladas de los lotes de *Shadowbringers*, *Blue Mage* y eventos: unas
+  **400 decisiones** aplicadas al corpus y registradas en el glosario y el reparto de personajes
+  (trato tú/vos, género, nombres de lugar, Garlean, «del Séptimo Amanecer», hechizos del Pictomante
+  y del Mago Negro).
+
+- Recalculado el progreso global: **659.014/827.118 líneas traducibles (79,7 %)** y
+  **5.673/7.024 hojas OK (80,8 %)**.
+
+### Documentación
+
+- El README muestra el nuevo avance por expansión: *Shadowbringers* pasa del 31,3 % al 100,0 %.
+
 ## v0.5.1
 
 ### Traducción
