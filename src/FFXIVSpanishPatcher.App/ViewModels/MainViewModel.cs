@@ -414,11 +414,9 @@ public partial class MainViewModel : ObservableObject
             && _dalamudCheck.State == DalamudPenumbraState.RequiresResumeAfterPluginLoad)
         {
             _dalamudPromptHandled = true;
-            var enableOption = await ShowDalamudModalAsync();
-            if (enableOption && _dalamudService.TryEnableResumeAfterPluginLoad(_dalamudCheck))
+            if (await ShowDalamudModalAsync())
             {
-                _dalamudCheck = new DalamudPenumbraCheck(DalamudPenumbraState.Ready, _dalamudCheck.ConfigPath);
-                NotifyEnvironmentProperties();
+                EnableDalamudStartupWait();
             }
         }
 
@@ -574,8 +572,24 @@ public partial class MainViewModel : ObservableObject
         }
 
         _dalamudPromptHandled = true;
-        if (await ShowDalamudModalAsync()
-            && _dalamudService.TryEnableResumeAfterPluginLoad(_dalamudCheck))
+        if (await ShowDalamudModalAsync())
+        {
+            EnableDalamudStartupWait();
+        }
+    }
+
+    private void EnableDalamudStartupWait()
+    {
+        if (_dalamudService.IsGameRunning())
+        {
+            // The one case worth a message: the user asked for the change and it cannot be made now.
+            Console.Add(Warning(
+                "FFXIV está abierto: Dalamud sobrescribiría el cambio al guardar su configuración. " +
+                "Cierra el juego y vuelve a intentarlo."));
+            return;
+        }
+
+        if (_dalamudService.TryEnableResumeAfterPluginLoad(_dalamudCheck))
         {
             _dalamudCheck = new DalamudPenumbraCheck(DalamudPenumbraState.Ready, _dalamudCheck.ConfigPath);
             NotifyEnvironmentProperties();

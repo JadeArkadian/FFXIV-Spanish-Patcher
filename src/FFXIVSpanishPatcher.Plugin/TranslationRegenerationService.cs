@@ -24,6 +24,10 @@ public sealed class TranslationRegenerationService(
                 return new ModInstallResult(false, $"No se pudo generar el árbol verificable ({build.Outcome}).");
             }
 
+            // The installer switches the mod off while it replaces the files. Record that the
+            // user's choice is owed before it can happen, so even a crash cannot lose it.
+            configuration.ActivationPending = true;
+            configurationStore.Save(configuration);
             var result = await installer.InstallAsync(
                     new ModInstallRequest(
                         build.OutputPath,

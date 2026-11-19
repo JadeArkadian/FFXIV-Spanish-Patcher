@@ -19,6 +19,13 @@ public sealed class PluginConfiguration : IPluginConfiguration
     /// </summary>
     public bool? ManagedModEnabled { get; set; }
 
+    /// <summary>
+    /// True from the moment an installation may have switched the mod off until the user's choice
+    /// is back in Penumbra. While it is set, <see cref="ManagedModEnabled"/> outranks Penumbra's
+    /// state; otherwise Penumbra's state is adopted. It survives a crash in between.
+    /// </summary>
+    public bool ActivationPending { get; set; }
+
     public BuildFingerprint? LastSuccessfulFingerprint { get; set; }
 
     /// <summary>Retained for compatibility with configurations written by newer plugin builds.</summary>

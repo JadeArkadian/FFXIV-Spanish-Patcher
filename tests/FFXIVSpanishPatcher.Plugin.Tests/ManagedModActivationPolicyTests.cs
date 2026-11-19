@@ -36,15 +36,48 @@ public sealed class ManagedModActivationPolicyTests
         Assert.False(ManagedModActivationPolicy.IsSessionStateApplied(temporary, desiredEnabled: true));
     }
 
-    [Fact]
-    public void NeedsSessionRepair_UpToDatePersistentChoiceChanged_ReturnsTrue()
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(false, null)]
+    public void ChangeMadeInPenumbra_IsAdoptedNotReverted(bool penumbraState, bool? persisted)
     {
-        var snapshot = Snapshot(modEnabled: false, sessionAllowed: true, usesLease: false);
-        var regeneration = new RegenerationDecision(RegenerationDecisionKind.UpToDate, "Actualizada.");
+        var snapshot = Snapshot(modEnabled: penumbraState, sessionAllowed: true, usesLease: false);
 
-        Assert.True(ManagedModActivationPolicy.NeedsSessionRepair(snapshot, desiredEnabled: true, regeneration));
-        Assert.False(ManagedModActivationPolicy.NeedsSessionRepair(snapshot, desiredEnabled: false, regeneration));
+        Assert.True(ManagedModActivationPolicy.ShouldAdoptPenumbraState(snapshot, persisted, regenerationRunning: false));
     }
+
+    [Fact]
+    public void ChangeMadeInPenumbra_IsIgnoredWhenAlreadyAgreedOrWhileRegenerating()
+    {
+        var disabled = Snapshot(modEnabled: false, sessionAllowed: true, usesLease: false);
+        var unusable = disabled with { Status = CategorySyncStatus.WriteRejected };
+
+        Assert.False(ManagedModActivationPolicy.ShouldAdoptPenumbraState(disabled, persistedState: false, regenerationRunning: false));
+        // The installer switches the mod off while it replaces the files; that is not the user's choice.
+        Assert.False(ManagedModActivationPolicy.ShouldAdoptPenumbraState(disabled, persistedState: true, regenerationRunning: true));
+        Assert.False(ManagedModActivationPolicy.ShouldAdoptPenumbraState(unusable, persistedState: true, regenerationRunning: false));
+    }
+
+    [Theory]
+    // Nothing owed: Penumbra is the live truth, also for changes made while the manager was closed.
+    [InlineData(false, true, false, false)]
+    [InlineData(false, false, true, true)]
+    [InlineData(false, true, null, true)]
+    [InlineData(false, null, null, true)]
+    // The manager disabled the mod to regenerate and still owes the user's choice.
+    [InlineData(true, true, false, true)]
+    [InlineData(true, false, true, false)]
+    [InlineData(true, null, false, false)]
+    public void Reconciliation_FollowsPenumbraUnlessAnActivationIsOwed(
+        bool activationPending,
+        bool? persisted,
+        bool? penumbraState,
+        bool expected)
+        => Assert.Equal(expected, ManagedModActivationPolicy.DesiredAtReconciliation(
+            activationPending,
+            persisted,
+            penumbraState));
 
     private static CategorySyncSnapshot Snapshot(bool modEnabled, bool sessionAllowed, bool usesLease)
         => new(

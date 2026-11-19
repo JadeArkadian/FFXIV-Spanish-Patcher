@@ -57,6 +57,13 @@ public sealed class CategorySyncService : IAsyncDisposable
 
     public event Action<CategorySyncSnapshot>? SnapshotChanged;
 
+    /// <summary>
+    /// Raised, after <see cref="SnapshotChanged"/>, for a change Penumbra reports and this service
+    /// did not make: the user editing the mod in Penumbra's own window. Listeners adopt that
+    /// choice; none of this service's own writes raise it.
+    /// </summary>
+    public event Action<CategorySyncSnapshot>? ChangedInPenumbra;
+
     public CategorySyncSnapshot Snapshot { get; private set; }
 
     public CategorySyncSnapshot Refresh(string modDirectory)
@@ -413,9 +420,10 @@ public sealed class CategorySyncService : IAsyncDisposable
             return;
         }
 
-        // A local write carries both generation and requested snapshot. The event is still read
-        // back from Penumbra, but it does not trigger another write or a feedback loop.
-        Refresh(modDirectory);
+        // Read Penumbra back; never answer an external change with a write, which would loop.
+        // Refresh first, on its own line: with no listener "?.Invoke(Refresh(...))" would skip the read.
+        var snapshot = Refresh(modDirectory);
+        ChangedInPenumbra?.Invoke(snapshot);
     }
 
     private PersistentContext? ReadPersistentContext(string modDirectory)

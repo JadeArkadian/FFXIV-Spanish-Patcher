@@ -42,6 +42,29 @@ public sealed class TranslationRegenerationServiceTests
     }
 
     [Fact]
+    public async Task Installation_RecordsTheOwedActivationBeforeTheInstallerRuns()
+    {
+        var configuration = new PluginConfiguration();
+        var store = new Store();
+        bool? pendingSeenByInstaller = null;
+        var installer = new FakeInstaller(new ModInstallResult(false, "falló"))
+        {
+            OnInstall = () => pendingSeenByInstaller = store.Saved?.ActivationPending,
+        };
+        var service = new TranslationRegenerationService(
+            new FakeBuilder(new PatchResult(PatchOutcome.Ok, "/candidate", new PatchStatistics())),
+            installer,
+            store,
+            configuration);
+
+        await service.RegenerateAsync(Request(), "/mods", true, TestContext.Current.CancellationToken);
+
+        // Saved before the installer could switch the mod off, and still owed after it failed.
+        Assert.True(pendingSeenByInstaller);
+        Assert.True(configuration.ActivationPending);
+    }
+
+    [Fact]
     public async Task FailedBuild_DoesNotAttemptInstallationOrPersistFingerprint()
     {
         var builder = new FakeBuilder(new PatchResult(PatchOutcome.ValidationFailed, null, new PatchStatistics()));
@@ -93,8 +116,10 @@ public sealed class TranslationRegenerationServiceTests
     {
         public bool WasCalled { get; private set; }
         public ModInstallRequest? Request { get; private set; }
+        public Action? OnInstall { get; init; }
         public Task<ModInstallResult> InstallAsync(ModInstallRequest request, CancellationToken cancellationToken)
         {
+            OnInstall?.Invoke();
             WasCalled = true;
             Request = request;
             return Task.FromResult(result ?? new ModInstallResult(false, "not configured"));

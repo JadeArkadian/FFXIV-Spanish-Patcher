@@ -8,14 +8,19 @@ public sealed class PluginLoadProbeTests
     [Fact]
     public async Task LoadAsync_UsesBackgroundWorkerAndReadsExcel()
     {
-        var callerThread = Environment.CurrentManagedThreadId;
-        var probe = new RecordingProbe(readable: true);
+        // "Background" means the caller is not kept waiting for the read, which a thread id cannot
+        // prove: once the caller awaits, the pool may run the worker on that very thread. The probe
+        // instead waits for the caller to get its task back; a read done inline could never see it.
+        using var callerReturned = new ManualResetEventSlim();
+        var probe = new RecordingProbe(readable: true, callerReturned);
         await using var loader = new PluginLoadProbe(probe);
 
-        await loader.LoadAsync(TestContext.Current.CancellationToken);
+        var loading = loader.LoadAsync(TestContext.Current.CancellationToken);
+        callerReturned.Set();
+        await loading;
 
         Assert.True(probe.WasCalled);
-        Assert.NotEqual(callerThread, probe.ThreadId);
+        Assert.True(probe.RanAfterCallerReturned);
     }
 
     [Fact]
@@ -40,15 +45,16 @@ public sealed class PluginLoadProbeTests
             async () => await loader.LoadAsync(TestContext.Current.CancellationToken));
     }
 
-    private sealed class RecordingProbe(bool readable) : IPluginGameDataProbe
+    private sealed class RecordingProbe(bool readable, ManualResetEventSlim? callerReturned = null)
+        : IPluginGameDataProbe
     {
-        public int ThreadId { get; private set; }
         public bool WasCalled { get; private set; }
+        public bool RanAfterCallerReturned { get; private set; }
 
         public bool TryReadKnownExcel(CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            ThreadId = Environment.CurrentManagedThreadId;
+            RanAfterCallerReturned = callerReturned?.Wait(TimeSpan.FromSeconds(5), cancellationToken) ?? false;
             WasCalled = true;
             return readable;
         }

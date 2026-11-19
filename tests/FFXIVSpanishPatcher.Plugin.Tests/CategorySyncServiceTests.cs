@@ -156,6 +156,26 @@ public sealed class CategorySyncServiceTests
     }
 
     [Fact]
+    public async Task ChangedInPenumbra_IsRaisedForExternalChangesOnly()
+    {
+        var transport = new FakeTransport();
+        await using var service = CreateService(transport);
+        service.GrantSessionActivation("FFXIVSpanish", desiredEnabled: true);
+        var external = new List<CategorySyncSnapshot>();
+        service.ChangedInPenumbra += external.Add;
+
+        // The manager's own write must not look like the user's choice coming from Penumbra.
+        service.SetModEnabled("FFXIVSpanish", false);
+        Assert.Empty(external);
+
+        transport.SetExternalEnabled(true);
+
+        var snapshot = Assert.Single(external);
+        Assert.True(snapshot.ModEnabled);
+        Assert.Equal([(transport.Default.Id, "FFXIVSpanish", false)], transport.StateWrites);
+    }
+
+    [Fact]
     public async Task RejectedEnabledChange_RestoresReadState()
     {
         var transport = new FakeTransport { SetEnabledResult = 9 };

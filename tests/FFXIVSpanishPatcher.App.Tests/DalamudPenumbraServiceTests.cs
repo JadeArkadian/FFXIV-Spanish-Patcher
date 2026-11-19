@@ -57,10 +57,26 @@ public sealed class DalamudPenumbraServiceTests : IDisposable
     }
 
     [Fact]
+    public void TryEnable_LeavesTheFileUntouchedWhileTheGameIsRunning()
+    {
+        WriteEnvironment(enabled: false);
+        var configPath = Path.Combine(_root, "dalamudConfig.json");
+        var before = File.ReadAllBytes(configPath);
+        var service = new DalamudPenumbraService(isGameRunning: () => true);
+
+        var changed = service.TryEnableResumeAfterPluginLoad(service.InspectRoot(_root));
+
+        Assert.False(changed);
+        Assert.Equal(before, File.ReadAllBytes(configPath));
+        Assert.Empty(Directory.EnumerateFiles(_root, ".*.tmp"));
+    }
+
+    [Fact]
     public void TryEnable_AtomicallyChangesOnlyRequestedSemanticProperty()
     {
         WriteEnvironment(enabled: false);
-        var service = new DalamudPenumbraService();
+        // The developer's own game may be open while the suite runs.
+        var service = new DalamudPenumbraService(isGameRunning: () => false);
         var check = service.InspectRoot(_root);
 
         var changed = service.TryEnableResumeAfterPluginLoad(check);

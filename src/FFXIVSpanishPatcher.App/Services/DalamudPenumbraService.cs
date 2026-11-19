@@ -23,6 +23,51 @@ public sealed record DalamudPenumbraCheck(DalamudPenumbraState State, string? Co
 public sealed class DalamudPenumbraService
 {
     private const string PropertyName = DalamudStartupSettings.WaitForPluginsPropertyName;
+    private readonly Func<bool> _isGameRunning;
+
+    public DalamudPenumbraService(Func<bool>? isGameRunning = null)
+        => _isGameRunning = isGameRunning ?? DetectRunningGame;
+
+    /// <summary>
+    /// True while the game process exists. A running Dalamud owns its configuration in memory and
+    /// rewrites the whole file on its next save, so an edit made meanwhile would be lost without a
+    /// trace. Detection failures count as "not running": the edit stays best effort.
+    /// </summary>
+    public bool IsGameRunning()
+    {
+        try
+        {
+            return _isGameRunning();
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    // Under Wine/Proton the process keeps its Windows image name, extension included.
+    private static bool DetectRunningGame()
+    {
+        foreach (var process in System.Diagnostics.Process.GetProcesses())
+        {
+            using (process)
+            {
+                try
+                {
+                    if (process.ProcessName.StartsWith("ffxiv_dx11", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+                }
+                catch (InvalidOperationException)
+                {
+                    // The process ended between enumeration and inspection.
+                }
+            }
+        }
+
+        return false;
+    }
 
     public DalamudPenumbraCheck Inspect()
     {
@@ -64,7 +109,7 @@ public sealed class DalamudPenumbraService
 
     public bool TryEnableResumeAfterPluginLoad(DalamudPenumbraCheck check)
     {
-        if (check.ConfigPath is not { Length: > 0 } configPath)
+        if (check.ConfigPath is not { Length: > 0 } configPath || IsGameRunning())
         {
             return false;
         }
