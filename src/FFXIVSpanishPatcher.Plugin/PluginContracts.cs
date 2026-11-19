@@ -55,16 +55,6 @@ public interface IPenumbraCategoryTransport : IDisposable
 
     int SetSettings(Guid collectionId, string modDirectory, string groupName, IReadOnlyList<string> enabledOptions);
 
-    int SetTemporarySettings(
-        Guid collectionId,
-        string modDirectory,
-        bool inherit,
-        bool enabled,
-        int priority,
-        IReadOnlyDictionary<string, IReadOnlyList<string>> options,
-        string source,
-        int key);
-
     int RemoveTemporarySettings(Guid collectionId, string modDirectory, int key);
 }
 

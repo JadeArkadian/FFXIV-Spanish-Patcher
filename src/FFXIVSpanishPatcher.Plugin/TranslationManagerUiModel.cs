@@ -2,12 +2,11 @@ using FFXIVSpanishPatcher.Pipeline;
 
 namespace FFXIVSpanishPatcher.Plugin;
 
-public enum TranslationManagerTab
+public enum StatusTone
 {
-    Inicio,
-    Categorias,
-    Actualizaciones,
-    Ajustes,
+    Neutral,
+    Warning,
+    Error,
 }
 
 /// <summary>Pure projection consumed by the ImGui layer; it owns no Dalamud, IPC or filesystem work.</summary>
@@ -16,7 +15,10 @@ public sealed record TranslationManagerUiSnapshot(
     bool CanStartRegeneration,
     bool CanCancelRegeneration,
     bool CanEditCategories,
-    string Diagnostic);
+    string Diagnostic,
+    string StatusMessage,
+    StatusTone StatusTone,
+    bool CanRestartGame);
 
 public static class TranslationManagerUiModel
 {
@@ -27,10 +29,18 @@ public static class TranslationManagerUiModel
         CategorySyncSnapshot categories,
         RegenerationDecision? regeneration,
         PluginConfiguration? configuration,
-        BuildFingerprint? currentFingerprint)
+        BuildFingerprint? currentFingerprint,
+        bool installationMissing = false,
+        bool translationRestartRequired = false)
     {
         var operationRunning = state.Phase is PluginPhase.Checking or PluginPhase.Generating or PluginPhase.Installing or PluginPhase.Reloading;
         var installed = configuration?.LastSuccessfulFingerprint is not null;
+        var translationPresent = installed && !installationMissing;
+        var (statusMessage, statusTone) = DescribeStatus(
+            state,
+            regeneration,
+            translationPresent,
+            translationRestartRequired);
         var actionLabel = regeneration?.Kind is
             RegenerationDecisionKind.InstallationMissing or
             RegenerationDecisionKind.InstallationMissingAutoRepairDisabled
@@ -48,7 +58,49 @@ public static class TranslationManagerUiModel
                 categories,
                 regeneration,
                 configuration?.LastSuccessfulFingerprint,
-                currentFingerprint));
+                currentFingerprint),
+            statusMessage,
+            statusTone,
+            // Restarting only helps when there is an installed translation to load.
+            translationRestartRequired && translationPresent && !operationRunning);
+    }
+
+    /// <summary>
+    /// One message for the status card, most urgent first. The outcome of the last operation and a
+    /// missing installation come before a pending restart: a restart notice left by an earlier,
+    /// completed regeneration must never present a cancelled or failed one as applied.
+    /// </summary>
+    private static (string Message, StatusTone Tone) DescribeStatus(
+        PluginStateSnapshot state,
+        RegenerationDecision? regeneration,
+        bool translationPresent,
+        bool translationRestartRequired)
+    {
+        if (state.Phase is PluginPhase.ErrorRecoverable or PluginPhase.ErrorFatal)
+        {
+            return (state.Message, StatusTone.Error);
+        }
+
+        if (state.Phase is PluginPhase.Cancelled)
+        {
+            return (translationPresent
+                    ? "Operación cancelada. La traducción instalada no ha cambiado."
+                    : "Operación cancelada. La traducción no está instalada.",
+                StatusTone.Warning);
+        }
+
+        if (!translationPresent && regeneration is not null)
+        {
+            return (regeneration.Message, StatusTone.Neutral);
+        }
+
+        if (translationRestartRequired && translationPresent)
+        {
+            return ("Hay cambios pendientes de aplicar. Reinicia el juego para cargar desde el inicio el estado actual de la traducción.",
+                StatusTone.Warning);
+        }
+
+        return (regeneration?.Message ?? state.Message, StatusTone.Neutral);
     }
 
     private static string BuildDiagnostic(

@@ -63,7 +63,6 @@ public sealed class CategorySyncServiceTests
         Assert.True(snapshot.SessionActivationAllowed);
         Assert.False(snapshot.UsesSessionLease);
         Assert.Equal([(transport.Default.Id, "FFXIVSpanish", true)], transport.StateWrites);
-        Assert.Empty(transport.TemporaryWrites);
     }
 
     [Fact]
@@ -77,7 +76,6 @@ public sealed class CategorySyncServiceTests
 
         Assert.Equal(CategorySyncStatus.WriteRejected, snapshot.Status);
         Assert.False(transport.Enabled);
-        Assert.Empty(transport.TemporaryWrites);
     }
 
     [Fact]
@@ -110,7 +108,6 @@ public sealed class CategorySyncServiceTests
         Assert.Equal("Otro plugin", transport.Temporary!.Source);
         Assert.True(transport.Enabled);
         Assert.Empty(transport.RemoveRequests);
-        Assert.Empty(transport.TemporaryWrites);
     }
 
     [Fact]
@@ -143,7 +140,6 @@ public sealed class CategorySyncServiceTests
         Assert.True(snapshot.ModEnabled);
         Assert.False(snapshot.UsesSessionLease);
         Assert.Equal(["items", "misiones"], snapshot.EnabledDomains.Order());
-        Assert.Empty(transport.TemporaryWrites);
     }
 
     [Fact]
@@ -281,7 +277,6 @@ public sealed class CategorySyncServiceTests
         public List<Guid> ReadCollections { get; } = [];
         public List<(string Group, IReadOnlyList<string> Options)> Writes { get; } = [];
         public List<(Guid CollectionId, string Directory, bool Enabled)> StateWrites { get; } = [];
-        public List<TemporaryWrite> TemporaryWrites { get; } = [];
         public List<(Guid CollectionId, string Directory, int Key)> RemoveRequests { get; } = [];
         public Dictionary<string, IReadOnlyList<string>> Available { get; set; } = new()
         {
@@ -296,7 +291,6 @@ public sealed class CategorySyncServiceTests
         public int Priority { get; set; } = 7;
         public int SetResult { get; set; }
         public int SetEnabledResult { get; set; }
-        public int SetTemporaryResult { get; set; }
         public int RemoveTemporaryResult { get; set; }
         public bool Disposed { get; private set; }
         public PenumbraTemporaryModSettingsRead? Temporary { get; private set; }
@@ -340,27 +334,6 @@ public sealed class CategorySyncServiceTests
 
             Enabled = enabled;
             Inherited = false;
-            ModSettingChanged?.Invoke(collectionId, modDirectory, false);
-            return 0;
-        }
-
-        public int SetTemporarySettings(
-            Guid collectionId,
-            string modDirectory,
-            bool inherit,
-            bool enabled,
-            int priority,
-            IReadOnlyDictionary<string, IReadOnlyList<string>> options,
-            string source,
-            int key)
-        {
-            TemporaryWrites.Add(new TemporaryWrite(collectionId, modDirectory, inherit, enabled, priority, options, source, key));
-            if (SetTemporaryResult != 0)
-            {
-                return SetTemporaryResult;
-            }
-
-            Temporary = new PenumbraTemporaryModSettingsRead(0, true, inherit, enabled, priority, options, source);
             ModSettingChanged?.Invoke(collectionId, modDirectory, false);
             return 0;
         }
@@ -418,16 +391,6 @@ public sealed class CategorySyncServiceTests
                 "FFXIV Spanish Translation Manager");
 
         public void Dispose() => Disposed = true;
-
-        public sealed record TemporaryWrite(
-            Guid CollectionId,
-            string Directory,
-            bool Inherit,
-            bool Enabled,
-            int Priority,
-            IReadOnlyDictionary<string, IReadOnlyList<string>> Options,
-            string Source,
-            int Key);
     }
 
     private sealed class RecordingLogger : IPluginDiagnosticLogger

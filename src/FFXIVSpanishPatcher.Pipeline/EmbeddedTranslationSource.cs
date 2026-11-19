@@ -30,6 +30,26 @@ public sealed class EmbeddedTranslationSource(Func<Stream> openCompressedBlob) :
         using var reader = new StreamReader(zstandard, Encoding.UTF8);
 
         var entries = new List<TranslationEntry>();
+        // Status, sheet, field and page path repeat across hundreds of thousands of rows, yet the
+        // deserializer allocates a fresh string each time. Sharing one instance per distinct value
+        // saves about 125 MB on the shipped corpus. A local pool, not string.Intern: the plugin
+        // runs inside the game process, where an interned string would never be released.
+        var pool = new Dictionary<string, string>(StringComparer.Ordinal);
+        string? Shared(string? value)
+        {
+            if (value is null)
+            {
+                return null;
+            }
+
+            if (!pool.TryGetValue(value, out var shared))
+            {
+                pool[value] = shared = value;
+            }
+
+            return shared;
+        }
+
         string? line;
         while ((line = reader.ReadLine()) is not null)
         {
@@ -41,6 +61,14 @@ public sealed class EmbeddedTranslationSource(Func<Stream> openCompressedBlob) :
             var entry = JsonlSerialization.Deserialize(line);
             if (entry is not null)
             {
+                entry.Status = Shared(entry.Status);
+                if (entry.SourceKey is { } key)
+                {
+                    key.Sheet = Shared(key.Sheet)!;
+                    key.Field = Shared(key.Field)!;
+                    key.ExdPath = Shared(key.ExdPath);
+                }
+
                 entries.Add(entry);
             }
         }

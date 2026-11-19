@@ -17,7 +17,4 @@ public static class JsonlSerialization
 
     public static TranslationEntry? Deserialize(string json)
         => JsonSerializer.Deserialize(json, TranslationJsonContext.Read.TranslationEntry);
-
-    public static List<TranslationEntry>? DeserializeList(string json)
-        => JsonSerializer.Deserialize(json, TranslationJsonContext.Read.ListTranslationEntry);
 }

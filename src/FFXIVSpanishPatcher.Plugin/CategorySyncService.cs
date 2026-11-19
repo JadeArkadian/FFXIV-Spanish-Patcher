@@ -40,8 +40,6 @@ public sealed class CategorySyncService : IAsyncDisposable
     private readonly IPenumbraCategoryTransport _transport;
     private readonly IPluginDiagnosticLogger _log;
     private readonly object _gate = new();
-    private long _generation;
-    private PendingWrite? _pendingWrite;
     private string? _managedDirectory;
     private bool _sessionActivationAllowed;
     private bool _desiredModEnabled;
@@ -150,11 +148,6 @@ public sealed class CategorySyncService : IAsyncDisposable
                     enabled,
                     _sessionActivationAllowed,
                     usesSessionLease));
-                if (_pendingWrite is { } pending && pending.CollectionId == collection.Id && pending.Domains.SetEquals(domains))
-                {
-                    _pendingWrite = null;
-                }
-
                 return snapshot;
             }
             catch (Exception exception)
@@ -242,33 +235,6 @@ public sealed class CategorySyncService : IAsyncDisposable
                     : Publish(Rejected(
                         context.Collection.Name,
                         $"Penumbra rechazó el estado persistente del mod (código {stateResult})."));
-            }
-            finally
-            {
-                _handlingWrite = false;
-            }
-        }
-    }
-
-    public CategorySyncSnapshot RevokeSessionActivation(string modDirectory)
-    {
-        lock (_gate)
-        {
-            _handlingWrite = true;
-            try
-            {
-                _sessionActivationAllowed = false;
-                var collection = _transport.GetDefaultCollection();
-                if (collection is null)
-                {
-                    return Refresh(modDirectory);
-                }
-
-                var result = RemoveOwnSessionLease(collection.Id, modDirectory);
-                return result is 0 or 1
-                    ? Refresh(modDirectory)
-                    : Publish(Rejected(collection.Name,
-                        $"Penumbra rechazó la retirada de la activación temporal (código {result})."));
             }
             finally
             {
@@ -378,11 +344,9 @@ public sealed class CategorySyncService : IAsyncDisposable
             _handlingWrite = true;
             try
             {
-                _pendingWrite = new PendingWrite(++_generation, collection.Id, selected);
                 var result = _transport.SetSettings(collection.Id, modDirectory, TranslationCategoryCatalog.GroupName, options);
                 if (result != 0)
                 {
-                    _pendingWrite = null;
                     return Publish(current with
                     {
                         Status = CategorySyncStatus.WriteRejected,
@@ -506,8 +470,6 @@ public sealed class CategorySyncService : IAsyncDisposable
         SnapshotChanged?.Invoke(snapshot);
         return snapshot;
     }
-
-    private sealed record PendingWrite(long Generation, Guid CollectionId, HashSet<string> Domains);
 
     private sealed record PersistentContext(PenumbraCollection Collection, PenumbraModSettingsRead Settings);
 }

@@ -358,7 +358,6 @@ internal sealed class DalamudPenumbraCategoryTransport : IPenumbraCategoryTransp
     private readonly ICallGateSubscriber<Guid, string, string, int, (int Result, (bool ForceInherit, bool Enabled, int Priority, Dictionary<string, List<string>> Options)? Settings, string Source)> _temporarySettings;
     private readonly ICallGateSubscriber<Guid, string, string, bool, int> _setMod;
     private readonly ICallGateSubscriber<Guid, string, string, string, IReadOnlyList<string>, int> _setSettings;
-    private readonly ICallGateSubscriber<Guid, string, string, (bool Inherit, bool Enabled, int Priority, IReadOnlyDictionary<string, IReadOnlyList<string>> Options), string, int, int> _setTemporarySettings;
     private readonly ICallGateSubscriber<Guid, string, string, int, int> _removeTemporarySettings;
     private readonly ICallGateSubscriber<object, Guid, string, bool, object?> _settingChanged;
 
@@ -370,7 +369,6 @@ internal sealed class DalamudPenumbraCategoryTransport : IPenumbraCategoryTransp
         _temporarySettings = pluginInterface.GetIpcSubscriber<Guid, string, string, int, (int Result, (bool ForceInherit, bool Enabled, int Priority, Dictionary<string, List<string>> Options)? Settings, string Source)>("Penumbra.QueryTemporaryModSettings.V5");
         _setMod = pluginInterface.GetIpcSubscriber<Guid, string, string, bool, int>("Penumbra.TrySetMod.V5");
         _setSettings = pluginInterface.GetIpcSubscriber<Guid, string, string, string, IReadOnlyList<string>, int>("Penumbra.TrySetModSettings.V5");
-        _setTemporarySettings = pluginInterface.GetIpcSubscriber<Guid, string, string, (bool Inherit, bool Enabled, int Priority, IReadOnlyDictionary<string, IReadOnlyList<string>> Options), string, int, int>("Penumbra.SetTemporaryModSettings.V5");
         _removeTemporarySettings = pluginInterface.GetIpcSubscriber<Guid, string, string, int, int>("Penumbra.RemoveTemporaryModSettings.V5");
         _settingChanged = pluginInterface.GetIpcSubscriber<object, Guid, string, bool, object?>("Penumbra.ModSettingChanged.V5");
         _settingChanged.Subscribe(HandleSettingChanged);
@@ -426,23 +424,6 @@ internal sealed class DalamudPenumbraCategoryTransport : IPenumbraCategoryTransp
 
     public int SetEnabled(Guid collectionId, string modDirectory, bool enabled)
         => _setMod.InvokeFunc(collectionId, modDirectory, string.Empty, enabled);
-
-    public int SetTemporarySettings(
-        Guid collectionId,
-        string modDirectory,
-        bool inherit,
-        bool enabled,
-        int priority,
-        IReadOnlyDictionary<string, IReadOnlyList<string>> options,
-        string source,
-        int key)
-        => _setTemporarySettings.InvokeFunc(
-            collectionId,
-            modDirectory,
-            string.Empty,
-            (inherit, enabled, priority, options),
-            source,
-            key);
 
     public int RemoveTemporarySettings(Guid collectionId, string modDirectory, int key)
         => _removeTemporarySettings.InvokeFunc(collectionId, modDirectory, string.Empty, key);

@@ -13,7 +13,7 @@ public sealed class ManagedModHeaderStatusTests
             fingerprint: Fingerprint(installed: "new", recommended: "old"));
 
         Assert.Equal(ManagedModHeaderStatus.BestEffort, snapshot.Status);
-        Assert.Equal("≈ ACTIVA · BEST EFFORT", snapshot.Label);
+        Assert.Equal("~ ACTIVA · BEST EFFORT", snapshot.Label);
     }
 
     [Fact]
@@ -52,12 +52,26 @@ public sealed class ManagedModHeaderStatusTests
         Assert.Equal(ManagedModHeaderStatus.RestartRequired, restart.Status);
     }
 
+    [Fact]
+    public void PendingTranslationRestart_NeverHidesMissingOrRunningInstallation()
+    {
+        var installed = Create(translationRestartRequired: true);
+        var missing = Create(translationRestartRequired: true, installationMissing: true);
+        var running = Create(state: State(PluginPhase.Generating), translationRestartRequired: true);
+
+        Assert.Equal(ManagedModHeaderStatus.RestartRequired, installed.Status);
+        Assert.Equal(ManagedModHeaderStatus.NotInstalled, missing.Status);
+        Assert.Equal(ManagedModHeaderStatus.Regenerating, running.Status);
+    }
+
     private static ManagedModHeaderSnapshot Create(
         PluginStateSnapshot? state = null,
         DalamudStartupWaitSnapshot? startupWait = null,
         CategorySyncSnapshot? categories = null,
         PluginConfiguration? configuration = null,
-        BuildFingerprint? fingerprint = null)
+        BuildFingerprint? fingerprint = null,
+        bool installationMissing = false,
+        bool translationRestartRequired = false)
     {
         fingerprint ??= Fingerprint();
         configuration ??= new PluginConfiguration
@@ -73,8 +87,8 @@ public sealed class ManagedModHeaderStatusTests
             new RegenerationDecision(RegenerationDecisionKind.UpToDate, "Listo."),
             configuration,
             fingerprint,
-            installationMissing: false,
-            translationRestartRequired: false);
+            installationMissing,
+            translationRestartRequired);
     }
 
     private static PluginStateSnapshot State(PluginPhase phase)

@@ -81,6 +81,62 @@ public sealed class TranslationManagerUiModelTests
         Assert.True(snapshot.CanStartRegeneration);
     }
 
+    [Fact]
+    public void CancelledRegeneration_IsNotPresentedAsAppliedWhenARestartWasAlreadyPending()
+    {
+        var snapshot = Status(PluginPhase.Cancelled, installed: true, missing: false, restartRequired: true);
+
+        Assert.Equal("Operación cancelada. La traducción instalada no ha cambiado.", snapshot.StatusMessage);
+        Assert.Equal(StatusTone.Warning, snapshot.StatusTone);
+        Assert.True(snapshot.CanStartRegeneration);
+        Assert.True(snapshot.CanRestartGame);
+    }
+
+    [Fact]
+    public void CancelledReinstallation_SaysNothingIsInstalledAndOffersNoRestart()
+    {
+        var snapshot = Status(PluginPhase.Cancelled, installed: true, missing: true, restartRequired: true);
+
+        Assert.Equal("Operación cancelada. La traducción no está instalada.", snapshot.StatusMessage);
+        Assert.True(snapshot.CanStartRegeneration);
+        Assert.False(snapshot.CanRestartGame);
+    }
+
+    [Fact]
+    public void FailedRegeneration_ShowsItsErrorAheadOfAPendingRestart()
+    {
+        var snapshot = Status(PluginPhase.ErrorRecoverable, installed: true, missing: false, restartRequired: true);
+
+        Assert.Equal("Estado.", snapshot.StatusMessage);
+        Assert.Equal(StatusTone.Error, snapshot.StatusTone);
+        Assert.True(snapshot.CanStartRegeneration);
+    }
+
+    [Fact]
+    public void CompletedRegeneration_AsksForRestart()
+    {
+        var snapshot = Status(PluginPhase.Ready, installed: true, missing: false, restartRequired: true);
+
+        Assert.StartsWith("Hay cambios pendientes de aplicar.", snapshot.StatusMessage, StringComparison.Ordinal);
+        Assert.True(snapshot.CanRestartGame);
+    }
+
+    private static TranslationManagerUiSnapshot Status(
+        PluginPhase phase,
+        bool installed,
+        bool missing,
+        bool restartRequired)
+        => TranslationManagerUiModel.Create(
+            new PluginStateSnapshot(phase, Guid.NewGuid(), "Estado.", null),
+            StartupWait(DalamudStartupWaitStatus.Ready),
+            new PenumbraAvailability(PenumbraAvailabilityStatus.Ready, 5, 15, "mods", "Listo."),
+            Categories(CategorySyncStatus.Ready),
+            new RegenerationDecision(RegenerationDecisionKind.UpToDate, "Al día."),
+            new PluginConfiguration { LastSuccessfulFingerprint = installed ? Fingerprint() : null },
+            Fingerprint(),
+            installationMissing: missing,
+            translationRestartRequired: restartRequired);
+
     private static CategorySyncSnapshot Categories(CategorySyncStatus status)
         => new(status, "Default", new HashSet<string>(), "Categorías.");
 

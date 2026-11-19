@@ -22,8 +22,16 @@ public sealed record DalamudStartupWaitSnapshot(
 
 public static class DalamudStartupWaitPolicy
 {
-    public static bool IsGuaranteedForCurrentSession(bool? enabled, PluginLoadReason loadReason)
-        => enabled == true && loadReason == PluginLoadReason.Boot;
+    /// <summary>
+    /// The guarantee belongs to the game session, not to one plugin instance: once a Boot load
+    /// proved it, a later reload in the same process (disable and re-enable, or a plugin update)
+    /// keeps it. Without that proof a non-Boot load cannot know how the game was started.
+    /// </summary>
+    public static bool IsGuaranteedForCurrentSession(
+        bool? enabled,
+        PluginLoadReason loadReason,
+        bool guaranteedEarlierThisSession = false)
+        => enabled == true && (loadReason == PluginLoadReason.Boot || guaranteedEarlierThisSession);
 
     public static DalamudStartupWaitSnapshot Evaluate(bool? enabled, bool guaranteedForCurrentSession)
         => enabled switch

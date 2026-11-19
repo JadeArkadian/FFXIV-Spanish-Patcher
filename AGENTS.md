@@ -39,7 +39,7 @@ vendorizado propio bajo `vendor/`.
   IPC v5 de Penumbra, contiene el instalador transaccional de árboles v4 y reconcilia de forma
   pasiva el grupo de categorías de Base/Default. La conexión entre el generador real y el instalador
   llega en la etapa 6 y la edición desde la ventana en la etapa 7.
-- `vendor/XivSpanish.Core` - modelos de traduccion, JSONL, manifest, normalizacion, claves de origen.
+- `vendor/XivSpanish.Core` - modelos de traduccion, JSONL, mapa de dominios, claves de origen.
 - `vendor/XivSpanish.GameData` - Lumina, EXH/EXD, `ExdPatcher`, lectura de filas, parser/tokenizer
   SeString, `GameLocator`.
 - `vendor/XivSpanish.Packaging` - primitivas de empaquetado: broadcast, alias de campos,

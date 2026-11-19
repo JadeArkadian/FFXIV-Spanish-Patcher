@@ -50,7 +50,9 @@ public sealed class Plugin : IAsyncDalamudPlugin
 
     private readonly PluginLoadProbe _loadProbe = new(new DalamudGameDataProbe(DataManager));
     private readonly TranslationManagerController _controller = new(SystemPluginClock.Instance);
-    private readonly TranslationRestartTracker _restartTracker = new();
+    private const string StartupWaitGuaranteedKey = "startupWait.guaranteed";
+    private static readonly IGameSessionMemory SessionMemory = new ProcessGameSessionMemory();
+    private readonly TranslationRestartTracker _restartTracker = new(SessionMemory);
     private readonly PenumbraIpcClient _penumbra = new(
         new DalamudPenumbraApiTransport(PluginInterface),
         PhysicalPenumbraDirectoryProbe.Instance,
@@ -98,6 +100,10 @@ public sealed class Plugin : IAsyncDalamudPlugin
     private bool _penumbraRetryPending;
     private string? _preparedSessionDirectory;
     private Task? _regenerationTask;
+    // Set when a regeneration is cancelled or fails. Automatic triggers then stay quiet until the
+    // user asks again, so a cancelled update is not restarted behind their back and a failing one
+    // does not rebuild on every Penumbra event.
+    private bool _automaticRegenerationPaused;
     private volatile string? _generationProgress;
     private Task? _categoryUpdateTask;
     private Task? _modStateUpdateTask;
@@ -140,7 +146,9 @@ public sealed class Plugin : IAsyncDalamudPlugin
         // from this worker: Dalamud is then holding that thread until this method returns, so
         // queueing would deadlock startup. Any other load never waits on the framework (the game
         // may still be loading); it defers reconciliation to the next framework tick instead.
-        var ownsFrameworkThread = _startupWaitGuaranteedForSession;
+        // A reload inherits the session guarantee, but its framework thread is running freely.
+        var ownsFrameworkThread = _startupWaitGuaranteedForSession
+            && PluginInterface.Reason == PluginLoadReason.Boot;
         if (ownsFrameworkThread)
         {
             var penumbra = await _penumbra.GetAvailabilityAsync(cancellationToken).ConfigureAwait(false);
@@ -182,7 +190,8 @@ public sealed class Plugin : IAsyncDalamudPlugin
             _configuration.AutoRegenerationEnabled,
             _managedInstallationMissing);
         Log.Information("Regeneración: {Decision}. {Message}", _regeneration.Kind, _regeneration.Message);
-        if (AutomaticRegenerationPolicy.ShouldCompleteBeforeGameLoad(
+        if (ownsFrameworkThread
+            && AutomaticRegenerationPolicy.ShouldCompleteBeforeGameLoad(
                 _regeneration,
                 _startupWait,
                 _penumbraAvailability))
@@ -501,7 +510,12 @@ public sealed class Plugin : IAsyncDalamudPlugin
         {
             _startupWaitGuaranteedForSession = DalamudStartupWaitPolicy.IsGuaranteedForCurrentSession(
                 enabled,
-                PluginInterface.Reason);
+                PluginInterface.Reason,
+                SessionMemory.Get(StartupWaitGuaranteedKey) is not null);
+            if (_startupWaitGuaranteedForSession)
+            {
+                SessionMemory.Set(StartupWaitGuaranteedKey, "1");
+            }
         }
 
         var previous = _startupWait;
@@ -584,12 +598,19 @@ public sealed class Plugin : IAsyncDalamudPlugin
         PushVisualStyle();
         try
         {
-            // Sizes follow Dalamud's global scale and never exceed the screen; below the
-            // comfortable size the window scrolls instead of clipping its cards.
+            // The window is fitted to its content: the minimum shows every card whole, and the
+            // maximum stops short of the stretched, half-empty layout a free resize produced.
+            // Only a screen smaller than the content makes it scroll.
             var screen = ImGui.GetMainViewport().WorkSize;
-            var minimumSize = Vector2.Min(Scaled(900f, 560f), screen);
-            ImGui.SetNextWindowSize(Vector2.Min(Scaled(1120f, 920f), screen), ImGuiCond.FirstUseEver);
-            ImGui.SetNextWindowSizeConstraints(minimumSize, Vector2.Max(minimumSize, Scaled(1600f, 1120f)));
+            var contentHeight = MathF.Ceiling(DashboardMetrics.Measure().WindowHeight);
+            var minimumSize = Vector2.Min(new Vector2(900f * Scale, contentHeight), screen);
+            var maximumSize = Vector2.Max(
+                minimumSize,
+                Vector2.Min(new Vector2(1200f * Scale, contentHeight + (48f * Scale)), screen));
+            ImGui.SetNextWindowSize(
+                Vector2.Min(new Vector2(1016f * Scale, contentHeight + (32f * Scale)), screen),
+                ImGuiCond.FirstUseEver);
+            ImGui.SetNextWindowSizeConstraints(minimumSize, maximumSize);
             if (!ImGui.Begin("FFXIV Spanish Translation Manager", ref _windowOpen))
             {
                 ImGui.End();
@@ -727,25 +748,52 @@ public sealed class Plugin : IAsyncDalamudPlugin
         ImGui.SetCursorScreenPos(chipStart + chipPadding);
         ImGui.TextColored(stateColor, state);
 
-        ImGui.SetCursorScreenPos(start + new Vector2(0f, height + 10f * Scale));
+        ImGui.SetCursorScreenPos(start + new Vector2(0f, HeaderBlockHeight));
+    }
+
+    // Brand header plus the gap below it.
+    private static float HeaderBlockHeight => 102f * Scale;
+
+    /// <summary>
+    /// Card heights taken from the live font and style metrics instead of fixed pixels, so every
+    /// card keeps its controls visible at 100-200 % interface scale. The same numbers size the
+    /// window, which keeps "fits its content" true by construction.
+    /// </summary>
+    private readonly record struct DashboardMetrics(float Top, float CategoriesMinimum, float Bottom, float WindowHeight)
+    {
+        // Must run with the manager's visual style pushed.
+        public static DashboardMetrics Measure()
+        {
+            var style = ImGui.GetStyle();
+            var line = ImGui.GetTextLineHeightWithSpacing();
+            var frame = ImGui.GetFrameHeightWithSpacing();
+            var cardChrome = (style.WindowPadding.Y * 2f) + line + style.ItemSpacing.Y + 1f;
+            // Status: two message lines, the activation checkbox and one action button.
+            var top = cardChrome + (line * 2f) + (frame * 2f) + (style.ItemSpacing.Y * 2f);
+            // Two button rows; the automation card holds a checkbox plus its helper text.
+            var bottom = cardChrome + (frame * 2f);
+            var categoryRows = (TranslationCategoryCatalog.All.Count + 1) / 2;
+            var categories = cardChrome
+                + line
+                + (categoryRows * (ImGui.GetFrameHeight() + (style.CellPadding.Y * 2f)));
+            var titleBar = ImGui.GetFontSize() + (style.FramePadding.Y * 2f);
+            // Three card rows, each followed by an item gap and separated by one Spacing().
+            var window = titleBar
+                + (style.WindowPadding.Y * 2f)
+                + HeaderBlockHeight
+                + top + categories + bottom
+                + (style.ItemSpacing.Y * 4f);
+            return new DashboardMetrics(top, categories, bottom, window);
+        }
     }
 
     private void DrawDashboard()
     {
-        // Heights come from the live font and style metrics instead of fixed pixels, so every
-        // card keeps its controls visible at 100-200 % interface scale.
         var style = ImGui.GetStyle();
-        var line = ImGui.GetTextLineHeightWithSpacing();
-        var frame = ImGui.GetFrameHeightWithSpacing();
-        var cardChrome = (style.WindowPadding.Y * 2f) + line + style.ItemSpacing.Y + 1f;
-        // Status: two message lines, the activation checkbox and one action button.
-        var topHeight = cardChrome + (line * 2f) + (frame * 2f) + (style.ItemSpacing.Y * 2f);
-        // Two button rows; the automation card holds a checkbox plus its helper text.
-        var bottomHeight = cardChrome + (frame * 2f);
-        var categoryRows = (TranslationCategoryCatalog.All.Count + 1) / 2;
-        var categoriesMinimum = cardChrome
-            + line
-            + (categoryRows * (ImGui.GetFrameHeight() + (style.CellPadding.Y * 2f)));
+        var metrics = DashboardMetrics.Measure();
+        var topHeight = metrics.Top;
+        var bottomHeight = metrics.Bottom;
+        var categoriesMinimum = metrics.CategoriesMinimum;
         var gap = style.ItemSpacing.X;
         var contentWidth = ImGui.GetContentRegionAvail().X;
         var primaryWidth = (contentWidth - gap) * 0.62f;
@@ -755,7 +803,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
         DrawCompatibilityCard(new Vector2(0f, topHeight));
 
         ImGui.Spacing();
-        // The categories card absorbs any spare height, so a taller window has no dead band.
+        // The categories card absorbs the little spare height the window is allowed to have.
         var spareHeight = ImGui.GetContentRegionAvail().Y - bottomHeight - (style.ItemSpacing.Y * 2f);
         DrawCategoriesCard(new Vector2(0f, MathF.Floor(MathF.Max(categoriesMinimum, spareHeight))));
 
@@ -858,12 +906,6 @@ public sealed class Plugin : IAsyncDalamudPlugin
                     ImGui.TextColored(Cyan, "Generando e instalando la traducción…");
                     ImGui.TextDisabled(_generationProgress ?? _controller.Snapshot.Message);
                 }
-                else if (_restartTracker.IsRestartRequired)
-                {
-                    ImGui.TextColored(Gold, "Hay cambios pendientes de aplicar.");
-                    ImGui.TextWrapped("Reinicia el juego para cargar desde el inicio el estado actual de la traducción.");
-                    DrawRestartGameButton();
-                }
                 else if (!_penumbraAvailability.IsReady)
                 {
                     DrawWrapped(
@@ -892,17 +934,18 @@ public sealed class Plugin : IAsyncDalamudPlugin
                         _penumbraRetryPending = true;
                     }
                 }
-                else if (_controller.Snapshot.Phase is PluginPhase.ErrorRecoverable or PluginPhase.ErrorFatal)
+                else
                 {
-                    DrawWrapped(Red, _controller.Snapshot.Message);
-                }
-                else if (_controller.Snapshot.Phase is PluginPhase.Cancelled)
-                {
-                    ImGui.TextWrapped(_controller.Snapshot.Message);
-                }
-                else if (_regeneration is { } regeneration)
-                {
-                    ImGui.TextWrapped(regeneration.Message);
+                    // Outcome of the last operation, missing installation, pending restart or the
+                    // plain regeneration summary: the model picks the one that matters most.
+                    DrawWrapped(
+                        ui.StatusTone switch
+                        {
+                            StatusTone.Error => Red,
+                            StatusTone.Warning => Gold,
+                            _ => Text,
+                        },
+                        ui.StatusMessage);
                 }
 
                 var categories = _categories.Snapshot;
@@ -936,12 +979,24 @@ public sealed class Plugin : IAsyncDalamudPlugin
                         _controller.CancelActiveOperation();
                     }
                 }
-                else if (!_restartTracker.IsRestartRequired && ui.CanStartRegeneration)
+                else if (ui.CanStartRegeneration || ui.CanRestartGame)
                 {
+                    // Regenerating stays available while a restart is pending: after a cancelled
+                    // or failed operation it is the only way to finish the job.
                     ImGui.Spacing();
-                    if (ImGui.Button(ui.PrimaryActionLabel))
+                    if (ui.CanStartRegeneration && ImGui.Button(ui.PrimaryActionLabel))
                     {
-                        StartRegeneration();
+                        StartRegeneration(requestedByUser: true);
+                    }
+
+                    if (ui.CanRestartGame)
+                    {
+                        if (ui.CanStartRegeneration)
+                        {
+                            ImGui.SameLine();
+                        }
+
+                        DrawRestartGameButton();
                     }
                 }
             }
@@ -1044,7 +1099,8 @@ public sealed class Plugin : IAsyncDalamudPlugin
         if (ImGui.BeginChild("Categorías", size, true, DashboardCardFlags))
         {
             DrawCardHeading("CONTENIDO DEL MOD", "Categorías de traducción");
-            DrawWrapped(Muted, $"Base/Default ({categories.CollectionName}) · {categories.Message}");
+            // The message already names the collection; a "Base/Default (…) ·" prefix repeated it.
+            DrawWrapped(Muted, categories.Message);
             if (!_startupWait.IsReady)
             {
                 ImGui.Spacing();
@@ -1144,6 +1200,8 @@ public sealed class Plugin : IAsyncDalamudPlugin
                 {
                     configuration.AutoRegenerationEnabled = autoRegeneration;
                     store.Save(configuration);
+                    // Ticking the box is an explicit request, so it lifts a pause left by a cancel.
+                    _automaticRegenerationPaused = false;
                     RefreshRegenerationDecision();
                     TryStartAutomaticRegeneration();
                 }
@@ -1430,7 +1488,9 @@ public sealed class Plugin : IAsyncDalamudPlugin
             _categories.Snapshot,
             _regeneration,
             _configuration,
-            _currentFingerprint);
+            _currentFingerprint,
+            _managedInstallationMissing,
+            _restartTracker.IsRestartRequired);
 
     private void DrainEvents()
     {
@@ -1519,11 +1579,16 @@ public sealed class Plugin : IAsyncDalamudPlugin
         }
     }
 
-    private void StartRegeneration()
+    private void StartRegeneration(bool requestedByUser = false)
     {
         if (!_startupWait.IsReady || _regenerationTask is { IsCompleted: false })
         {
             return;
+        }
+
+        if (requestedByUser)
+        {
+            _automaticRegenerationPaused = false;
         }
 
         _regenerationTask = RegenerateAsync(
@@ -1535,6 +1600,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
     {
         TryActivateVerifiedSession();
         if (_startupWait.IsReady
+            && !_automaticRegenerationPaused
             && _regeneration?.RequiresBuild == true
             && _penumbraAvailability.IsReady)
         {
@@ -1594,6 +1660,8 @@ public sealed class Plugin : IAsyncDalamudPlugin
         bool marshalPenumbraToFrameworkThread,
         CancellationToken cancellationToken)
     {
+        var attempted = false;
+        var succeeded = false;
         try
         {
             var configuration = _configuration
@@ -1651,6 +1719,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
                 "ffxivspanish-translation-manager",
                 $"candidate-{Guid.NewGuid():N}");
             var sessionWasValidated = _categories.Snapshot.SessionActivationAllowed;
+            attempted = true;
             var execution = await _controller.RunExclusiveAsync(
                 PluginPhase.Generating,
                 async cancellationToken =>
@@ -1690,6 +1759,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
                 }, cancellationToken).ConfigureAwait(false);
 
             var result = execution.Install;
+            succeeded = result.Succeeded;
 
             if (result.Succeeded && result.ModDirectory is { } directory)
             {
@@ -1724,6 +1794,13 @@ public sealed class Plugin : IAsyncDalamudPlugin
         finally
         {
             _generationProgress = null;
+            if (attempted && !succeeded)
+            {
+                _automaticRegenerationPaused = true;
+                // A cancel or failure can land mid-install; read the real state back from Penumbra
+                // and the disk instead of assuming what is installed.
+                SchedulePenumbraRetry(restartRetryBudget: true);
+            }
         }
     }
 
