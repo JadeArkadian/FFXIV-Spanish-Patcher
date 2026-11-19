@@ -93,6 +93,7 @@ Después del tag:
 - [ ] La release incluye `FFXIVSpanishTranslationManager-X.Y.Z.zip` y su `.sha256`.
 - [ ] `dalamud/pluginmaster.json` en `main` apunta a ese ZIP y declara la versión `X.Y.Z.0`.
 - [ ] Instalar desde el repositorio personalizado en `/xlplugins` funciona en una instalación limpia.
+- [ ] Con la versión anterior instalada, el plugin avisa de la nueva al arrancar y en su ventana.
 - [ ] Actualizar desde la versión anterior regenera la traducción una sola vez.
 
 ## Cierre

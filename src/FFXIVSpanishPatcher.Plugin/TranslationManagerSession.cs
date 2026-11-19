@@ -75,6 +75,12 @@ internal sealed class TranslationManagerSession : IAsyncDisposable
 
     public MarkdownDocument? Milestones => _milestones;
 
+    /// <summary>Version running now; the fourth part of a release version is always zero.</summary>
+    public Version? PluginVersion { get; } = typeof(Plugin).Assembly.GetName().Version;
+
+    /// <summary>A published version newer than the running one, once the startup check finds it.</summary>
+    public Version? AvailablePluginUpdate => _availablePluginUpdate;
+
     public ManagedModHeaderSnapshot HeaderSnapshot()
         => ManagedModHeaderStatusModel.Create(
             _controller.Snapshot,
@@ -209,6 +215,14 @@ internal sealed class TranslationManagerSession : IAsyncDisposable
 
     private volatile string? _generationProgress;
 
+    private readonly CancellationTokenSource _pluginUpdateCheckCancellation = new();
+
+    private Task? _pluginUpdateCheck;
+
+    private volatile Version? _availablePluginUpdate;
+
+    private int _pluginUpdateToastPending;
+
     private Task? _categoryUpdateTask;
 
     private Task? _modStateUpdateTask;
@@ -226,6 +240,7 @@ internal sealed class TranslationManagerSession : IAsyncDisposable
                 _configuration.Version);
         }
 
+        StartPluginUpdateCheck();
         RefreshStartupWait(initialCheck: true);
         PluginInterface.ActivePluginsChanged += OnActivePluginsChanged;
         RefreshPenumbraPluginPresence();
@@ -316,9 +331,58 @@ internal sealed class TranslationManagerSession : IAsyncDisposable
         Log.Information("Compatibilidad con Dalamud y motor compartido verificada.");
     }
 
+    /// <summary>
+    /// Asks the plugin repository, once per load, whether a newer version exists. It runs beside
+    /// the load and is never awaited by it: Dalamud holds the game until loading returns, and a
+    /// slow network must not hold the game with it.
+    /// </summary>
+    private void StartPluginUpdateCheck()
+    {
+        if (!PluginUpdateCheck.AppliesTo(PluginInterface.IsDev, PluginVersion) || PluginVersion is not { } installed)
+        {
+            Log.Information("Compilación de desarrollo: no se comprueba si hay una versión nueva del plugin.");
+            return;
+        }
+
+        var cancellationToken = _pluginUpdateCheckCancellation.Token;
+        _pluginUpdateCheck = Task.Run(async () =>
+        {
+            try
+            {
+                using var client = new HttpClient { MaxResponseContentBufferSize = 1024 * 1024 };
+                var newer = await PluginUpdateCheck.FindNewerVersionAsync(client, installed, cancellationToken)
+                    .ConfigureAwait(false);
+                if (newer is null)
+                {
+                    return;
+                }
+
+                Log.Information(
+                    "Hay una versión nueva del plugin: {Published} (instalada {Installed}).",
+                    PluginUpdateCheck.Display(newer),
+                    PluginUpdateCheck.Display(installed));
+                _availablePluginUpdate = newer;
+                // Shown from the framework tick: by then the game is drawing and the toast is seen.
+                Interlocked.Exchange(ref _pluginUpdateToastPending, 1);
+            }
+            catch (Exception exception)
+            {
+                Log.Warning(exception, "No se pudo comprobar si hay una versión nueva del plugin.");
+            }
+        }, cancellationToken);
+    }
+
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
+        await _pluginUpdateCheckCancellation.CancelAsync().ConfigureAwait(false);
+        if (_pluginUpdateCheck is { } updateCheck)
+        {
+            // The task handles its own failures; only a cancellation before it started surfaces.
+            await updateCheck.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+        }
+
+        _pluginUpdateCheckCancellation.Dispose();
         PluginInterface.ActivePluginsChanged -= OnActivePluginsChanged;
         Framework.Update -= OnFrameworkUpdate;
         _penumbra.AvailabilityChanged -= OnPenumbraAvailabilityChanged;
@@ -327,6 +391,7 @@ internal sealed class TranslationManagerSession : IAsyncDisposable
         _categories.SnapshotChanged -= OnCategorySnapshotChanged;
         _categories.ChangedInPenumbra -= OnModChangedInPenumbra;
         _notifications.DismissTranslationRestart();
+        _notifications.DismissPluginUpdate();
         // Stop an in-flight repair before disposing the IPC and category dependencies it uses.
         await _controller.DisposeAsync().ConfigureAwait(false);
         await _categories.DisposeAsync().ConfigureAwait(false);
@@ -605,6 +670,13 @@ internal sealed class TranslationManagerSession : IAsyncDisposable
     private void OnFrameworkUpdate(IFramework _)
     {
         var now = DateTime.UtcNow;
+        if (Interlocked.Exchange(ref _pluginUpdateToastPending, 0) != 0
+            && _availablePluginUpdate is { } newer
+            && PluginVersion is { } installed)
+        {
+            _notifications.ShowPluginUpdate(installed, newer);
+        }
+
         if (Interlocked.Exchange(ref _penumbraPluginListRefreshPending, 0) != 0
             && RefreshPenumbraPluginPresence())
         {

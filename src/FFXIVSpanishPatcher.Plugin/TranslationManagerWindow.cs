@@ -124,6 +124,7 @@ internal sealed class TranslationManagerWindow : IDisposable
 
             DrainEvents();
             DrawHeader();
+            DrawPluginUpdateNotice();
             // A working IPC connection always wins over the plugin list, which can hold a
             // second, unloaded Penumbra entry (dev + repository installs).
             if (!_session.PenumbraAvailability.IsReady
@@ -537,6 +538,46 @@ internal sealed class TranslationManagerWindow : IDisposable
     }
 
     // ---------------------------------------------------------------- status
+
+    /// <summary>
+    /// Shown on every view while a newer plugin version is published: an outdated plugin keeps
+    /// working, so nothing else on screen would tell the user there is something to fetch.
+    /// </summary>
+    private void DrawPluginUpdateNotice()
+    {
+        if (_session.AvailablePluginUpdate is not { } published || _session.PluginVersion is not { } installed)
+        {
+            return;
+        }
+
+        BeginCard(accent: Cyan);
+        var actionWidth = 210f * Scale;
+        var columnGap = 18f * Scale;
+        var rightColumn = ImGui.GetCursorPosX() + CardInnerWidth - actionWidth;
+
+        ImGui.BeginGroup();
+        DrawIcon(FontAwesomeIcon.ArrowCircleUp, Cyan);
+        ImGui.SameLine(0f, 8f * Scale);
+        ImGui.BeginGroup();
+        ImGui.PushTextWrapPos(rightColumn - columnGap);
+        ImGui.TextColored(Cyan, $"Nueva versión disponible: {PluginUpdateCheck.Display(published)}");
+        DrawWrapped(
+            Muted,
+            $"Tienes instalada la {PluginUpdateCheck.Display(installed)}. "
+            + "Las traducciones y correcciones nuevas llegan con la actualización del plugin.");
+        ImGui.PopTextWrapPos();
+        ImGui.EndGroup();
+        ImGui.EndGroup();
+
+        ImGui.SameLine();
+        ImGui.SetCursorPosX(rightColumn);
+        if (IconTextButton(FontAwesomeIcon.Download, "Actualizar plugin", actionWidth, primary: true))
+        {
+            PluginInterface.OpenPluginInstallerTo(PluginInstallerOpenKind.UpdateablePlugins);
+        }
+
+        EndCard();
+    }
 
     private void DrawStatusCard(TranslationManagerUiSnapshot ui)
     {

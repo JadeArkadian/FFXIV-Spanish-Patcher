@@ -10,7 +10,8 @@ Penumbra y la mantiene al día. Sustituye los pasos manuales del patcher: no hay
 importarlo ni repetir el proceso tras cada actualización.
 
 - Lee los datos necesarios de tu instalación de FFXIV; no modifica ningún archivo del juego.
-- Las traducciones van dentro del plugin. No descarga nada mientras juegas.
+- Las traducciones van dentro del plugin: no se descargan mientras juegas. La única conexión que
+  hace es una consulta al arrancar para saber si hay una versión nueva.
 - El mod que instala es el mismo que crea el patcher y se administra desde Penumbra como cualquier
   otro.
 - Desinstalar o desactivar el plugin **nunca** borra el mod: se queda en Penumbra hasta que tú lo
@@ -113,6 +114,16 @@ pulses **Regenerar traducción**.
 
 Las traducciones nuevas llegan con las actualizaciones del plugin, que instala Dalamud como las de
 cualquier otro.
+
+### Aviso de versión nueva
+
+Al arrancar, el gestor consulta el repositorio del plugin en GitHub. Si hay una versión más reciente
+que la instalada, muestra una notificación y, mientras no actualices, un aviso en la parte superior
+de la ventana con el botón **Actualizar plugin**, que abre las actualizaciones de `/xlplugins`.
+
+El gestor no se actualiza solo: sigue funcionando con la versión que tengas, pero con sus
+traducciones antiguas. Si la consulta falla (sin conexión, por ejemplo) no muestra nada. Las
+compilaciones de desarrollo no hacen esta consulta.
 
 ### Compatibilidad
 

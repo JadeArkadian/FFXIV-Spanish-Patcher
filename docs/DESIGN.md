@@ -214,7 +214,7 @@ lo que el patcher deja al usuario, es decir, instalarlo, activarlo y mantenerlo.
 Plugin                          punto de entrada; conecta servicios, comando y ventana
 TranslationManagerSession       orquestación: carga, reconciliación, regeneración, eventos
 TranslationManagerWindow        ventana ImGui; solo dibuja y pide acciones a la sesión
-TranslationManagerNotifications avisos de Dalamud (carga temprana, reinicio)
+TranslationManagerNotifications avisos de Dalamud (carga temprana, reinicio, versión nueva)
 TranslationManagerController    máquina de estados y exclusión mutua de operaciones
 PipelineTreeBuilder             ejecuta el pipeline y devuelve un árbol v4 verificado
 DalamudPatchBackend             IPatchBackend sobre IDataManager.GameData
@@ -223,6 +223,7 @@ PenumbraModIdentityService      localiza y adopta el mod existente
 ModInstaller                    promoción transaccional con copia de seguridad y rollback
 CategorySyncService             categorías y activación en Base/Default, en ambos sentidos
 RegenerationPlanner             decide si hay que regenerar a partir del fingerprint
+PluginUpdateCheck               compara la versión instalada con la publicada en el repositorio
 ```
 
 Las reglas que no dependen de Dalamud (estado de cabecera, activación, reinicio pendiente, modelo
@@ -300,6 +301,24 @@ El juego solo lee los EXD al arrancar, así que cualquier cambio efectivo (archi
 activación o categorías distintas de las del arranque) deja el estado en *reinicio necesario*.
 Ese estado se guarda en memoria del proceso del juego, no del plugin: recargar el plugin ni inventa
 un reinicio pendiente ni olvida uno real.
+
+### Aviso de versión nueva
+
+Dalamud no indica a un plugin si tiene una actualización pendiente, y el usuario puede tener las
+actualizaciones desactivadas o ignorarlas. Un plugin antiguo sigue funcionando, pero instala
+traducciones antiguas. Por eso, una vez por carga, el plugin descarga el mismo
+`dalamud/pluginmaster.json` del que Dalamud lo instala y compara su `AssemblyVersion` con la del
+ensamblado en ejecución.
+
+- La consulta corre en paralelo a la carga y nunca la bloquea: Dalamud retiene el juego hasta que
+  `LoadAsync` termina.
+- Solo avisa de una versión estrictamente mayor; no ofrece retroceder tras un rollback.
+- Cualquier fallo de red o de formato se ignora en silencio.
+- No se hace en compilaciones de desarrollo: plugin cargado como dev plugin o versión `0.0.0`.
+- Es la única conexión de red del plugin y no envía ningún dato del usuario.
+
+El resultado se muestra como notificación en el primer tick de framework, cuando el juego ya
+dibuja, y como aviso fijo en la ventana.
 
 ### Empaquetado y distribución
 
