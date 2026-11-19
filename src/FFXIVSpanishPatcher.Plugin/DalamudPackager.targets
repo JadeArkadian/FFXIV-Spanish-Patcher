@@ -12,6 +12,7 @@
                      Punchline="$(Punchline)"
                      Description="$(Description)"
                      RepoUrl="$(RepoUrl)"
+                     IconUrl="$(IconUrl)"
                      Tags="$(Tags)"
                      DalamudApiLevel="$(DalamudApiLevel)"
                      LoadRequiredState="$(LoadRequiredState)"

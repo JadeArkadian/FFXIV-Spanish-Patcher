@@ -39,6 +39,32 @@ public sealed class PluginPackageTests
         Assert.True(manifest.RootElement.GetProperty("CanUnloadAsync").GetBoolean());
     }
 
+    [Fact]
+    public void ReleasePackage_ShipsASquareIconDalamudAccepts()
+    {
+        var packageDirectory = Path.GetDirectoryName(ReleasePackagePath())!;
+        using var manifest = JsonDocument.Parse(
+            File.ReadAllBytes(Path.Combine(packageDirectory, "FFXIVSpanishTranslationManager.json")));
+        Assert.EndsWith(
+            "/src/FFXIVSpanishPatcher.Plugin/images/icon.png",
+            manifest.RootElement.GetProperty("IconUrl").GetString(),
+            StringComparison.Ordinal);
+
+        // Two copies: beside the DLL for a dev plugin, beside the ZIP for the repository layout.
+        var besideDll = Path.Combine(Path.GetDirectoryName(packageDirectory)!, "images", "icon.png");
+        var besideZip = Path.Combine(packageDirectory, "images", "icon.png");
+        Assert.True(File.Exists(besideDll), $"Falta el icono junto a la DLL: {besideDll}");
+        Assert.True(File.Exists(besideZip), $"Falta el icono junto al ZIP: {besideZip}");
+
+        // PNG stores width and height big-endian right after the IHDR tag. Dalamud rejects an
+        // icon that is not square or is larger than 512 px.
+        var header = File.ReadAllBytes(besideDll).AsSpan(0, 24);
+        var width = System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(header[16..]);
+        var height = System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(header[20..]);
+        Assert.Equal(width, height);
+        Assert.InRange(width, 64, 512);
+    }
+
     private static string ReleasePackagePath()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
