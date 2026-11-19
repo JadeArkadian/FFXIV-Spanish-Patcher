@@ -36,7 +36,7 @@ en **Elementos comunes**, sin contarlos de nuevo en cada expansión.
 | <img src="docs/assets/arr-icon.png" alt="A Realm Reborn" width="40"> | **A Realm Reborn** | 38.897/38.897 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
 | <img src="docs/assets/hw-icon.png" alt="Heavensward" width="40"> | **Heavensward** | 25.268/25.268 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
 | <img src="docs/assets/stb-icon.png" alt="Stormblood" width="40"> | **Stormblood** | 31.661/31.664 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
-| <img src="docs/assets/shb-icon.png" alt="Shadowbringers" width="40"> | **Shadowbringers** | 44.094/44.105 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
+| <img src="docs/assets/shb-icon.png" alt="Shadowbringers" width="40"> | **Shadowbringers** | 44.094/44.105 (99,0%) | ![100,0%](https://geps.dev/progress/99?barColor=7ee787) |
 | <img src="docs/assets/ew-icon.png" alt="Endwalker" width="40"> | **Endwalker** | 2/47.150 (0,0%) | ![0,0%](https://geps.dev/progress/0?barColor=da3633) |
 | <img src="docs/assets/dt-icon.png" alt="Dawntrail" width="40"> | **Dawntrail** | 2.654/43.016 (6,2%) | ![6,2%](https://geps.dev/progress/6.2?barColor=da3633) |
 | <img src="docs/assets/ec-icon.png" alt="Evercold" width="40"> | **Evercold** | — (progreso desconocido) | ![0,0%](https://geps.dev/progress/0?barColor=da3633) |
