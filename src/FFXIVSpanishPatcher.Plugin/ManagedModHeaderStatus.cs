@@ -15,8 +15,8 @@ public sealed record ManagedModHeaderSnapshot(ManagedModHeaderStatus Status, str
 
 /// <summary>Projects one non-redundant header summary from the verified persistent state.</summary>
 /// <remarks>
-/// Label symbols stay within Latin-1 plus the check mark: Dalamud's default font draws any
-/// glyph it lacks as "=", which is how the former restart arrow reached the screen.
+/// Labels are plain text. The window pairs each status with a FontAwesome icon; symbols typed into
+/// a label would depend on glyphs Dalamud's default font may lack (it draws those as "=").
 /// </remarks>
 public static class ManagedModHeaderStatusModel
 {
@@ -33,47 +33,47 @@ public static class ManagedModHeaderStatusModel
     {
         if (startupWait.Status == DalamudStartupWaitStatus.RestartRequired)
         {
-            return new(ManagedModHeaderStatus.RestartRequired, "! REINICIO NECESARIO");
+            return new(ManagedModHeaderStatus.RestartRequired, "Reinicio necesario");
         }
 
         if (state.Phase is PluginPhase.Checking or PluginPhase.Generating or PluginPhase.Installing or PluginPhase.Reloading)
         {
-            return new(ManagedModHeaderStatus.Regenerating, "… REGENERANDO");
+            return new(ManagedModHeaderStatus.Regenerating, "Actualizando la traducción");
         }
 
         if (configuration?.LastSuccessfulFingerprint is null || installationMissing)
         {
-            return new(ManagedModHeaderStatus.NotInstalled, "× NO INSTALADA");
+            return new(ManagedModHeaderStatus.NotInstalled, "Traducción no instalada");
         }
 
         // After the two checks above: a restart cannot load a translation that is still being
         // written or is not installed, so it must not hide either state.
         if (translationRestartRequired)
         {
-            return new(ManagedModHeaderStatus.RestartRequired, "! REINICIO NECESARIO");
+            return new(ManagedModHeaderStatus.RestartRequired, "Reinicio necesario");
         }
 
         if (configuration.ManagedModEnabled == false)
         {
-            return new(ManagedModHeaderStatus.Disabled, "· TRADUCCIÓN DESACTIVADA");
+            return new(ManagedModHeaderStatus.Disabled, "Traducción desactivada");
         }
 
         if (!startupWait.IsReady || !penumbra.IsReady || !categories.SessionActivationAllowed)
         {
-            return new(ManagedModHeaderStatus.Blocked, "× TRADUCCIÓN BLOQUEADA");
+            return new(ManagedModHeaderStatus.Blocked, "Traducción bloqueada");
         }
 
         if (categories.ModEnabled != true || categories.UsesSessionLease)
         {
-            return new(ManagedModHeaderStatus.Blocked, "× TRADUCCIÓN BLOQUEADA");
+            return new(ManagedModHeaderStatus.Blocked, "Traducción bloqueada");
         }
 
         if (IsBestEffort(currentFingerprint))
         {
-            return new(ManagedModHeaderStatus.BestEffort, "~ ACTIVA · BEST EFFORT");
+            return new(ManagedModHeaderStatus.BestEffort, "Traducción activa · best effort");
         }
 
-        return new(ManagedModHeaderStatus.Active, "✓ TRADUCCIÓN ACTIVA");
+        return new(ManagedModHeaderStatus.Active, "Traducción activa");
     }
 
     private static bool IsBestEffort(BuildFingerprint? fingerprint)

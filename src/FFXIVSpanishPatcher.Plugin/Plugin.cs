@@ -61,6 +61,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
         PluginInterface.UiBuilder.OpenConfigUi -= _window.Open;
         PluginInterface.UiBuilder.OpenMainUi -= _window.Open;
         CommandManager.RemoveHandler(OpenCommandName);
+        _window.Dispose();
         await _session.DisposeAsync().ConfigureAwait(false);
     }
 }

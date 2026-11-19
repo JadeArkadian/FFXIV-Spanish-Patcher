@@ -13,7 +13,7 @@ public sealed class ManagedModHeaderStatusTests
             fingerprint: Fingerprint(installed: "new", recommended: "old"));
 
         Assert.Equal(ManagedModHeaderStatus.BestEffort, snapshot.Status);
-        Assert.Equal("~ ACTIVA · BEST EFFORT", snapshot.Label);
+        Assert.Equal("Traducción activa · best effort", snapshot.Label);
     }
 
     [Fact]

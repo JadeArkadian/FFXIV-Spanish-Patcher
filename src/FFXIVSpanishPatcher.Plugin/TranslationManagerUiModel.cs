@@ -18,7 +18,8 @@ public sealed record TranslationManagerUiSnapshot(
     string Diagnostic,
     string StatusMessage,
     StatusTone StatusTone,
-    bool CanRestartGame);
+    bool CanRestartGame,
+    bool ActionRecommended);
 
 public static class TranslationManagerUiModel
 {
@@ -62,7 +63,12 @@ public static class TranslationManagerUiModel
             statusMessage,
             statusTone,
             // Restarting only helps when there is an installed translation to load.
-            translationRestartRequired && translationPresent && !operationRunning);
+            translationRestartRequired && translationPresent && !operationRunning,
+            // Installing, reinstalling, updating or retrying is worth emphasising; regenerating a
+            // translation that is already current is merely available.
+            !translationPresent
+                || regeneration is { Kind: not RegenerationDecisionKind.UpToDate }
+                || state.Phase is PluginPhase.ErrorRecoverable or PluginPhase.ErrorFatal or PluginPhase.Cancelled);
     }
 
     /// <summary>
