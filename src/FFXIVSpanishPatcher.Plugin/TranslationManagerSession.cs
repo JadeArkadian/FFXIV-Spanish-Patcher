@@ -921,8 +921,7 @@ internal sealed class TranslationManagerSession : IAsyncDisposable
             var metadata = PackageMetadataFactory.Create(
                 PackageMetadataFactory.PackageVersionFromAssembly(typeof(Plugin).Assembly),
                 GameVersionText.IsUnknown(buildInput.InstalledGameVersion) ? null : buildInput.InstalledGameVersion,
-                TranslationCategoryCatalog.All.Select(category => category.DisplayName),
-                TranslationCategoryCatalog.All.Select(category => category.DisplayName));
+                DateTimeOffset.Now);
             var treeBuilder = new PipelineTreeBuilder(
                 pipeline,
                 request => BuildPatchRequest(request, availability.ModDirectory!, metadata),

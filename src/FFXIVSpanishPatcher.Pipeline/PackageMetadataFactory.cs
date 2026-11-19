@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Reflection;
 
 namespace FFXIVSpanishPatcher.Pipeline;
@@ -11,29 +12,28 @@ public static class PackageMetadataFactory
 {
     public const string LandingPageUrl = "https://ffxivspanish.carrd.co/";
 
+    /// <param name="generatedAt">
+    /// When the mod was generated, in the user's local time. It is written as the user's wall
+    /// clock read it, with a fixed day/month/year layout that does not depend on the system culture.
+    /// </param>
+    /// <remarks>
+    /// The description states what was generated and when. It does not list the categories: every
+    /// package contains all of them, and Penumbra already shows them as the mod's options.
+    /// </remarks>
     public static PackageMeta Create(
         string packageVersion,
         string? installedGameVersion,
-        IEnumerable<string> includedCategoryLabels,
-        IEnumerable<string> enabledByDefaultCategoryLabels)
+        DateTimeOffset generatedAt)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(packageVersion);
-        ArgumentNullException.ThrowIfNull(includedCategoryLabels);
-        ArgumentNullException.ThrowIfNull(enabledByDefaultCategoryLabels);
 
         var version = $"v{packageVersion}"
                       + (string.IsNullOrEmpty(installedGameVersion) ? "" : $"-{installedGameVersion}");
-        var includedDomains = string.Join(
-            "\n",
-            includedCategoryLabels.Select(label => $"* {label}"));
-        var enabledByDefaultDomains = string.Join(
-            "\n",
-            enabledByDefaultCategoryLabels.Select(label => $"* {label}"));
+        var generated = generatedAt.ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture);
         var description = new PackageMeta().Description
                           + $"\n\nVersión del patcher: v{packageVersion}"
                           + $"\nVersión de FFXIV: {installedGameVersion ?? "desconocida"}"
-                          + $"\n\nCategorías incluidas:\n{includedDomains}"
-                          + $"\n\nCategorías activadas en primera importación de Penumbra:\n{enabledByDefaultDomains}";
+                          + $"\nFecha de generación: {generated}";
         return new PackageMeta
         {
             Version = version,

@@ -440,7 +440,7 @@ public partial class MainViewModel : ObservableObject
             OutputPath = Path.Combine(OutputFolder, outputName),
             StagingPath = Path.Combine(Path.GetTempPath(), "ffxivsp-patcher-staging"),
             DebugLogging = _debugLogging,
-            Meta = BuildPackageMeta(enabled),
+            Meta = PackageMetadataFactory.Create(_buildInfo.PackageVersion, InstalledGameVersion, DateTimeOffset.Now),
         };
 
         var progress = new Progress<PipelineEvent>(HandlePipelineEvent);
@@ -494,13 +494,6 @@ public partial class MainViewModel : ObservableObject
                 break;
         }
     }
-
-    private PackageMeta BuildPackageMeta(IReadOnlyList<CategoryViewModel> enabled)
-        => PackageMetadataFactory.Create(
-            _buildInfo.PackageVersion,
-            InstalledGameVersion,
-            enabled.Select(category => category.Label),
-            enabled.Where(category => category.IsSelected).Select(category => category.Label));
 
     [RelayCommand]
     private async Task BrowseAsync()
