@@ -344,7 +344,7 @@ public partial class MainViewModel : ObservableObject
         {
             var entries = _translations.Load();
             var counts = entries
-                .Where(entry => PackageableStatus.IsPackageable(entry, PackageableStatus.Default))
+                .Where(entry => PackageableEntry.IsPackageable(entry, PackageableEntry.DefaultStatuses))
                 .GroupBy(TranslationCategoryCatalog.DomainOf)
                 .ToDictionary(group => group.Key, group => group.Count(), StringComparer.OrdinalIgnoreCase);
 

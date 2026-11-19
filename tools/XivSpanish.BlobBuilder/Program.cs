@@ -21,10 +21,6 @@ internal static class Program
 {
     private const string RecommendedGameVersionPath = "data/recommended-game-version.txt";
 
-    // Mirror of PatchPipeline.Packageable's status set (PackageableStatus.Default).
-    private static readonly HashSet<string> PackageableStatuses =
-        new(StringComparer.OrdinalIgnoreCase) { TranslationEntryStatus.Approved, TranslationEntryStatus.Gold };
-
     private static readonly JsonSerializerOptions ReadOptions = new() { PropertyNameCaseInsensitive = true };
 
     // The trimmed TranslationEntry only carries source/target/status/sourceKey, so the default
@@ -155,13 +151,13 @@ internal static class Program
                 var status = entry.Status?.ToLowerInvariant() ?? "(none)";
                 byStatus[status] = byStatus.GetValueOrDefault(status) + 1;
 
-                if (entry.Status is null || !PackageableStatuses.Contains(entry.Status))
+                if (!PackageableEntry.HasStatus(entry, PackageableEntry.DefaultStatuses))
                 {
                     droppedStatus++;
                     continue;
                 }
 
-                if (!IsPackageable(entry))
+                if (!PackageableEntry.HasContent(entry))
                 {
                     droppedIncomplete++;
                     continue;
@@ -191,14 +187,6 @@ internal static class Program
             $"empty-target/incomplete-key. Corpus by status: {detail}.");
         return 0;
     }
-
-    /// <summary>Mirror of <c>PatchPipeline.Packageable</c> (the status is checked by the caller):
-    /// a non-empty target and a complete source key (sheet + rowId).</summary>
-    private static bool IsPackageable(TranslationEntry entry)
-        => !string.IsNullOrWhiteSpace(entry.Target)
-           && entry.SourceKey is { } key
-           && !string.IsNullOrWhiteSpace(key.Sheet)
-           && key.RowId.HasValue;
 
     private static string? OptionValue(string[] args, string name)
     {

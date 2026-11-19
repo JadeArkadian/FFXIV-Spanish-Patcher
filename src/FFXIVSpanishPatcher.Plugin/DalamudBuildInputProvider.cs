@@ -23,7 +23,7 @@ internal sealed class DalamudBuildInputProvider(Assembly assembly, IDataManager 
         // launcher/Steam discovery, which is unreliable for custom and Wine installations.
         var gameVersion = GamePathDetector.TryReadGameVersion(dataManager.GameData.DataPath.FullName)
                           ?? GamePathDetector.TryReadGameVersion(GamePathDetector.Detect())
-                          ?? "desconocida";
+                          ?? GameVersionText.Unknown;
         return new GameDataBuildInput(gameVersion, corpusHash);
     }
 }

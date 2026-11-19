@@ -1,10 +1,11 @@
 name: Release
 
 # Tag a commit (e.g. v1.2.3) to build self-contained publishes for Windows, Linux and macOS and
-# attach them to a GitHub Release. Windows keeps only the translation corpus external so it does
-# not place that high-entropy Brotli blob inside the executable. Windows publishes natively on a
-# Windows runner, then Windows signing runs non-interactively on Ubuntu. Linux publishes on Ubuntu,
-# and the macOS RID (Apple Silicon only) publishes on macOS so the .app can be ad-hoc codesigned.
+# attach them to a GitHub Release. Every RID embeds the Zstandard translation corpus inside the
+# executable (external_translations: "false"); the external layout remains a diagnostic publish
+# option that only the CI Windows smoke exercises. Windows publishes natively on a Windows runner,
+# then Windows signing runs non-interactively on Ubuntu. Linux publishes on Ubuntu, and the macOS
+# RID (Apple Silicon only) publishes on macOS so the .app can be ad-hoc codesigned.
 on:
   push:
     tags: [ 'v*.*.*' ]

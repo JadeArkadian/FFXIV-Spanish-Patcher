@@ -28,26 +28,7 @@ internal sealed class DalamudPatchBackend(ExdResolver resolver, IBaseExdSource b
 {
     public IBaseExdSource BaseSource { get; } = baseSource;
 
-    public ExdResolution ResolveExd(TranslationSourceKey key)
-    {
-        if (!string.IsNullOrWhiteSpace(key.ExdPath))
-        {
-            return ExdResolution.Resolved(key.ExdPath);
-        }
-
-        if (!key.RowId.HasValue)
-        {
-            return ExdResolution.UnresolvedRow();
-        }
-
-        if (resolver.ReadHeader(key.Sheet) is null)
-        {
-            return ExdResolution.MissingSheet();
-        }
-
-        var location = resolver.Resolve(key.Sheet, key.RowId.Value, "en");
-        return location is null ? ExdResolution.UnresolvedRow() : ExdResolution.Resolved(location.GamePath);
-    }
+    public ExdResolution ResolveExd(TranslationSourceKey key) => ExdResolution.For(resolver, key);
 
     public void Dispose()
     {

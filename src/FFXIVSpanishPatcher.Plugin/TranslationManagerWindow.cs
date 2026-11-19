@@ -528,8 +528,8 @@ internal sealed class TranslationManagerWindow(DalamudServices dalamud, Translat
             DrawDetail("FFXIV recomendado", fingerprint?.RecommendedGameVersion ?? "sin datos");
             ImGui.Spacing();
             if (fingerprint is null
-                || IsUnknownVersion(fingerprint.InstalledGameVersion)
-                || IsUnknownVersion(fingerprint.RecommendedGameVersion))
+                || GameVersionText.IsUnknown(fingerprint.InstalledGameVersion)
+                || GameVersionText.IsUnknown(fingerprint.RecommendedGameVersion))
             {
                 DrawWrapped(Muted, "No se ha podido comprobar la compatibilidad de FFXIV.");
             }
@@ -547,11 +547,6 @@ internal sealed class TranslationManagerWindow(DalamudServices dalamud, Translat
 
         ImGui.EndChild();
     }
-
-    private static bool IsUnknownVersion(string? value)
-        => String.IsNullOrWhiteSpace(value)
-            || StringComparer.OrdinalIgnoreCase.Equals(value, "desconocida")
-            || StringComparer.OrdinalIgnoreCase.Equals(value, "sin datos");
 
     private static void DrawDetail(string label, string value)
     {

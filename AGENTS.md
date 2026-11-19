@@ -38,7 +38,9 @@ vendorizado propio bajo `vendor/`.
   lectura de EXH/EXD desde `IDataManager.GameData`, consulta de forma degradable la API pública
   IPC v5 de Penumbra, contiene el instalador transaccional de árboles v4 y reconcilia de forma
   pasiva el grupo de categorías de Base/Default. La conexión entre el generador real y el instalador
-  llega en la etapa 6 y la edición desde la ventana en la etapa 7.
+  llega en la etapa 6 y la edición desde la ventana en la etapa 7. `Plugin.cs` es solo el punto de
+  entrada: la orquestación vive en `TranslationManagerSession`, la ventana ImGui en
+  `TranslationManagerWindow` y las notificaciones en `TranslationManagerNotifications`.
 - `vendor/XivSpanish.Core` - modelos de traduccion, JSONL, mapa de dominios, claves de origen.
 - `vendor/XivSpanish.GameData` - Lumina, EXH/EXD, `ExdPatcher`, lectura de filas, parser/tokenizer
   SeString, `GameLocator`.
@@ -121,7 +123,7 @@ dotnet publish src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj -c Rel
 dotnet publish src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj -c Release -r linux-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
 ```
 
-El proyecto usa `global.json` con SDK `10.0.302` fijado mediante `rollForward: disable`. Los
+El proyecto usa `global.json` con SDK `11.0.100` fijado mediante `rollForward: disable`. Los
 `packages.lock.json` estan versionados; CI y releases restauran con `--locked-mode`.
 
 La app publica con trimming activado (`PublishTrimmed=true`, `TrimMode=full`) y rootea `Lumina` /
@@ -132,17 +134,19 @@ publish real.
 
 `data/translations.dat` es Zstandard-JSONL proyectado. El builder:
 
-- filtra a filas empaquetables (`approved` + `gold`, target no vacio, sourceKey con sheet/row);
+- filtra a filas empaquetables (`approved` + `gold`, target con texto visible, sourceKey con sheet/row).
+  La regla vive una sola vez en `PackageableEntry` (`vendor/XivSpanish.Core`) y la usan el builder
+  y el pipeline;
 - proyecta al modelo runtime (`source`, `target`, `status`, `sourceKey`);
 - comprime con Zstandard mediante `ZstdSharp.Port`;
 - escribe `data/recommended-game-version.txt` cuando tiene fuente de version.
 
-Estado observado el 2026-07-29:
+Estado observado el 2026-11-19:
 
-- `data/translations.dat`: ~16.9 MiB (`17708236` bytes).
-- `data/recommended-game-version.txt`: `2026.07.16.0001.0000`.
+- `data/translations.dat`: ~28.0 MiB (`29353184` bytes).
+- `data/recommended-game-version.txt`: `2026.11.03.0000.0000`.
 - remote GitHub configurado: `JadeArkadian/FFXIV-Spanish-Patcher`.
-- tags publicados/locales hasta `v0.2.5`.
+- tags publicados/locales hasta `v0.5.2`.
 
 CI no reconstruye el corpus: usa el blob versionado.
 

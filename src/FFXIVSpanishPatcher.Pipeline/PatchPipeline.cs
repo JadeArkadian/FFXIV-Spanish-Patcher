@@ -70,7 +70,7 @@ public sealed class PatchPipeline
 
         var unsafeSeStringEntries = new HashSet<TranslationEntry>();
         bool IsPackageableEntry(TranslationEntry e)
-            => Packageable(e, request.Statuses) is null;
+            => PackageableEntry.IsPackageable(e, request.Statuses);
         bool IsCandidate(TranslationEntry e)
             => IsPackageableEntry(e) && !unsafeSeStringEntries.Contains(e);
         var candidateEntries = entries.Count(IsPackageableEntry);
@@ -634,35 +634,13 @@ public sealed class PatchPipeline
         }
     }
 
-    /// <summary>Reason an entry is not packageable, or null when it is.</summary>
-    private static string? Packageable(TranslationEntry entry, IReadOnlySet<string> statuses)
-    {
-        if (!PackageableStatus.IsPackageable(entry, statuses))
-        {
-            return $"status '{entry.Status}' not in [{string.Join(", ", statuses)}]";
-        }
-
-        if (string.IsNullOrEmpty(entry.Target))
-        {
-            return "empty target";
-        }
-
-        if (entry.SourceKey is null || string.IsNullOrWhiteSpace(entry.SourceKey.Sheet) || !entry.SourceKey.RowId.HasValue)
-        {
-            return "incomplete source key";
-        }
-
-        // An empty source with a non-empty target is a valid write-at-offset entry.
-        return null;
-    }
-
     private static BroadcastCatalog BuildBroadcastCatalog(
         IReadOnlyList<TranslationEntry> entries, IReadOnlySet<string> statuses)
     {
         var broadcast = new BroadcastCatalog();
         foreach (var entry in entries)
         {
-            if (Packageable(entry, statuses) is not null)
+            if (!PackageableEntry.IsPackageable(entry, statuses))
             {
                 continue;
             }

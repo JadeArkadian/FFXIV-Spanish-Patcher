@@ -855,7 +855,7 @@ internal sealed class TranslationManagerSession : IAsyncDisposable
                 new DalamudPatchBackendFactory(DataManager));
             var metadata = PackageMetadataFactory.Create(
                 PackageMetadataFactory.PackageVersionFromAssembly(typeof(Plugin).Assembly),
-                buildInput.InstalledGameVersion == "desconocida" ? null : buildInput.InstalledGameVersion,
+                GameVersionText.IsUnknown(buildInput.InstalledGameVersion) ? null : buildInput.InstalledGameVersion,
                 TranslationCategoryCatalog.All.Select(category => category.DisplayName),
                 TranslationCategoryCatalog.All.Select(category => category.DisplayName));
             var treeBuilder = new PipelineTreeBuilder(

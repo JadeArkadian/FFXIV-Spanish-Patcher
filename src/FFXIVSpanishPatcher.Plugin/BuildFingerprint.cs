@@ -1,5 +1,19 @@
 namespace FFXIVSpanishPatcher.Plugin;
 
+/// <summary>
+/// How a game version that could not be read is written into a fingerprint, and the one test for
+/// it. Every caller that must tell "no version" from a real one goes through here.
+/// </summary>
+public static class GameVersionText
+{
+    public const string Unknown = "desconocida";
+
+    public static bool IsUnknown(string? value)
+        => String.IsNullOrWhiteSpace(value)
+            || StringComparer.OrdinalIgnoreCase.Equals(value, Unknown)
+            || StringComparer.OrdinalIgnoreCase.Equals(value, "sin datos");
+}
+
 /// <summary>Inputs that require rebuilding the managed Penumbra tree after a successful installation.</summary>
 public sealed record BuildFingerprint(
     int SchemaVersion,

@@ -78,14 +78,9 @@ public static class ManagedModHeaderStatusModel
 
     private static bool IsBestEffort(BuildFingerprint? fingerprint)
         => fingerprint is not null
-            && !IsUnknown(fingerprint.InstalledGameVersion)
-            && !IsUnknown(fingerprint.RecommendedGameVersion)
+            && !GameVersionText.IsUnknown(fingerprint.InstalledGameVersion)
+            && !GameVersionText.IsUnknown(fingerprint.RecommendedGameVersion)
             && !StringComparer.Ordinal.Equals(
                 fingerprint.InstalledGameVersion,
                 fingerprint.RecommendedGameVersion);
-
-    private static bool IsUnknown(string? value)
-        => String.IsNullOrWhiteSpace(value)
-            || StringComparer.OrdinalIgnoreCase.Equals(value, "desconocida")
-            || StringComparer.OrdinalIgnoreCase.Equals(value, "sin datos");
 }

@@ -1,6 +1,7 @@
 using System.Reflection;
 using FFXIVSpanishPatcher.App.ViewModels;
 using FFXIVSpanishPatcher.Pipeline;
+using XivSpanish.Translation;
 using Xunit;
 
 namespace FFXIVSpanishPatcher.App.Tests;
@@ -32,7 +33,7 @@ public class EmbeddedBlobTests
 
         Assert.NotEmpty(entries);
         // Every shipped row must be packageable: the build script already filtered to approved+gold.
-        Assert.All(entries, e => Assert.True(PackageableStatus.IsPackageable(e, PackageableStatus.Default)));
+        Assert.All(entries, e => Assert.True(PackageableEntry.IsPackageable(e, PackageableEntry.DefaultStatuses)));
         // The projection kept the fields the pipeline reads.
         Assert.All(entries, e =>
         {
