@@ -2,9 +2,11 @@ using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using Dalamud.Game.Command;
+using Dalamud.Interface;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.ImGuiNotification;
 using Dalamud.Interface.Textures;
+using Dalamud.Interface.Utility;
 using Dalamud.Utility;
 using FFXIVSpanishPatcher.Pipeline;
 using Markdig.Syntax;
@@ -29,9 +31,11 @@ public sealed class Plugin : IAsyncDalamudPlugin
     private static readonly Vector4 Gold = new(0.941f, 0.741f, 0.345f, 1f);
     private static readonly Vector4 Green = new(0.345f, 0.875f, 0.651f, 1f);
     private static readonly Vector4 Red = new(0.941f, 0.353f, 0.353f, 1f);
-    private const string PenumbraRepositoryUrl = "https://github.com/xivdev/Penumbra";
-    private const ImGuiWindowFlags DashboardCardFlags =
-        ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse;
+    private const string PenumbraInternalName = "Penumbra";
+    private const string PenumbraRepositoryUrl = "https://raw.githubusercontent.com/xivdev/Penumbra/master/repo.json";
+    // Cards are sized from font metrics; a scrollbar appears only if a rare long message overflows,
+    // so a control is never clipped out of reach.
+    private const ImGuiWindowFlags DashboardCardFlags = ImGuiWindowFlags.None;
     private const ImGuiWindowFlags PopupContentFlags = ImGuiWindowFlags.AlwaysUseWindowPadding;
     private const int VisualStyleColorCount = 21;
     private const int VisualStyleVarCount = 9;
@@ -62,6 +66,10 @@ public sealed class Plugin : IAsyncDalamudPlugin
     private PenumbraAvailability _penumbraAvailability = new(
         PenumbraAvailabilityStatus.Unavailable, 0, 0, null,
         "Penumbra aún no se ha comprobado.");
+    private bool _penumbraInstalled;
+    private bool _penumbraLoaded;
+    private bool _penumbraOutdated;
+    private int _penumbraPluginListRefreshPending;
     private DalamudStartupWaitSnapshot _startupWait = new(
         DalamudStartupWaitStatus.Unavailable,
         "La carga temprana de Dalamud aún no se ha comprobado.");
@@ -90,6 +98,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
     private bool _penumbraRetryPending;
     private string? _preparedSessionDirectory;
     private Task? _regenerationTask;
+    private volatile string? _generationProgress;
     private Task? _categoryUpdateTask;
     private Task? _modStateUpdateTask;
 
@@ -119,18 +128,33 @@ public sealed class Plugin : IAsyncDalamudPlugin
         }
 
         RefreshStartupWait(initialCheck: true);
+        PluginInterface.ActivePluginsChanged += OnActivePluginsChanged;
+        RefreshPenumbraPluginPresence();
         Framework.Update += OnFrameworkUpdate;
         await _loadProbe.LoadAsync(cancellationToken).ConfigureAwait(false);
         _penumbra.AvailabilityChanged += OnPenumbraAvailabilityChanged;
         _penumbra.ModDeleted += OnPenumbraModDeleted;
         _penumbra.ModMoved += OnPenumbraModMoved;
         _categories.SnapshotChanged += OnCategorySnapshotChanged;
-        var penumbra = await _penumbra.GetAvailabilityAsync(cancellationToken).ConfigureAwait(false);
-        OnPenumbraAvailabilityChanged(penumbra);
-        _controller.TryTransition(
-            penumbra.IsReady ? PluginPhase.WelcomeRequired : PluginPhase.PenumbraUnavailable,
-            penumbra.UserMessage,
-            penumbra.Status == PenumbraAvailabilityStatus.Faulted ? penumbra.TechnicalError : null);
+        // Penumbra IPC belongs on the framework thread. Only a guaranteed Boot load may call it
+        // from this worker: Dalamud is then holding that thread until this method returns, so
+        // queueing would deadlock startup. Any other load never waits on the framework (the game
+        // may still be loading); it defers reconciliation to the next framework tick instead.
+        var ownsFrameworkThread = _startupWaitGuaranteedForSession;
+        if (ownsFrameworkThread)
+        {
+            var penumbra = await _penumbra.GetAvailabilityAsync(cancellationToken).ConfigureAwait(false);
+            OnPenumbraAvailabilityChanged(penumbra);
+            _controller.TryTransition(
+                penumbra.IsReady ? PluginPhase.WelcomeRequired : PluginPhase.PenumbraUnavailable,
+                penumbra.UserMessage,
+                penumbra.Status == PenumbraAvailabilityStatus.Faulted ? penumbra.TechnicalError : null);
+        }
+        else
+        {
+            _controller.TryTransition(PluginPhase.PenumbraUnavailable, "Comprobando Penumbra…");
+        }
+
         var buildInput = await _buildInputs.GetBuildInputAsync(cancellationToken).ConfigureAwait(false);
         var fingerprint = BuildFingerprintFactory.Create(
             typeof(Plugin).Assembly,
@@ -170,7 +194,16 @@ public sealed class Plugin : IAsyncDalamudPlugin
             await _regenerationTask.ConfigureAwait(false);
         }
 
-        TryStartAutomaticRegeneration();
+        if (ownsFrameworkThread)
+        {
+            TryStartAutomaticRegeneration();
+        }
+        else
+        {
+            // The tick probes Penumbra, reconciles the mod and starts any pending regeneration.
+            SchedulePenumbraRetry(restartRetryBudget: true);
+        }
+
         _loadCompleted = true;
         RecoverControllerAfterPenumbraWait();
         Log.Information(
@@ -186,6 +219,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
         PluginInterface.UiBuilder.Draw -= Draw;
         PluginInterface.UiBuilder.OpenConfigUi -= OpenWindow;
         PluginInterface.UiBuilder.OpenMainUi -= OpenWindow;
+        PluginInterface.ActivePluginsChanged -= OnActivePluginsChanged;
         Framework.Update -= OnFrameworkUpdate;
         CommandManager.RemoveHandler("/ffxives");
         _penumbra.AvailabilityChanged -= OnPenumbraAvailabilityChanged;
@@ -203,6 +237,52 @@ public sealed class Plugin : IAsyncDalamudPlugin
 
     private void OnPenumbraAvailabilityChanged(PenumbraAvailability availability)
         => ApplyPenumbraAvailability(availability, restartRetryBudget: true);
+
+    private void OnActivePluginsChanged(IActivePluginsChangedEventArgs changes)
+    {
+        if (changes.AffectedInternalNames.Contains(PenumbraInternalName, StringComparer.Ordinal))
+        {
+            Interlocked.Exchange(ref _penumbraPluginListRefreshPending, 1);
+        }
+    }
+
+    private bool RefreshPenumbraPluginPresence()
+    {
+        // Dev and repository installs can coexist under the same internal name; any loaded one counts.
+        var plugins = PluginInterface.InstalledPlugins
+            .Where(candidate => StringComparer.Ordinal.Equals(candidate.InternalName, PenumbraInternalName))
+            .ToArray();
+        var installed = plugins.Length > 0;
+        var loaded = plugins.Any(candidate => candidate.IsLoaded);
+        var outdated = !loaded && plugins.Any(candidate => candidate.IsOutdated);
+        var changed = installed != _penumbraInstalled
+            || loaded != _penumbraLoaded
+            || outdated != _penumbraOutdated;
+
+        _penumbraInstalled = installed;
+        _penumbraLoaded = loaded;
+        _penumbraOutdated = outdated;
+
+        if (changed)
+        {
+            Log.Information(
+                "Penumbra instalado: {Installed}; cargado: {Loaded}; desactualizado: {Outdated}.",
+                installed,
+                loaded,
+                outdated);
+        }
+
+        return changed;
+    }
+
+    private void RecheckPenumbraFromUi()
+    {
+        RefreshPenumbraPluginPresence();
+        if (_penumbraLoaded)
+        {
+            SchedulePenumbraRetry(restartRetryBudget: true);
+        }
+    }
 
     private void ApplyPenumbraAvailability(PenumbraAvailability availability, bool restartRetryBudget)
     {
@@ -352,6 +432,12 @@ public sealed class Plugin : IAsyncDalamudPlugin
     private void OnFrameworkUpdate(IFramework _)
     {
         var now = DateTime.UtcNow;
+        if (Interlocked.Exchange(ref _penumbraPluginListRefreshPending, 0) != 0
+            && RefreshPenumbraPluginPresence())
+        {
+            SchedulePenumbraRetry(restartRetryBudget: true);
+        }
+
         if (now >= _nextStartupWaitCheckUtc)
         {
             _nextStartupWaitCheckUtc = now.AddSeconds(1);
@@ -498,12 +584,13 @@ public sealed class Plugin : IAsyncDalamudPlugin
         PushVisualStyle();
         try
         {
-            ImGui.SetNextWindowSize(new Vector2(1120, 830), ImGuiCond.FirstUseEver);
-            ImGui.SetNextWindowSizeConstraints(new Vector2(1120, 830), new Vector2(1600, 1120));
-            if (!ImGui.Begin(
-                    "FFXIV Spanish Translation Manager",
-                    ref _windowOpen,
-                    ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse))
+            // Sizes follow Dalamud's global scale and never exceed the screen; below the
+            // comfortable size the window scrolls instead of clipping its cards.
+            var screen = ImGui.GetMainViewport().WorkSize;
+            var minimumSize = Vector2.Min(Scaled(900f, 560f), screen);
+            ImGui.SetNextWindowSize(Vector2.Min(Scaled(1120f, 920f), screen), ImGuiCond.FirstUseEver);
+            ImGui.SetNextWindowSizeConstraints(minimumSize, Vector2.Max(minimumSize, Scaled(1600f, 1120f)));
+            if (!ImGui.Begin("FFXIV Spanish Translation Manager", ref _windowOpen))
             {
                 ImGui.End();
                 return;
@@ -511,7 +598,17 @@ public sealed class Plugin : IAsyncDalamudPlugin
 
             DrainEvents();
             DrawBrandHeader();
-            DrawDashboard();
+            // A working IPC connection always wins over the plugin list, which can hold a
+            // second, unloaded Penumbra entry (dev + repository installs).
+            if (!_penumbraAvailability.IsReady && (!_penumbraInstalled || !_penumbraLoaded))
+            {
+                DrawPenumbraDependencyScreen();
+            }
+            else
+            {
+                DrawDashboard();
+            }
+
             DrawInformationPopups();
 
             ImGui.End();
@@ -523,17 +620,31 @@ public sealed class Plugin : IAsyncDalamudPlugin
         }
     }
 
+    private static float Scale => ImGuiHelpers.GlobalScale;
+
+    private static Vector2 Scaled(float x, float y) => new Vector2(x, y) * Scale;
+
+    private static Vector2 PopupSize(float width, float height)
+        => Vector2.Min(Scaled(width, height), ImGui.GetMainViewport().WorkSize * 0.9f);
+
+    private static void DrawWrapped(Vector4 color, string text)
+    {
+        ImGui.PushStyleColor(ImGuiCol.Text, color);
+        ImGui.TextWrapped(text);
+        ImGui.PopStyleColor();
+    }
+
     private static void PushVisualStyle()
     {
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowRounding, 14f);
-        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, 12f);
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 8f);
-        ImGui.PushStyleVar(ImGuiStyleVar.GrabRounding, 8f);
-        ImGui.PushStyleVar(ImGuiStyleVar.TabRounding, 8f);
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(20f, 18f));
-        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(12f, 8f));
-        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(10f, 10f));
-        ImGui.PushStyleVar(ImGuiStyleVar.ItemInnerSpacing, new Vector2(8f, 6f));
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowRounding, 14f * Scale);
+        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, 12f * Scale);
+        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 8f * Scale);
+        ImGui.PushStyleVar(ImGuiStyleVar.GrabRounding, 8f * Scale);
+        ImGui.PushStyleVar(ImGuiStyleVar.TabRounding, 8f * Scale);
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Scaled(20f, 18f));
+        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, Scaled(12f, 8f));
+        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, Scaled(10f, 10f));
+        ImGui.PushStyleVar(ImGuiStyleVar.ItemInnerSpacing, Scaled(8f, 6f));
 
         ImGui.PushStyleColor(ImGuiCol.WindowBg, Night);
         ImGui.PushStyleColor(ImGuiCol.ChildBg, Surface);
@@ -562,24 +673,25 @@ public sealed class Plugin : IAsyncDalamudPlugin
     {
         var start = ImGui.GetCursorScreenPos();
         var width = ImGui.GetContentRegionAvail().X;
-        const float height = 92f;
+        var height = 92f * Scale;
+        var rounding = 12f * Scale;
         var end = start + new Vector2(width, height);
         var drawList = ImGui.GetWindowDrawList();
-        drawList.AddRectFilled(start, end, ImGui.GetColorU32(SurfaceRaised), 12f);
-        drawList.AddRect(start, end, ImGui.GetColorU32(Line), 12f);
-        drawList.AddRectFilled(start, start + new Vector2(5f, height), ImGui.GetColorU32(Blue), 12f);
+        drawList.AddRectFilled(start, end, ImGui.GetColorU32(SurfaceRaised), rounding);
+        drawList.AddRect(start, end, ImGui.GetColorU32(Line), rounding);
+        drawList.AddRectFilled(start, start + new Vector2(5f * Scale, height), ImGui.GetColorU32(Blue), rounding);
 
-        ImGui.SetCursorScreenPos(start + new Vector2(18f, 16f));
+        ImGui.SetCursorScreenPos(start + Scaled(18f, 16f));
         var logo = TextureProvider.GetFromManifestResource(
             typeof(Plugin).Assembly,
             "FFXIVSpanishTranslationManager.logo-git.png");
-        ImGui.Image(logo.GetWrapOrEmpty().Handle, new Vector2(58f, 58f));
+        ImGui.Image(logo.GetWrapOrEmpty().Handle, Scaled(58f, 58f));
 
-        ImGui.SetCursorScreenPos(start + new Vector2(92f, 17f));
+        ImGui.SetCursorScreenPos(start + Scaled(92f, 17f));
         ImGui.TextColored(Cyan, "FFXIV SPANISH");
         ImGui.SameLine();
         ImGui.TextDisabled("TRANSLATION MANAGER");
-        ImGui.SetCursorScreenPos(start + new Vector2(92f, 48f));
+        ImGui.SetCursorScreenPos(start + Scaled(92f, 48f));
         ImGui.TextColored(Gold, "Traducción al castellano");
         ImGui.SameLine();
         ImGui.TextDisabled("· Gestión segura mediante Penumbra");
@@ -606,22 +718,35 @@ public sealed class Plugin : IAsyncDalamudPlugin
             _ => Red,
         };
         var labelSize = ImGui.CalcTextSize(state);
-        var chipStart = new Vector2(end.X - labelSize.X - 34f, start.Y + 33f);
-        var chipEnd = new Vector2(end.X - 14f, start.Y + 59f);
-        drawList.AddRectFilled(chipStart, chipEnd, ImGui.GetColorU32(new Vector4(stateColor.X, stateColor.Y, stateColor.Z, 0.14f)), 8f);
-        drawList.AddRect(chipStart, chipEnd, ImGui.GetColorU32(stateColor), 8f);
-        ImGui.SetCursorScreenPos(chipStart + new Vector2(10f, 5f));
+        // The chip hugs its label vertically, so it stays centred at every font scale.
+        var chipPadding = Scaled(10f, 5f);
+        var chipEnd = new Vector2(end.X - 14f * Scale, start.Y + (height + labelSize.Y) / 2f + chipPadding.Y);
+        var chipStart = chipEnd - labelSize - chipPadding * 2f;
+        drawList.AddRectFilled(chipStart, chipEnd, ImGui.GetColorU32(new Vector4(stateColor.X, stateColor.Y, stateColor.Z, 0.14f)), 8f * Scale);
+        drawList.AddRect(chipStart, chipEnd, ImGui.GetColorU32(stateColor), 8f * Scale);
+        ImGui.SetCursorScreenPos(chipStart + chipPadding);
         ImGui.TextColored(stateColor, state);
 
-        ImGui.SetCursorScreenPos(start + new Vector2(0f, height + 10f));
+        ImGui.SetCursorScreenPos(start + new Vector2(0f, height + 10f * Scale));
     }
 
     private void DrawDashboard()
     {
-        const float topHeight = 190f;
-        const float categoriesHeight = 270f;
-        const float bottomHeight = 145f;
-        var gap = ImGui.GetStyle().ItemSpacing.X;
+        // Heights come from the live font and style metrics instead of fixed pixels, so every
+        // card keeps its controls visible at 100-200 % interface scale.
+        var style = ImGui.GetStyle();
+        var line = ImGui.GetTextLineHeightWithSpacing();
+        var frame = ImGui.GetFrameHeightWithSpacing();
+        var cardChrome = (style.WindowPadding.Y * 2f) + line + style.ItemSpacing.Y + 1f;
+        // Status: two message lines, the activation checkbox and one action button.
+        var topHeight = cardChrome + (line * 2f) + (frame * 2f) + (style.ItemSpacing.Y * 2f);
+        // Two button rows; the automation card holds a checkbox plus its helper text.
+        var bottomHeight = cardChrome + (frame * 2f);
+        var categoryRows = (TranslationCategoryCatalog.All.Count + 1) / 2;
+        var categoriesMinimum = cardChrome
+            + line
+            + (categoryRows * (ImGui.GetFrameHeight() + (style.CellPadding.Y * 2f)));
+        var gap = style.ItemSpacing.X;
         var contentWidth = ImGui.GetContentRegionAvail().X;
         var primaryWidth = (contentWidth - gap) * 0.62f;
 
@@ -630,12 +755,81 @@ public sealed class Plugin : IAsyncDalamudPlugin
         DrawCompatibilityCard(new Vector2(0f, topHeight));
 
         ImGui.Spacing();
-        DrawCategoriesCard(new Vector2(0f, categoriesHeight));
+        // The categories card absorbs any spare height, so a taller window has no dead band.
+        var spareHeight = ImGui.GetContentRegionAvail().Y - bottomHeight - (style.ItemSpacing.Y * 2f);
+        DrawCategoriesCard(new Vector2(0f, MathF.Floor(MathF.Max(categoriesMinimum, spareHeight))));
 
         ImGui.Spacing();
         DrawAutomationCard(new Vector2(primaryWidth, bottomHeight));
         ImGui.SameLine();
         DrawInformationCard(new Vector2(0f, bottomHeight));
+    }
+
+    private void DrawPenumbraDependencyScreen()
+    {
+        if (!ImGui.BeginChild("Dependencia Penumbra", new Vector2(0f, 0f), true))
+        {
+            ImGui.EndChild();
+            return;
+        }
+
+        if (!_penumbraInstalled)
+        {
+            DrawCardHeading("REQUISITO OBLIGATORIO", "Penumbra es necesario");
+            ImGui.TextWrapped(
+                "Este gestor instala y administra la traducción mediante Penumbra. Añade su repositorio oficial y luego instálalo desde el instalador de Dalamud.");
+
+            ImGui.Spacing();
+            ImGui.TextColored(Cyan, "1 · Añade el repositorio oficial de Penumbra");
+            ImGui.TextWrapped(PenumbraRepositoryUrl);
+            if (ImGui.Button("Copiar enlace del repositorio"))
+            {
+                ImGui.SetClipboardText(PenumbraRepositoryUrl);
+            }
+
+            ImGui.SameLine();
+            if (ImGui.Button("Abrir ajustes de Dalamud"))
+            {
+                PluginInterface.OpenDalamudSettingsTo(SettingsOpenKind.Experimental);
+            }
+
+            ImGui.Spacing();
+            ImGui.TextColored(Cyan, "2 · Instala Penumbra");
+            ImGui.TextWrapped(
+                "Después de añadir el repositorio, busca Penumbra en el instalador de plugins y selecciona Instalar.");
+            if (ImGui.Button("Buscar Penumbra en el instalador"))
+            {
+                PluginInterface.OpenPluginInstallerTo(PluginInstallerOpenKind.AllPlugins, PenumbraInternalName);
+            }
+
+            ImGui.SameLine();
+            if (ImGui.Button("Comprobar estado de Penumbra"))
+            {
+                RecheckPenumbraFromUi();
+            }
+        }
+        else
+        {
+            DrawCardHeading("REQUISITO OBLIGATORIO", "Penumbra no está cargado");
+            ImGui.TextWrapped(_penumbraOutdated
+                ? "Dalamud detecta Penumbra instalado, pero su versión no es compatible con la API actual. Actualízalo desde el instalador de plugins."
+                : "Penumbra está instalado, pero no aparece cargado en esta sesión. No podemos activarlo directamente desde este gestor; puedes abrir sus controles en Dalamud y habilitarlo allí.");
+            ImGui.Spacing();
+            if (ImGui.Button("Abrir Penumbra en plugins instalados"))
+            {
+                PluginInterface.OpenPluginInstallerTo(PluginInstallerOpenKind.InstalledPlugins, PenumbraInternalName);
+            }
+
+            ImGui.SameLine();
+            if (ImGui.Button("Volver a comprobar"))
+            {
+                RecheckPenumbraFromUi();
+            }
+
+            ImGui.TextDisabled("Al cargar Penumbra, el gestor actualizará esta pantalla automáticamente.");
+        }
+
+        ImGui.EndChild();
     }
 
     private static void DrawCardHeading(string eyebrow, string title)
@@ -658,7 +852,13 @@ public sealed class Plugin : IAsyncDalamudPlugin
             }
             else
             {
-                if (_restartTracker.IsRestartRequired)
+                if (ui.CanCancelRegeneration)
+                {
+                    // Live pipeline step: a multi-second build must never look frozen.
+                    ImGui.TextColored(Cyan, "Generando e instalando la traducción…");
+                    ImGui.TextDisabled(_generationProgress ?? _controller.Snapshot.Message);
+                }
+                else if (_restartTracker.IsRestartRequired)
                 {
                     ImGui.TextColored(Gold, "Hay cambios pendientes de aplicar.");
                     ImGui.TextWrapped("Reinicia el juego para cargar desde el inicio el estado actual de la traducción.");
@@ -666,12 +866,37 @@ public sealed class Plugin : IAsyncDalamudPlugin
                 }
                 else if (!_penumbraAvailability.IsReady)
                 {
-                    ImGui.TextColored(Red, _penumbraAvailability.UserMessage);
+                    DrawWrapped(
+                        _penumbraAvailability.Status is PenumbraAvailabilityStatus.Faulted
+                            or PenumbraAvailabilityStatus.IncompatibleBreakingVersion
+                            or PenumbraAvailabilityStatus.InsufficientFeatureVersion
+                            or PenumbraAvailabilityStatus.InvalidModDirectory
+                            ? Red
+                            : Gold,
+                        _penumbraAvailability.UserMessage);
+                    if (_penumbraAvailability.Status is PenumbraAvailabilityStatus.Disabled
+                        or PenumbraAvailabilityStatus.IncompatibleBreakingVersion
+                        or PenumbraAvailabilityStatus.InsufficientFeatureVersion)
+                    {
+                        if (ImGui.SmallButton("Abrir Penumbra en plugins instalados"))
+                        {
+                            PluginInterface.OpenPluginInstallerTo(
+                                PluginInstallerOpenKind.InstalledPlugins,
+                                PenumbraInternalName);
+                        }
+                    }
+                    else if (ImGui.SmallButton("Reintentar conexión con Penumbra"))
+                    {
+                        _penumbraRetryAttempt = 0;
+                        _nextPenumbraRetryUtc = DateTime.UtcNow;
+                        _penumbraRetryPending = true;
+                    }
                 }
-                else if (ui.CanCancelRegeneration
-                    || _controller.Snapshot.Phase is PluginPhase.ErrorRecoverable
-                        or PluginPhase.ErrorFatal
-                        or PluginPhase.Cancelled)
+                else if (_controller.Snapshot.Phase is PluginPhase.ErrorRecoverable or PluginPhase.ErrorFatal)
+                {
+                    DrawWrapped(Red, _controller.Snapshot.Message);
+                }
+                else if (_controller.Snapshot.Phase is PluginPhase.Cancelled)
                 {
                     ImGui.TextWrapped(_controller.Snapshot.Message);
                 }
@@ -702,27 +927,21 @@ public sealed class Plugin : IAsyncDalamudPlugin
                     }
                 }
 
-                if (_penumbraAvailability.Status == PenumbraAvailabilityStatus.Unavailable)
+                // The spacer is emitted only with a button, so an idle card has no phantom overflow.
+                if (ui.CanCancelRegeneration)
                 {
-                    if (ImGui.SmallButton("Abrir repositorio oficial"))
-                    {
-                        Util.OpenLink(PenumbraRepositoryUrl);
-                    }
-                }
-
-                ImGui.Spacing();
-                if (!_restartTracker.IsRestartRequired
-                    && ui.CanStartRegeneration
-                    && ImGui.Button(ui.PrimaryActionLabel))
-                {
-                    StartRegeneration();
-                }
-                else if (ui.CanCancelRegeneration)
-                {
-                    ImGui.TextDisabled("Generando e instalando la traducción…");
+                    ImGui.Spacing();
                     if (ImGui.Button("Cancelar"))
                     {
                         _controller.CancelActiveOperation();
+                    }
+                }
+                else if (!_restartTracker.IsRestartRequired && ui.CanStartRegeneration)
+                {
+                    ImGui.Spacing();
+                    if (ImGui.Button(ui.PrimaryActionLabel))
+                    {
+                        StartRegeneration();
                     }
                 }
             }
@@ -756,7 +975,6 @@ public sealed class Plugin : IAsyncDalamudPlugin
 
     private void DrawRestartGameButton()
     {
-        ImGui.Spacing();
         if (ImGui.Button("Reiniciar juego"))
         {
             _openGameRestartConfirmationRequested = true;
@@ -777,17 +995,17 @@ public sealed class Plugin : IAsyncDalamudPlugin
                 || IsUnknownVersion(fingerprint.InstalledGameVersion)
                 || IsUnknownVersion(fingerprint.RecommendedGameVersion))
             {
-                ImGui.TextDisabled("No se ha podido comprobar la compatibilidad de FFXIV.");
+                DrawWrapped(Muted, "No se ha podido comprobar la compatibilidad de FFXIV.");
             }
             else if (StringComparer.Ordinal.Equals(
                 fingerprint.InstalledGameVersion,
                 fingerprint.RecommendedGameVersion))
             {
-                ImGui.TextColored(Green, "✓ Versión de FFXIV compatible.");
+                DrawWrapped(Green, "✓ Versión de FFXIV compatible.");
             }
             else
             {
-                ImGui.TextColored(Gold, "! La versión instalada difiere de la recomendada.");
+                DrawWrapped(Gold, "! La versión instalada difiere de la recomendada.");
             }
         }
 
@@ -826,7 +1044,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
         if (ImGui.BeginChild("Categorías", size, true, DashboardCardFlags))
         {
             DrawCardHeading("CONTENIDO DEL MOD", "Categorías de traducción");
-            ImGui.TextDisabled($"Base/Default ({categories.CollectionName}) · {categories.Message}");
+            DrawWrapped(Muted, $"Base/Default ({categories.CollectionName}) · {categories.Message}");
             if (!_startupWait.IsReady)
             {
                 ImGui.Spacing();
@@ -874,7 +1092,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
         if (ImGui.IsItemHovered())
         {
             ImGui.BeginTooltip();
-            ImGui.PushTextWrapPos(360f);
+            ImGui.PushTextWrapPos(360f * Scale);
             ImGui.TextUnformatted(category.Description);
             ImGui.PopTextWrapPos();
             ImGui.EndTooltip();
@@ -932,7 +1150,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
                 ImGui.EndDisabled();
             }
 
-            ImGui.TextDisabled("Administra únicamente Base/Default; no altera otras colecciones.");
+            DrawWrapped(Muted, "Administra únicamente Base/Default; no altera otras colecciones.");
         }
 
         ImGui.EndChild();
@@ -945,24 +1163,24 @@ public sealed class Plugin : IAsyncDalamudPlugin
             DrawCardHeading("PROYECTO", "Información y soporte");
             var gap = ImGui.GetStyle().ItemSpacing.X;
             var buttonWidth = (ImGui.GetContentRegionAvail().X - gap) / 2f;
-            if (ImGui.Button("Hitos de traducción", new Vector2(buttonWidth, 34f)))
+            if (ImGui.Button("Hitos de traducción", new Vector2(buttonWidth, 0f)))
             {
                 _openMilestonesRequested = true;
             }
 
             ImGui.SameLine();
-            if (ImGui.Button("Historial de sesión", new Vector2(buttonWidth, 34f)))
+            if (ImGui.Button("Historial de sesión", new Vector2(buttonWidth, 0f)))
             {
                 _openHistoryRequested = true;
             }
 
-            if (ImGui.Button("Aviso legal", new Vector2(buttonWidth, 34f)))
+            if (ImGui.Button("Aviso legal", new Vector2(buttonWidth, 0f)))
             {
                 _openLegalRequested = true;
             }
 
             ImGui.SameLine();
-            if (ImGui.Button("Copiar diagnóstico", new Vector2(buttonWidth, 34f)))
+            if (ImGui.Button("Copiar diagnóstico", new Vector2(buttonWidth, 0f)))
             {
                 ImGui.SetClipboardText(UiSnapshot().Diagnostic);
             }
@@ -1000,7 +1218,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
 
     private static void DrawTextPopup(string title, string text)
     {
-        ImGui.SetNextWindowSize(new Vector2(760f, 470f), ImGuiCond.Appearing);
+        ImGui.SetNextWindowSize(PopupSize(760f, 470f), ImGuiCond.Appearing);
         if (!ImGui.BeginPopup(title))
         {
             return;
@@ -1010,7 +1228,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
         ImGui.Separator();
         if (ImGui.BeginChild(
                 $"Contenido de {title}",
-                new Vector2(0f, 370f),
+                new Vector2(0f, -ImGui.GetFrameHeightWithSpacing()),
                 false,
                 PopupContentFlags))
         {
@@ -1026,7 +1244,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
 
     private void DrawMarkdownPopup()
     {
-        ImGui.SetNextWindowSize(new Vector2(860f, 620f), ImGuiCond.Appearing);
+        ImGui.SetNextWindowSize(PopupSize(860f, 620f), ImGuiCond.Appearing);
         if (!ImGui.BeginPopup("Hitos de traducción"))
         {
             return;
@@ -1036,7 +1254,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
         ImGui.Separator();
         if (ImGui.BeginChild(
                 "Documento de hitos",
-                new Vector2(0f, 520f),
+                new Vector2(0f, -ImGui.GetFrameHeightWithSpacing()),
                 false,
                 PopupContentFlags))
         {
@@ -1059,7 +1277,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
 
     private void DrawHistoryPopup()
     {
-        ImGui.SetNextWindowSize(new Vector2(760f, 470f), ImGuiCond.Appearing);
+        ImGui.SetNextWindowSize(PopupSize(760f, 470f), ImGuiCond.Appearing);
         if (!ImGui.BeginPopup("Historial de sesión"))
         {
             return;
@@ -1069,7 +1287,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
         ImGui.Separator();
         if (ImGui.BeginChild(
                 "Eventos",
-                new Vector2(0f, 370f),
+                new Vector2(0f, -ImGui.GetFrameHeightWithSpacing()),
                 false,
                 PopupContentFlags))
         {
@@ -1094,7 +1312,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
         }
 
         ImGui.OpenPopup("Confirmar categorías heredadas");
-        ImGui.SetNextWindowSize(new Vector2(560f, 0f), ImGuiCond.Appearing);
+        ImGui.SetNextWindowSize(PopupSize(560f, 0f), ImGuiCond.Appearing);
         if (!ImGui.BeginPopup("Confirmar categorías heredadas"))
         {
             return;
@@ -1125,7 +1343,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
 
     private void DrawStartupWaitConfirmationPopup()
     {
-        ImGui.SetNextWindowSize(new Vector2(600f, 0f), ImGuiCond.Appearing);
+        ImGui.SetNextWindowSize(PopupSize(600f, 0f), ImGuiCond.Appearing);
         if (!ImGui.BeginPopup("Activar carga temprana"))
         {
             return;
@@ -1166,7 +1384,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
 
     private static void DrawGameRestartConfirmationPopup()
     {
-        ImGui.SetNextWindowSize(new Vector2(560f, 0f), ImGuiCond.Appearing);
+        ImGui.SetNextWindowSize(PopupSize(560f, 0f), ImGuiCond.Appearing);
         if (!ImGui.BeginPopupModal(
                 "Confirmar reinicio del juego",
                 ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoResize))
@@ -1277,7 +1495,8 @@ public sealed class Plugin : IAsyncDalamudPlugin
         catch (Exception exception)
         {
             Log.Warning(exception, "No se pudo sincronizar el estado del mod con Penumbra.");
-            _categories.Refresh(directory);
+            // This continuation runs on a worker; the read-back is IPC, so it is queued instead.
+            _ = Framework.RunOnFrameworkThread(() => _categories.Refresh(directory));
         }
     }
 
@@ -1407,7 +1626,8 @@ public sealed class Plugin : IAsyncDalamudPlugin
                 TranslationCategoryCatalog.All.Select(category => category.DisplayName));
             var treeBuilder = new PipelineTreeBuilder(
                 pipeline,
-                request => BuildPatchRequest(request, availability.ModDirectory!, metadata));
+                request => BuildPatchRequest(request, availability.ModDirectory!, metadata),
+                new LatestPipelineMessage(message => _generationProgress = message));
             // During a guaranteed Boot load Dalamud is deliberately holding the framework thread
             // until this method returns. Penumbra is already Ready, so its synchronous IPC must run
             // on this load worker; queueing it to Framework would deadlock startup. Every later write
@@ -1415,6 +1635,11 @@ public sealed class Plugin : IAsyncDalamudPlugin
             IPenumbraModRegistry registry = marshalPenumbraToFrameworkThread
                 ? new FrameworkPenumbraModRegistry(_penumbra, Framework)
                 : _penumbra;
+            // The category IPC that follows the installation obeys the same rule as the registry.
+            Task<CategorySyncSnapshot> OnPenumbraThread(Func<CategorySyncSnapshot> ipc)
+                => marshalPenumbraToFrameworkThread
+                    ? Framework.RunOnFrameworkThread(ipc)
+                    : Task.FromResult(ipc());
             var installer = new ModInstaller(registry, new DalamudPluginDiagnosticLogger(Log));
             var service = new TranslationRegenerationService(treeBuilder, installer, configurationStore, configuration);
             var enableInDefaultCollection = ManagedModActivationPolicy.DesiredAfterRegeneration(
@@ -1440,7 +1665,9 @@ public sealed class Plugin : IAsyncDalamudPlugin
                     {
                         if (sessionWasValidated && _managedModDirectory is { } previousDirectory)
                         {
-                            _categories.GrantSessionActivation(previousDirectory, enableInDefaultCollection);
+                            await OnPenumbraThread(
+                                    () => _categories.GrantSessionActivation(previousDirectory, enableInDefaultCollection))
+                                .ConfigureAwait(false);
                         }
 
                         return (new RegenerationExecution(install, false),
@@ -1448,7 +1675,9 @@ public sealed class Plugin : IAsyncDalamudPlugin
                             install.Message);
                     }
 
-                    var activation = _categories.GrantSessionActivation(installedDirectory, enableInDefaultCollection);
+                    var activation = await OnPenumbraThread(
+                            () => _categories.GrantSessionActivation(installedDirectory, enableInDefaultCollection))
+                        .ConfigureAwait(false);
                     var activationApplied = ManagedModActivationPolicy.IsSessionStateApplied(
                         activation,
                         enableInDefaultCollection);
@@ -1470,7 +1699,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
                 {
                     _preparedSessionDirectory = directory;
                 }
-                _categories.Refresh(directory);
+                await OnPenumbraThread(() => _categories.Refresh(directory)).ConfigureAwait(false);
                 MarkTranslationFilesRebuilt();
             }
             _regeneration = RegenerationPlanner.Decide(
@@ -1491,6 +1720,22 @@ public sealed class Plugin : IAsyncDalamudPlugin
         catch (Exception exception)
         {
             Log.Error(exception, "La regeneración de la traducción falló.");
+        }
+        finally
+        {
+            _generationProgress = null;
+        }
+    }
+
+    /// <summary>Publishes the newest user-facing pipeline step for the status card.</summary>
+    private sealed class LatestPipelineMessage(Action<string> publish) : IProgress<PipelineEvent>
+    {
+        public void Report(PipelineEvent value)
+        {
+            if (value.Level != PipelineLevel.Debug)
+            {
+                publish(value.Message);
+            }
         }
     }
 

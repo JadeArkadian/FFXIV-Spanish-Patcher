@@ -6,6 +6,24 @@ namespace FFXIVSpanishPatcher.Tests;
 public sealed class ExdPatcherRegressionTests
 {
     [Fact]
+    public void Patch_ReplacementForRowAbsentFromPage_IsReportedAsMiss()
+    {
+        var exd = SyntheticExd.BuildExd([(1u, "Hello")]);
+        var replacements = new Dictionary<uint, IReadOnlyList<StringReplacement>>
+        {
+            [1u] = [new StringReplacement("Hello", "Hola")],
+            [999u] = [new StringReplacement("Removed by a game update", "Eliminada")],
+        };
+
+        var result = ExdPatcher.Patch(exd, fixedDataSize: 4, stringColumnOffsets: [0], replacements);
+
+        Assert.Equal(1, result.Applied);
+        var miss = Assert.Single(result.Missed);
+        Assert.Equal(999u, miss.RowId);
+        Assert.Equal(ExdPatcher.AbsentRowMissReason, miss.Reason);
+    }
+
+    [Fact]
     public void Patch_PlainQuestDialogue_CreatesPlayerGenderConditional()
     {
         const string source = "Could it be!? The Warrior of Darkness!";
