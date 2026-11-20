@@ -548,6 +548,31 @@ public sealed class PatchPipelineTests : IDisposable
     }
 
     [Fact]
+    public void Run_WhenAPageIsDamaged_SkipsItAndPackagesTheRest()
+    {
+        const string damagedPath = "exd/damaged_0_en.exd";
+        // The header claims a thousand index entries; the file ends long before them.
+        var damaged = SyntheticExd.BuildExd([(8u, "Old text")]);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(damaged.AsSpan(ExdPage.IndexSizeOffset), 8000);
+        var entries = ApprovedManifest()
+            .Append(Approved("Damaged", 8u, "Text", damagedPath, "Old text", "Texto antiguo"))
+            .ToList();
+        var source = BuildSource()
+            .AddPage(damagedPath, damaged)
+            .AddLayout("Damaged", new ExdLayout(4, [0], 1));
+        var pipeline = new PatchPipeline(
+            new ListTranslationSource(entries),
+            new FakePatchBackendFactory(source));
+
+        var result = pipeline.Run(Request(), cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        Assert.Equal(PatchOutcome.PackagedWithMisses, result.Outcome);
+        Assert.Equal(1, result.Statistics.UnsupportedPages);
+        Assert.Equal(4, result.Applied);
+    }
+
+    [Fact]
     public void Run_LowMatchRate_IsFatalInStrictMode()
     {
         var entries = DriftedManifest();

@@ -7,7 +7,7 @@ using FFXIVSpanishPatcher.Pipeline;
 namespace FFXIVSpanishPatcher.Plugin;
 
 /// <summary>Reads deterministic fingerprint inputs from the same resources and game installation as the plugin.</summary>
-internal sealed class DalamudBuildInputProvider(Assembly assembly, IDataManager dataManager) : IGameDataBackend
+internal sealed class DalamudBuildInputProvider(Assembly assembly, IDataManager dataManager)
 {
     public Task<GameDataBuildInput> GetBuildInputAsync(CancellationToken cancellationToken)
         => Task.Run(() => Read(cancellationToken), cancellationToken);

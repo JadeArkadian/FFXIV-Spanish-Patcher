@@ -7,14 +7,14 @@ namespace FFXIVSpanishPatcher.Plugin.Tests;
 public sealed class PenumbraIpcClientTests
 {
     [Fact]
-    public async Task GetAvailabilityAsync_ReadyPenumbra_ReturnsTypedReadyState()
+    public async Task ProbeAvailability_ReadyPenumbra_ReturnsTypedReadyState()
     {
         var transport = new FakeTransport();
         var probe = new FakeDirectoryProbe(existing: true);
         var log = new RecordingLogger();
         await using var client = new PenumbraIpcClient(transport, probe, log);
 
-        var availability = await client.GetAvailabilityAsync(TestContext.Current.CancellationToken);
+        var availability = client.ProbeAvailability();
 
         Assert.True(availability.IsReady);
         Assert.Equal(PenumbraAvailabilityStatus.Ready, availability.Status);
@@ -24,13 +24,13 @@ public sealed class PenumbraIpcClientTests
     }
 
     [Fact]
-    public async Task GetAvailabilityAsync_NotInstalledOrLateLoading_IsRecoverable()
+    public async Task ProbeAvailability_NotInstalledOrLateLoading_IsRecoverable()
     {
         var transport = new FakeTransport { ApiVersionException = new IpcNotReadyError("Penumbra.ApiVersion.V5") };
         var log = new RecordingLogger();
         await using var client = new PenumbraIpcClient(transport, new FakeDirectoryProbe(existing: true), log);
 
-        var availability = await client.GetAvailabilityAsync(TestContext.Current.CancellationToken);
+        var availability = client.ProbeAvailability();
 
         Assert.Equal(PenumbraAvailabilityStatus.Unavailable, availability.Status);
         Assert.IsType<IpcNotReadyError>(availability.TechnicalError);
@@ -38,12 +38,12 @@ public sealed class PenumbraIpcClientTests
     }
 
     [Fact]
-    public async Task GetAvailabilityAsync_DisabledPenumbra_ReturnsDisabledState()
+    public async Task ProbeAvailability_DisabledPenumbra_ReturnsDisabledState()
     {
         var transport = new FakeTransport { IsEnabled = false };
         await using var client = CreateClient(transport);
 
-        var availability = await client.GetAvailabilityAsync(TestContext.Current.CancellationToken);
+        var availability = client.ProbeAvailability();
 
         Assert.Equal(PenumbraAvailabilityStatus.Disabled, availability.Status);
     }
@@ -51,12 +51,12 @@ public sealed class PenumbraIpcClientTests
     [Theory]
     [InlineData(4, 17, PenumbraAvailabilityStatus.IncompatibleBreakingVersion)]
     [InlineData(5, 14, PenumbraAvailabilityStatus.InsufficientFeatureVersion)]
-    public async Task GetAvailabilityAsync_IncompatibleApi_ReturnsTypedState(int breaking, int features, PenumbraAvailabilityStatus expected)
+    public async Task ProbeAvailability_IncompatibleApi_ReturnsTypedState(int breaking, int features, PenumbraAvailabilityStatus expected)
     {
         var transport = new FakeTransport { Version = (breaking, features) };
         await using var client = CreateClient(transport);
 
-        var availability = await client.GetAvailabilityAsync(TestContext.Current.CancellationToken);
+        var availability = client.ProbeAvailability();
 
         Assert.Equal(expected, availability.Status);
     }
@@ -64,12 +64,12 @@ public sealed class PenumbraIpcClientTests
     [Theory]
     [InlineData("")]
     [InlineData("/missing")]
-    public async Task GetAvailabilityAsync_EmptyOrInvalidModDirectory_ReturnsTypedState(string directory)
+    public async Task ProbeAvailability_EmptyOrInvalidModDirectory_ReturnsTypedState(string directory)
     {
         var transport = new FakeTransport { ModDirectory = directory };
         await using var client = new PenumbraIpcClient(transport, new FakeDirectoryProbe(existing: false), new RecordingLogger());
 
-        var availability = await client.GetAvailabilityAsync(TestContext.Current.CancellationToken);
+        var availability = client.ProbeAvailability();
 
         Assert.Equal(PenumbraAvailabilityStatus.InvalidModDirectory, availability.Status);
     }
@@ -78,7 +78,7 @@ public sealed class PenumbraIpcClientTests
     [InlineData(Wrapper.ApiVersion)]
     [InlineData(Wrapper.EnabledState)]
     [InlineData(Wrapper.ModDirectory)]
-    public async Task GetAvailabilityAsync_WrapperException_BecomesFaultedDiagnostic(Wrapper wrapper)
+    public async Task ProbeAvailability_WrapperException_BecomesFaultedDiagnostic(Wrapper wrapper)
     {
         var failure = new InvalidOperationException(wrapper.ToString());
         var transport = new FakeTransport();
@@ -86,7 +86,7 @@ public sealed class PenumbraIpcClientTests
         var log = new RecordingLogger();
         await using var client = new PenumbraIpcClient(transport, new FakeDirectoryProbe(existing: true), log);
 
-        var availability = await client.GetAvailabilityAsync(TestContext.Current.CancellationToken);
+        var availability = client.ProbeAvailability();
 
         Assert.Equal(PenumbraAvailabilityStatus.Faulted, availability.Status);
         Assert.Same(failure, availability.TechnicalError);

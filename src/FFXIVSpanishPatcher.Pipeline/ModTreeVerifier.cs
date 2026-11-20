@@ -100,21 +100,13 @@ public sealed class ModTreeVerifier
         {
             if (files.TryGetValue(modRelative, out var path)
                 && modRelative.EndsWith(".exd", StringComparison.OrdinalIgnoreCase)
-                && !BeginsWithExdfMagic(path))
+                && ExdPage.FindStructuralProblem(File.ReadAllBytes(path)) is { } problem)
             {
-                problems.Add($"patched EXD is not a valid EXDF page: {modRelative}");
+                problems.Add($"patched EXD is not a valid EXDF page: {modRelative} ({problem})");
             }
         }
 
         return problems;
-    }
-
-    private static bool BeginsWithExdfMagic(string path)
-    {
-        var header = new byte[ExdPage.HeaderSize];
-        using var stream = File.OpenRead(path);
-        var read = stream.Read(header);
-        return read >= 4 && ExdPage.HasExdfMagic(header);
     }
 
     private static Dictionary<string, string> EnumerateSafeFiles(string root, ICollection<string> problems)

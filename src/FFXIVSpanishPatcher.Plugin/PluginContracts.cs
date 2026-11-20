@@ -2,20 +2,6 @@ using FFXIVSpanishPatcher.Pipeline;
 
 namespace FFXIVSpanishPatcher.Plugin;
 
-/// <summary>Stage-2 boundary for Penumbra; concrete IPC arrives in stage 3.</summary>
-public interface IPenumbraIpcClient : IAsyncDisposable
-{
-    Task<PenumbraAvailability> GetAvailabilityAsync(CancellationToken cancellationToken);
-
-    event Action<PenumbraAvailability>? AvailabilityChanged;
-
-    /// <summary>Raised after Penumbra removes a mod from its managed list and filesystem.</summary>
-    event Action<string>? ModDeleted;
-
-    /// <summary>Raised when Penumbra changes a mod's managed directory.</summary>
-    event Action<string, string>? ModMoved;
-}
-
 /// <summary>Stage-2 boundary for the transactional installer; filesystem work arrives in stage 4.</summary>
 public interface IModInstaller
 {
@@ -87,12 +73,6 @@ public interface ITranslationTreeBuilder
 }
 
 public sealed record TreeBuildRequest(string CandidateTreePath, BuildFingerprint Fingerprint);
-
-/// <summary>Stage-2 boundary for Dalamud-owned game data; it never owns or disposes GameData.</summary>
-public interface IGameDataBackend
-{
-    Task<GameDataBuildInput> GetBuildInputAsync(CancellationToken cancellationToken);
-}
 
 public enum PenumbraAvailabilityStatus
 {

@@ -19,7 +19,7 @@ internal sealed class TranslationManagerSession : IAsyncDisposable
     private readonly PenumbraIpcClient _penumbra;
     private readonly CategorySyncService _categories;
     private readonly CachedModIdentityResolver _identity;
-    private readonly IGameDataBackend _buildInputs;
+    private readonly DalamudBuildInputProvider _buildInputs;
 
     public TranslationManagerSession(DalamudServices dalamud, TranslationManagerNotifications notifications)
     {
@@ -260,7 +260,7 @@ internal sealed class TranslationManagerSession : IAsyncDisposable
             && PluginInterface.Reason == PluginLoadReason.Boot;
         if (ownsFrameworkThread)
         {
-            var penumbra = await _penumbra.GetAvailabilityAsync(cancellationToken).ConfigureAwait(false);
+            var penumbra = _penumbra.ProbeAvailability();
             OnPenumbraAvailabilityChanged(penumbra);
             _controller.TryTransition(
                 penumbra.IsReady ? PluginPhase.WelcomeRequired : PluginPhase.PenumbraUnavailable,

@@ -301,15 +301,4 @@ public static class TranslationCategories
 
         return domain;
     }
-
-    /// <summary>
-    /// True when <paramref name="selected"/> is null (all categories) or contains the entry's
-    /// domain (case-insensitive).
-    /// </summary>
-    public static bool IsSelected(TranslationEntry entry, IReadOnlySet<string>? selected)
-        => selected is null || selected.Contains(DomainOf(entry));
-
-    /// <summary>Builds a case-insensitive selection set, or null when no filter is requested.</summary>
-    public static IReadOnlySet<string>? BuildSelection(IReadOnlyCollection<string>? categories)
-        => categories is null ? null : new HashSet<string>(categories, StringComparer.OrdinalIgnoreCase);
 }

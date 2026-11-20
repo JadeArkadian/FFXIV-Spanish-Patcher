@@ -68,31 +68,21 @@ public sealed class IntegrityVerifier : IIntegrityVerifier
                 continue;
             }
 
-            if (modRelative.EndsWith(".exd", StringComparison.OrdinalIgnoreCase) && !BeginsWithExdfMagic(entry))
+            if (modRelative.EndsWith(".exd", StringComparison.OrdinalIgnoreCase)
+                && ExdPage.FindStructuralProblem(ReadEntry(entry)) is { } problem)
             {
-                problems.Add($"patched EXD is not a valid EXDF page: {modRelative}");
+                problems.Add($"patched EXD is not a valid EXDF page: {modRelative} ({problem})");
             }
         }
 
         return problems;
     }
 
-    private static bool BeginsWithExdfMagic(ZipArchiveEntry entry)
+    private static byte[] ReadEntry(ZipArchiveEntry entry)
     {
-        var header = new byte[ExdPage.HeaderSize];
         using var stream = entry.Open();
-        var read = 0;
-        while (read < header.Length)
-        {
-            var n = stream.Read(header, read, header.Length - read);
-            if (n == 0)
-            {
-                break;
-            }
-
-            read += n;
-        }
-
-        return read >= 4 && ExdPage.HasExdfMagic(header);
+        using var buffer = new MemoryStream();
+        stream.CopyTo(buffer);
+        return buffer.ToArray();
     }
 }

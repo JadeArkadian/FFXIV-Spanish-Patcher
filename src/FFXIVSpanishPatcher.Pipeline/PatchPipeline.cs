@@ -435,6 +435,15 @@ public sealed class PatchPipeline
                         continue;
                     }
 
+                    // The game trusts these offsets blindly. A page that does not hang together is
+                    // left in English rather than handed to the client.
+                    if (ExdPage.FindStructuralProblem(result.Bytes) is { } structuralProblem)
+                    {
+                        SkipPage(PageSkip.Unsupported, exdPath, page, category,
+                            $"omitida página {exdPath}: el resultado no es coherente ({structuralProblem})");
+                        continue;
+                    }
+
                     appliedWrites += result.Applied;
                     rowMisses += result.Missed.Count;
                     category.AppliedWrites += result.Applied;

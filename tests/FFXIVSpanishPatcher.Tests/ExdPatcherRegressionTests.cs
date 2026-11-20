@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using XivSpanish.GameData;
 using Xunit;
 
@@ -5,6 +6,61 @@ namespace FFXIVSpanishPatcher.Tests;
 
 public sealed class ExdPatcherRegressionTests
 {
+    private static byte[] PatchedPage()
+        => ExdPatcher.Patch(
+            SyntheticExd.BuildExd([(1u, "Hello"), (2u, "World"), (3u, string.Empty)]),
+            fixedDataSize: 4,
+            stringColumnOffsets: [0],
+            new Dictionary<uint, IReadOnlyList<StringReplacement>>
+            {
+                // Longer and shorter than the source, so every later row moves.
+                [1u] = [new StringReplacement("Hello", "Hola, qué tal")],
+                [2u] = [new StringReplacement("World", "Sol")],
+            }).Bytes;
+
+    [Fact]
+    public void FindStructuralProblem_AcceptsWhatThePatcherWrites()
+        => Assert.Null(ExdPage.FindStructuralProblem(PatchedPage()));
+
+    [Fact]
+    public void FindStructuralProblem_RejectsATruncatedPage()
+        => Assert.Contains("header declares", ExdPage.FindStructuralProblem(PatchedPage().AsSpan()[..^3]));
+
+    [Fact]
+    public void FindStructuralProblem_RejectsARowThatOverlapsThePreviousOne()
+    {
+        var page = PatchedPage();
+        var firstRowOffset = BinaryPrimitives.ReadUInt32BigEndian(page.AsSpan(ExdPage.HeaderSize + 4));
+        // The second index entry now points back into the first row.
+        BinaryPrimitives.WriteUInt32BigEndian(page.AsSpan(ExdPage.HeaderSize + 8 + 4), firstRowOffset + 2);
+
+        Assert.Contains("row 2 starts at", ExdPage.FindStructuralProblem(page));
+    }
+
+    [Fact]
+    public void FindStructuralProblem_RejectsARowThatRunsPastThePage()
+    {
+        var page = PatchedPage();
+        var lastRowOffset = BinaryPrimitives.ReadUInt32BigEndian(page.AsSpan(ExdPage.HeaderSize + 16 + 4));
+        BinaryPrimitives.WriteUInt32BigEndian(page.AsSpan((int)lastRowOffset), 4096);
+
+        Assert.Contains("row 3 ends at", ExdPage.FindStructuralProblem(page));
+    }
+
+    [Fact]
+    public void Patch_IndexLargerThanThePage_IsBadDataNotACrash()
+    {
+        var page = SyntheticExd.BuildExd([(1u, "Hello")]);
+        BinaryPrimitives.WriteUInt32BigEndian(page.AsSpan(ExdPage.IndexSizeOffset), 8000);
+        var replacements = new Dictionary<uint, IReadOnlyList<StringReplacement>>
+        {
+            [1u] = [new StringReplacement("Hello", "Hola")],
+        };
+
+        Assert.Throws<InvalidDataException>(() => ExdPatcher.Patch(page, 4, [0], replacements));
+        Assert.Throws<InvalidDataException>(() => ExdRowReader.ReadRawStrings(page, 4, [0]).ToArray());
+    }
+
     [Fact]
     public void Patch_ReplacementForRowAbsentFromPage_IsReportedAsMiss()
     {

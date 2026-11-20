@@ -47,7 +47,7 @@ public interface IPluginDiagnosticLogger
 }
 
 /// <summary>Typed Penumbra API v5 client that turns unavailable IPC into recoverable state.</summary>
-public sealed class PenumbraIpcClient : IPenumbraIpcClient, IPenumbraModRegistry
+public sealed class PenumbraIpcClient : IAsyncDisposable, IPenumbraModRegistry
 {
     public const int RequiredBreakingVersion = 5;
     public const int RequiredFeatureVersion = 15;
@@ -78,12 +78,6 @@ public sealed class PenumbraIpcClient : IPenumbraIpcClient, IPenumbraModRegistry
     public event Action<string>? ModDeleted;
 
     public event Action<string, string>? ModMoved;
-
-    public Task<PenumbraAvailability> GetAvailabilityAsync(CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(ProbeAvailability());
-    }
 
     /// <summary>
     /// Rechecks the synchronous IPC contract. The plugin invokes this from the framework thread as
