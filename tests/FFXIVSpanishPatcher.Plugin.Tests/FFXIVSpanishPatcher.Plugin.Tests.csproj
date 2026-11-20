@@ -22,6 +22,11 @@
     </Reference>
   </ItemGroup>
 
+  <!-- DalamudStartupWaitMembersTests loads Dalamud's own dependencies from the folder it was built against. -->
+  <ItemGroup>
+    <AssemblyMetadata Include="DalamudLibPath" Value="$(DalamudLibPath)" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\src\FFXIVSpanishPatcher.Plugin\FFXIVSpanishPatcher.Plugin.csproj" />
   </ItemGroup>

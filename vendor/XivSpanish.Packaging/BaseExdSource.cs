@@ -1,13 +1,11 @@
-using System.Text.Json;
 using XivSpanish.GameData;
 
 namespace XivSpanish.Packager;
 
 /// <summary>
 /// Source of the BASE (pre-patch) EXD bytes and the per-sheet string layout the packager
-/// patches against. Decouples packaging from the live FFXIV client: the bytes can come from
-/// the installed client (<see cref="ClientExdSource"/>) or from an immutable vanilla snapshot
-/// on disk (<see cref="DirectoryExdSource"/>), making packaging reproducible.
+/// patches against. Production reads them from the installed client
+/// (<see cref="ClientExdSource"/>); tests supply synthetic pages built in code.
 /// </summary>
 public interface IBaseExdSource
 {
@@ -42,64 +40,4 @@ public sealed class ClientExdSource(ExdResolver resolver) : IBaseExdSource
     public IReadOnlyList<string> ResolveFieldNames(string sheet, int stringColumnCount)
         => SheetStringFieldResolver.ResolveByOffset(_resolver.GameData, sheet, stringColumnCount)
             ?? SheetStringFieldResolver.Resolve(sheet, stringColumnCount);
-}
-
-/// <summary>
-/// Reads base EXD bytes and EXH layout from a local vanilla snapshot directory, never touching
-/// the live client. The snapshot is produced once by the packager's <c>--dump-base-exd</c> mode
-/// from a clean client. EXH layout is parsed directly from the snapshot's <c>.exh</c> files (via
-/// the shared <see cref="ExhLayout"/> parser) so a contaminated or absent client cannot influence
-/// packaging.
-/// </summary>
-public sealed class DirectoryExdSource(string baseDirectory) : IBaseExdSource
-{
-    private readonly string _baseDirectory = baseDirectory;
-
-    public byte[]? ReadBaseExd(string exdPath)
-    {
-        var path = ResolveLocalPath(exdPath);
-        return File.Exists(path) ? File.ReadAllBytes(path) : null;
-    }
-
-    public ExdLayout? ReadStringLayout(string sheet)
-    {
-        var path = ResolveLocalPath($"exd/{sheet}.exh");
-        if (!File.Exists(path))
-        {
-            return null;
-        }
-
-        return ExhLayout.Parse(File.ReadAllBytes(path));
-    }
-
-    // Snapshot builds do not open the live client. When the snapshot was dumped by a recent
-    // packager, use the offset-correct field map captured alongside the EXH; otherwise keep the
-    // legacy reflection-only fallback for older snapshots.
-    public IReadOnlyList<string> ResolveFieldNames(string sheet, int stringColumnCount)
-    {
-        var sidecar = ResolveLocalPath($"exd/{sheet}.fields.json");
-        if (File.Exists(sidecar))
-        {
-            try
-            {
-                var names = JsonSerializer.Deserialize(
-                    File.ReadAllBytes(sidecar),
-                    typeof(string[]),
-                    PackageJsonContext.Default) as string[];
-                if (names is not null && names.Length == stringColumnCount && names.All(name => !string.IsNullOrWhiteSpace(name)))
-                {
-                    return names;
-                }
-            }
-            catch (JsonException)
-            {
-                // Corrupt sidecar: fall back to the deterministic legacy resolver.
-            }
-        }
-
-        return SheetStringFieldResolver.Resolve(sheet, stringColumnCount);
-    }
-
-    private string ResolveLocalPath(string gamePath)
-        => Path.Combine(_baseDirectory, gamePath.Replace('/', Path.DirectorySeparatorChar));
 }

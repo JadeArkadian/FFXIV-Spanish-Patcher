@@ -146,36 +146,23 @@ public sealed class PatchPipeline
             Report(PipelineComponent.Patcher, message, PipelineLevel.Warning, entryCount);
         }
 
-        // 2. SeString gate over the build candidates. Unsafe rows are skipped by default; a few bad
-        // corpus rows must not abort an otherwise valid package.
+        // 2. SeString gate over the build candidates. Unsafe rows are skipped; a few bad corpus
+        // rows must not abort an otherwise valid package.
         var gate = ManifestSeStringGate.Check(entries.Where(IsPackageableEntry));
         if (gate.Count > 0)
         {
-            if (request.ForceSeString)
+            foreach (var violation in gate)
             {
-                foreach (var violation in gate)
-                {
-                    Report(PipelineComponent.Patcher, violation.DescribeOverride(), PipelineLevel.Warning);
-                }
-
-                Report(PipelineComponent.Patcher,
-                    $"{gate.Count} fila(s) empaquetadas pese a violaciones SeString.", PipelineLevel.Warning);
+                unsafeSeStringEntries.Add(violation.Entry);
+                categoryStatistics[TranslationCategoryCatalog.DomainOf(violation.Entry)].UnsafeSeStringEntries++;
+                Report(
+                    PipelineComponent.Patcher,
+                    $"omitida fila insegura: {violation.Describe()}",
+                    PipelineLevel.Warning);
             }
-            else
-            {
-                foreach (var violation in gate)
-                {
-                    unsafeSeStringEntries.Add(violation.Entry);
-                    categoryStatistics[TranslationCategoryCatalog.DomainOf(violation.Entry)].UnsafeSeStringEntries++;
-                    Report(
-                        PipelineComponent.Patcher,
-                        $"omitida fila insegura: {violation.Describe()}",
-                        PipelineLevel.Warning);
-                }
 
-                Report(PipelineComponent.Pipeline,
-                    $"SeString gate: {gate.Count} fila(s) omitida(s) por SeString incompatible. Se continúa con el resto.", PipelineLevel.Warning);
-            }
+            Report(PipelineComponent.Pipeline,
+                $"SeString gate: {gate.Count} fila(s) omitida(s) por SeString incompatible. Se continúa con el resto.", PipelineLevel.Warning);
         }
 
         cancellationToken.ThrowIfCancellationRequested();

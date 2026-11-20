@@ -48,17 +48,8 @@ public sealed record PatchRequest
     /// <summary>Staging directory for the package tree (wiped and rebuilt each run).</summary>
     public string StagingPath { get; init; } = Path.Combine("artifacts", "pmp-staging");
 
-    /// <summary>
-    /// Optional vanilla EXD snapshot directory. When set, base bytes/layout come from disk instead
-    /// of the live client (reproducible packaging; also the seam tests use to inject a fixture).
-    /// </summary>
-    public string? BaseExdDir { get; init; }
-
     /// <summary>Contamination guard threshold (0..1): abort if the content-match rate falls below it.</summary>
     public double MinMatchRate { get; init; } = 0.5;
-
-    /// <summary>Package rows that fail the SeString payload-compatibility gate (loudly logged).</summary>
-    public bool ForceSeString { get; init; }
 
     /// <summary>Compatibility policy chosen after the GUI has compared exact version strings.</summary>
     public PatchCompatibilityMode CompatibilityMode { get; init; } = PatchCompatibilityMode.Strict;

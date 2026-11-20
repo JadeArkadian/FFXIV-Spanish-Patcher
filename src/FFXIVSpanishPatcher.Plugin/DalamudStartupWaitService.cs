@@ -52,55 +52,65 @@ public static class DalamudStartupWaitPolicy
 }
 
 /// <summary>
+/// The Dalamud internals the bridge below reaches by name. None of them is public API, so a
+/// Dalamud update may rename any; a member that is no longer there is null. Resolving them calls
+/// nothing in Dalamud, which lets a test check them against the Dalamud build CI compiles with.
+/// </summary>
+public sealed record DalamudStartupWaitMembers(
+    MethodInfo? ConfigurationGetter,
+    PropertyInfo? WaitProperty,
+    MethodInfo? SaveConfiguration)
+{
+    private const BindingFlags AllMembers =
+        BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
+
+    public static DalamudStartupWaitMembers Resolve(Assembly dalamudAssembly)
+    {
+        var types = LoadableTypes(dalamudAssembly);
+        var serviceType = types.FirstOrDefault(type => type.Name == "Service`1" && type.IsGenericTypeDefinition);
+        var configurationType = types.FirstOrDefault(type => type.Name == "DalamudConfiguration");
+        return new(
+            serviceType is null || configurationType is null
+                ? null
+                : serviceType.MakeGenericType(configurationType).GetMethod("Get", AllMembers),
+            configurationType?.GetProperty(DalamudStartupSettings.WaitForPluginsPropertyName, AllMembers),
+            configurationType?.GetMethod("Save", AllMembers));
+    }
+
+    // Outside the game some of Dalamud's own dependencies are absent; the types that did load are enough.
+    private static Type[] LoadableTypes(Assembly assembly)
+    {
+        try
+        {
+            return assembly.GetTypes();
+        }
+        catch (ReflectionTypeLoadException exception)
+        {
+            return exception.Types.OfType<Type>().ToArray();
+        }
+    }
+}
+
+/// <summary>
 /// Narrow reflection bridge to Dalamud's live configuration. This mirrors the approach used by
 /// Penumbra and never edits dalamudConfig.json while Dalamud owns it.
 /// </summary>
 internal sealed class DalamudStartupWaitService
 {
-    private const BindingFlags AllMembers =
-        BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
-
+    private readonly DalamudStartupWaitMembers? _members;
     private readonly object? _configuration;
-    private readonly PropertyInfo? _waitProperty;
-    private readonly MethodInfo? _saveConfiguration;
-    private readonly MethodInfo? _interfaceGetter;
 
     public DalamudStartupWaitService(Assembly dalamudAssembly)
     {
         try
         {
-            var serviceType = dalamudAssembly.DefinedTypes
-                .FirstOrDefault(type => type.Name == "Service`1" && type.IsGenericTypeDefinition);
-            var configurationType = dalamudAssembly.DefinedTypes
-                .FirstOrDefault(type => type.Name == "DalamudConfiguration");
-            var interfaceType = dalamudAssembly.DefinedTypes
-                .FirstOrDefault(type => type.Name == "DalamudInterface");
-            if (serviceType is null || configurationType is null || interfaceType is null)
-            {
-                return;
-            }
-
-            var configurationService = serviceType.MakeGenericType(configurationType);
-            var interfaceService = serviceType.MakeGenericType(interfaceType);
-            var configurationGetter = configurationService.GetMethod("Get", AllMembers);
-            _interfaceGetter = interfaceService.GetMethod("Get", AllMembers);
-            _configuration = configurationGetter?.Invoke(null, null);
-            if (_configuration is null)
-            {
-                return;
-            }
-
-            _waitProperty = _configuration.GetType().GetProperty(
-                DalamudStartupSettings.WaitForPluginsPropertyName,
-                AllMembers);
-            _saveConfiguration = _configuration.GetType().GetMethod("Save", AllMembers);
+            _members = DalamudStartupWaitMembers.Resolve(dalamudAssembly);
+            _configuration = _members.ConfigurationGetter?.Invoke(null, null);
         }
         catch
         {
+            _members = null;
             _configuration = null;
-            _waitProperty = null;
-            _saveConfiguration = null;
-            _interfaceGetter = null;
         }
     }
 
@@ -109,7 +119,7 @@ internal sealed class DalamudStartupWaitService
         enabled = false;
         try
         {
-            if (_configuration is null || _waitProperty?.GetValue(_configuration) is not bool value)
+            if (_configuration is null || _members?.WaitProperty?.GetValue(_configuration) is not bool value)
             {
                 return false;
             }
@@ -127,37 +137,19 @@ internal sealed class DalamudStartupWaitService
     {
         try
         {
-            if (_configuration is null || _waitProperty is null || _saveConfiguration is null)
+            if (_configuration is null
+                || _members is not { WaitProperty: { } waitProperty, SaveConfiguration: { } saveConfiguration })
             {
                 return false;
             }
 
-            _waitProperty.SetValue(_configuration, true);
-            SynchronizeOpenSettingsWindow();
-            _saveConfiguration.Invoke(_configuration, null);
+            waitProperty.SetValue(_configuration, true);
+            saveConfiguration.Invoke(_configuration, null);
             return TryRead(out var enabled) && enabled;
         }
         catch
         {
             return false;
-        }
-    }
-
-    private void SynchronizeOpenSettingsWindow()
-    {
-        try
-        {
-            var dalamudInterface = _interfaceGetter?.Invoke(null, null);
-            var settingsWindow = dalamudInterface?.GetType()
-                .GetField("settingsWindow", AllMembers)
-                ?.GetValue(dalamudInterface);
-            settingsWindow?.GetType()
-                .GetField("doWaitForPluginsOnStartup", AllMembers)
-                ?.SetValue(settingsWindow, true);
-        }
-        catch
-        {
-            // The setting itself remains authoritative; UI synchronization is best effort.
         }
     }
 }

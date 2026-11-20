@@ -5,9 +5,8 @@ using XivSpanish.Translation;
 namespace FFXIVSpanishPatcher.Pipeline;
 
 /// <summary>
-/// Default backend: opens the installed FFXIV client (or a vanilla snapshot when
-/// <see cref="PatchRequest.BaseExdDir"/> is set) via Lumina. This is the production path; tests use
-/// a synthetic backend instead so they never need a game install.
+/// Default backend: opens the installed FFXIV client via Lumina. This is the production path;
+/// tests use a synthetic backend instead so they never need a game install.
 /// </summary>
 public sealed class ClientPatchBackendFactory : IPatchBackendFactory
 {
@@ -17,12 +16,7 @@ public sealed class ClientPatchBackendFactory : IPatchBackendFactory
         // pipeline translates that into a GameDataError result.
         var gameData = GameLocator.Open(request.GamePath);
         var resolver = new ExdResolver(gameData);
-
-        IBaseExdSource baseSource = request.BaseExdDir is { Length: > 0 } dir
-            ? new DirectoryExdSource(dir)
-            : new ClientExdSource(resolver);
-
-        return new ClientPatchBackend(gameData, resolver, baseSource);
+        return new ClientPatchBackend(gameData, resolver, new ClientExdSource(resolver));
     }
 }
 

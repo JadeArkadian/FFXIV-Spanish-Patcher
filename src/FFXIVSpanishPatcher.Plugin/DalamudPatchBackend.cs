@@ -14,11 +14,6 @@ internal sealed class DalamudPatchBackendFactory(IDataManager dataManager) : IPa
 {
     public IPatchBackend Open(PatchRequest request)
     {
-        if (!string.IsNullOrWhiteSpace(request.BaseExdDir))
-        {
-            throw new InvalidOperationException("El plugin no admite snapshots EXD externos.");
-        }
-
         var resolver = new ExdResolver(dataManager.GameData);
         return new DalamudPatchBackend(resolver, new ClientExdSource(resolver));
     }

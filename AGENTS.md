@@ -93,8 +93,8 @@ La procedencia historica vive en `vendor/VENDORED.md`.
    regenerar blob y publicar nueva release.
 4. Datos del juego = extraccion lean desde la instalacion del usuario. No redistribuir archivos de FFXIV.
 5. Corpus empaquetable = `status in {approved, gold}` + `target` no vacio + `sourceKey` util.
-6. SeString = validar compatibilidad. Por defecto, filas incompatibles se omiten con warning; solo
-   empaquetar con `ForceSeString` cuando se quiera diagnosticar conscientemente.
+6. SeString = validar compatibilidad. Las filas incompatibles se omiten con warning y el resto se
+   empaqueta; no existe opcion para forzarlas.
 7. Categorias avanzadas = hibridas: catalogo/labels/tooltips curados en app, contadores y enablement
    derivados del manifest embebido.
 8. Tests de integracion = EXD sintetico generado en codigo. Nunca depender del juego instalado en CI.
@@ -166,7 +166,7 @@ CI no reconstruye el corpus: usa el blob versionado.
 1. carga traducciones;
 2. aplica seleccion de categorias;
 3. corre `ManifestSeStringGate`;
-4. abre backend de juego real o snapshot (`BaseExdDir`);
+4. abre el backend del juego instalado;
 5. agrupa por pagina EXD;
 6. calcula broadcast para duplicados;
 7. parchea paginas;
@@ -180,8 +180,7 @@ Resultados esperados:
 - `Ok` o `PackagedWithMisses` producen paquete usable.
 - `NothingToPackage`, `Contaminated`, `ValidationFailed`, `GameDataError` y `OutputError` fallan sin
   paquete usable.
-- `SeStringGate` existe como outcome historico/diagnostico, pero el flujo actual omite filas inseguras
-  por defecto en vez de abortar todo el build.
+- Las filas SeString inseguras nunca abortan el build: se omiten y cuentan como omisiones.
 
 ## GUI
 
