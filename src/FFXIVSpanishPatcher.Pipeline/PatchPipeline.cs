@@ -113,6 +113,39 @@ public sealed class PatchPipeline
                 pair => pair.Value.Snapshot(),
                 StringComparer.OrdinalIgnoreCase));
 
+        // Every page that cannot be patched is counted once, under the reason it was left out.
+        void SkipPage(
+            PageSkip reason,
+            string exdPath,
+            PagePatch page,
+            MutableCategoryStatistics category,
+            string message)
+        {
+            var entryCount = page.ManifestEntryCount;
+            switch (reason)
+            {
+                case PageSkip.MissingSheet:
+                    missingSheets.Add(page.Sheet);
+                    missingSheetEntries += entryCount;
+                    category.MissingSheetEntries += entryCount;
+                    break;
+                case PageSkip.MissingPage:
+                    missingPages.Add(exdPath);
+                    missingPageEntries += entryCount;
+                    category.MissingPageEntries += entryCount;
+                    break;
+                case PageSkip.Unsupported:
+                    unsupportedPages++;
+                    unsupportedPageEntries += entryCount;
+                    category.UnsupportedPageEntries += entryCount;
+                    break;
+            }
+
+            skippedPages++;
+            category.SkippedPages++;
+            Report(PipelineComponent.Patcher, message, PipelineLevel.Warning, entryCount);
+        }
+
         // 2. SeString gate over the build candidates. Unsafe rows are skipped by default; a few bad
         // corpus rows must not abort an otherwise valid package.
         var gate = ManifestSeStringGate.Check(entries.Where(IsPackageableEntry));
@@ -275,61 +308,29 @@ public sealed class PatchPipeline
                     catch (Exception exception) when (exception is IOException or InvalidDataException)
                     {
                         gameReadErrors++;
-                        missingPages.Add(exdPath);
-                        missingPageEntries += page.ManifestEntryCount;
-                        skippedPages++;
-                        category.MissingPageEntries += page.ManifestEntryCount;
-                        category.SkippedPages++;
-                        Report(
-                            PipelineComponent.Patcher,
-                            $"omitida página {exdPath}: no se pudo leer ({exception.Message})",
-                            PipelineLevel.Warning,
-                            page.ManifestEntryCount);
+                        SkipPage(PageSkip.MissingPage, exdPath, page, category,
+                            $"omitida página {exdPath}: no se pudo leer ({exception.Message})");
                         continue;
                     }
 
                     if (layout is null)
                     {
-                        missingSheets.Add(page.Sheet);
-                        missingSheetEntries += page.ManifestEntryCount;
-                        skippedPages++;
-                        category.MissingSheetEntries += page.ManifestEntryCount;
-                        category.SkippedPages++;
-                        Report(
-                            PipelineComponent.Patcher,
-                            $"omitida hoja {page.Sheet}: falta su layout EXH ({page.ManifestEntryCount} entrada(s))",
-                            PipelineLevel.Warning,
-                            page.ManifestEntryCount);
+                        SkipPage(PageSkip.MissingSheet, exdPath, page, category,
+                            $"omitida hoja {page.Sheet}: falta su layout EXH ({page.ManifestEntryCount} entrada(s))");
                         continue;
                     }
 
                     if (raw is null)
                     {
-                        missingPages.Add(exdPath);
-                        missingPageEntries += page.ManifestEntryCount;
-                        skippedPages++;
-                        category.MissingPageEntries += page.ManifestEntryCount;
-                        category.SkippedPages++;
-                        Report(
-                            PipelineComponent.Patcher,
-                            $"omitida página {exdPath}: no existe en esta versión ({page.ManifestEntryCount} entrada(s))",
-                            PipelineLevel.Warning,
-                            page.ManifestEntryCount);
+                        SkipPage(PageSkip.MissingPage, exdPath, page, category,
+                            $"omitida página {exdPath}: no existe en esta versión ({page.ManifestEntryCount} entrada(s))");
                         continue;
                     }
 
                     if (layout.Value.Variant == 2)
                     {
-                        unsupportedPages++;
-                        unsupportedPageEntries += page.ManifestEntryCount;
-                        skippedPages++;
-                        category.UnsupportedPageEntries += page.ManifestEntryCount;
-                        category.SkippedPages++;
-                        Report(
-                            PipelineComponent.Patcher,
-                            $"omitida página {exdPath}: {page.Sheet} es subrow variant 2 (no soportado)",
-                            PipelineLevel.Warning,
-                            page.ManifestEntryCount);
+                        SkipPage(PageSkip.Unsupported, exdPath, page, category,
+                            $"omitida página {exdPath}: {page.Sheet} es subrow variant 2 (no soportado)");
                         continue;
                     }
 
@@ -343,16 +344,8 @@ public sealed class PatchPipeline
                     catch (Exception exception) when (exception is IOException or InvalidDataException)
                     {
                         gameReadErrors++;
-                        missingPages.Add(exdPath);
-                        missingPageEntries += page.ManifestEntryCount;
-                        skippedPages++;
-                        category.MissingPageEntries += page.ManifestEntryCount;
-                        category.SkippedPages++;
-                        Report(
-                            PipelineComponent.Patcher,
-                            $"omitida página {exdPath}: no se pudo leer su esquema ({exception.Message})",
-                            PipelineLevel.Warning,
-                            page.ManifestEntryCount);
+                        SkipPage(PageSkip.MissingPage, exdPath, page, category,
+                            $"omitida página {exdPath}: no se pudo leer su esquema ({exception.Message})");
                         continue;
                     }
 
@@ -369,16 +362,8 @@ public sealed class PatchPipeline
                     }
                     catch (InvalidDataException exception)
                     {
-                        unsupportedPages++;
-                        unsupportedPageEntries += page.ManifestEntryCount;
-                        skippedPages++;
-                        category.UnsupportedPageEntries += page.ManifestEntryCount;
-                        category.SkippedPages++;
-                        Report(
-                            PipelineComponent.Patcher,
-                            $"omitida página {exdPath}: {exception.Message}",
-                            PipelineLevel.Warning,
-                            page.ManifestEntryCount);
+                        SkipPage(PageSkip.Unsupported, exdPath, page, category,
+                            $"omitida página {exdPath}: {exception.Message}");
                         continue;
                     }
                     var broadcasted = 0;
@@ -458,16 +443,8 @@ public sealed class PatchPipeline
                     }
                     catch (InvalidDataException exception)
                     {
-                        unsupportedPages++;
-                        unsupportedPageEntries += page.ManifestEntryCount;
-                        skippedPages++;
-                        category.UnsupportedPageEntries += page.ManifestEntryCount;
-                        category.SkippedPages++;
-                        Report(
-                            PipelineComponent.Patcher,
-                            $"omitida página {exdPath}: {exception.Message}",
-                            PipelineLevel.Warning,
-                            page.ManifestEntryCount);
+                        SkipPage(PageSkip.Unsupported, exdPath, page, category,
+                            $"omitida página {exdPath}: {exception.Message}");
                         continue;
                     }
 
@@ -827,6 +804,14 @@ public sealed class PatchPipeline
 
         public IReadOnlyDictionary<uint, IReadOnlyList<StringReplacement>> ToReplacements()
             => _rows.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<StringReplacement>)pair.Value);
+    }
+
+    /// <summary>Why a page was left out; each reason has its own counters.</summary>
+    private enum PageSkip
+    {
+        MissingSheet,
+        MissingPage,
+        Unsupported,
     }
 
     private sealed class MutableCategoryStatistics

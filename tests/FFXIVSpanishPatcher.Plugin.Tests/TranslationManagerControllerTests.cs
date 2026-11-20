@@ -9,16 +9,18 @@ public sealed class TranslationManagerControllerTests
     public async Task RunExclusiveAsync_CompletesAndCorrelatesEventsForOneOperation()
     {
         await using var controller = new TranslationManagerController(new TestClock());
+        Assert.True(controller.TryTransition(PluginPhase.Checking, "Comprobando."));
 
         var value = await controller.RunExclusiveAsync(
-            PluginPhase.Checking,
-            _ => Task.FromResult(("ready", PluginPhase.UpToDate, "Ya está actualizado.")),
+            PluginPhase.Generating,
+            _ => Task.FromResult(("ready", PluginPhase.Ready, "Traducción instalada.")),
             TestContext.Current.CancellationToken);
 
         Assert.Equal("ready", value);
-        Assert.Equal(PluginPhase.UpToDate, controller.Snapshot.Phase);
+        Assert.Equal(PluginPhase.Ready, controller.Snapshot.Phase);
         var events = controller.DrainEvents();
-        Assert.Equal(2, events.Count);
+        // The check, the start of the generation and its result.
+        Assert.Equal(3, events.Count);
         Assert.All(events, item => Assert.Equal(events[0].OperationId, item.OperationId));
     }
 
@@ -26,23 +28,24 @@ public sealed class TranslationManagerControllerTests
     public async Task RunExclusiveAsync_RejectsConcurrentOperation()
     {
         await using var controller = new TranslationManagerController(new TestClock());
+        Assert.True(controller.TryTransition(PluginPhase.Checking, "Comprobando."));
         var started = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var release = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var first = controller.RunExclusiveAsync(
-            PluginPhase.Checking,
+            PluginPhase.Generating,
             async token =>
             {
                 started.SetResult(true);
                 await release.Task.WaitAsync(token);
-                return (1, PluginPhase.UpToDate, "Listo.");
+                return (1, PluginPhase.Ready, "Listo.");
             },
             TestContext.Current.CancellationToken);
         await started.Task.WaitAsync(TestContext.Current.CancellationToken);
 
         await Assert.ThrowsAsync<InvalidOperationException>(async () =>
             await controller.RunExclusiveAsync(
-                PluginPhase.Checking,
-                _ => Task.FromResult((2, PluginPhase.UpToDate, "No debe ejecutarse.")),
+                PluginPhase.Generating,
+                _ => Task.FromResult((2, PluginPhase.Ready, "No debe ejecutarse.")),
                 TestContext.Current.CancellationToken));
 
         release.SetResult(true);
@@ -53,14 +56,15 @@ public sealed class TranslationManagerControllerTests
     public async Task CancelActiveOperation_TransitionsToCancelled()
     {
         await using var controller = new TranslationManagerController(new TestClock());
+        Assert.True(controller.TryTransition(PluginPhase.Checking, "Comprobando."));
         var started = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var running = controller.RunExclusiveAsync(
-            PluginPhase.Checking,
+            PluginPhase.Generating,
             async token =>
             {
                 started.SetResult(true);
                 await Task.Delay(Timeout.InfiniteTimeSpan, token);
-                return (0, PluginPhase.UpToDate, "No llega.");
+                return (0, PluginPhase.Ready, "No llega.");
             },
             TestContext.Current.CancellationToken);
         await started.Task.WaitAsync(TestContext.Current.CancellationToken);
@@ -75,11 +79,12 @@ public sealed class TranslationManagerControllerTests
     public async Task RunExclusiveAsync_Failure_IsRecoverableAndPreservesTechnicalError()
     {
         await using var controller = new TranslationManagerController(new TestClock());
+        Assert.True(controller.TryTransition(PluginPhase.Checking, "Comprobando."));
         var failure = new InvalidOperationException("error de prueba");
 
         var thrown = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
             await controller.RunExclusiveAsync<int>(
-                PluginPhase.Checking,
+                PluginPhase.Generating,
                 _ => Task.FromException<(int Value, PluginPhase completedPhase, string message)>(failure),
                 TestContext.Current.CancellationToken));
 
@@ -92,14 +97,15 @@ public sealed class TranslationManagerControllerTests
     public async Task DisposeAsync_CancelsActiveOperationAndDisablesFurtherTransitions()
     {
         var controller = new TranslationManagerController(new TestClock());
+        Assert.True(controller.TryTransition(PluginPhase.Checking, "Comprobando."));
         var started = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var running = controller.RunExclusiveAsync(
-            PluginPhase.Checking,
+            PluginPhase.Generating,
             async token =>
             {
                 started.SetResult(true);
                 await Task.Delay(Timeout.InfiniteTimeSpan, token);
-                return (0, PluginPhase.UpToDate, "No llega.");
+                return (0, PluginPhase.Ready, "No llega.");
             },
             TestContext.Current.CancellationToken);
         await started.Task.WaitAsync(TestContext.Current.CancellationToken);
@@ -116,11 +122,12 @@ public sealed class TranslationManagerControllerTests
     {
         await using var controller = new TranslationManagerController(new TestClock());
 
-        Assert.False(controller.TryTransition(PluginPhase.Installing, "Inválido."));
+        Assert.False(controller.TryTransition(PluginPhase.Generating, "Inválido."));
         Assert.True(controller.TryTransition(PluginPhase.WelcomeRequired, "Bienvenida."));
         Assert.True(controller.TryTransition(PluginPhase.Checking, "Comprobando."));
         var firstCheck = controller.Snapshot.OperationId;
-        Assert.True(controller.TryTransition(PluginPhase.UpToDate, "Actualizado."));
+        Assert.True(controller.TryTransition(PluginPhase.Generating, "Generando."));
+        Assert.True(controller.TryTransition(PluginPhase.Ready, "Instalada."));
         Assert.True(controller.TryTransition(PluginPhase.Checking, "Comprobando otra vez."));
 
         Assert.NotEqual(firstCheck, controller.Snapshot.OperationId);

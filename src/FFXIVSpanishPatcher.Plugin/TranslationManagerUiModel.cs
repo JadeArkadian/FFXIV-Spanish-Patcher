@@ -34,7 +34,7 @@ public static class TranslationManagerUiModel
         bool installationMissing = false,
         bool translationRestartRequired = false)
     {
-        var operationRunning = state.Phase is PluginPhase.Checking or PluginPhase.Generating or PluginPhase.Installing or PluginPhase.Reloading;
+        var operationRunning = state.Phase is PluginPhase.Checking or PluginPhase.Generating;
         var installed = configuration?.LastSuccessfulFingerprint is not null;
         var translationPresent = installed && !installationMissing;
         var (statusMessage, statusTone) = DescribeStatus(
@@ -68,7 +68,7 @@ public static class TranslationManagerUiModel
             // translation that is already current is merely available.
             !translationPresent
                 || regeneration is { Kind: not RegenerationDecisionKind.UpToDate }
-                || state.Phase is PluginPhase.ErrorRecoverable or PluginPhase.ErrorFatal or PluginPhase.Cancelled);
+                || state.Phase is PluginPhase.ErrorRecoverable or PluginPhase.Cancelled);
     }
 
     /// <summary>
@@ -82,7 +82,7 @@ public static class TranslationManagerUiModel
         bool translationPresent,
         bool translationRestartRequired)
     {
-        if (state.Phase is PluginPhase.ErrorRecoverable or PluginPhase.ErrorFatal)
+        if (state.Phase is PluginPhase.ErrorRecoverable)
         {
             return (state.Message, StatusTone.Error);
         }

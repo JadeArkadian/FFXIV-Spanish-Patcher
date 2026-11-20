@@ -76,7 +76,8 @@ public partial class MainViewModel : ObservableObject
         IUpdateCheckService? updateCheckService = null,
         AppBuildInfo? buildInfo = null,
         bool debugLogging = false,
-        DalamudPenumbraService? dalamudService = null)
+        DalamudPenumbraService? dalamudService = null,
+        string? outputFolder = null)
     {
         _shell = shell;
         _translations = translations;
@@ -87,7 +88,7 @@ public partial class MainViewModel : ObservableObject
         _updateCheckService = updateCheckService ?? new GitHubReleaseUpdateCheckService(_buildInfo);
         _dalamudService = dalamudService ?? new DalamudPenumbraService();
         _debugLogging = debugLogging;
-        OutputFolder = Path.Combine(
+        OutputFolder = outputFolder ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
             "FFXIVSpanish Patcher",
             "Output");
@@ -430,7 +431,7 @@ public partial class MainViewModel : ObservableObject
         NotifyResultProperties();
 
         IReadOnlyCollection<string>? categories = selected.Length == enabled.Count ? null : selected;
-        Directory.CreateDirectory(OutputFolder);
+        // The pipeline creates the output folder and reports one it cannot create as a failed run.
         var outputName = $"FFXIVSpanish-{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.pmp";
         var request = new PatchRequest
         {
@@ -539,8 +540,15 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void OpenOutputFolder()
     {
-        Directory.CreateDirectory(OutputFolder);
-        _shell.RevealInFileManager(OutputFolder);
+        try
+        {
+            Directory.CreateDirectory(OutputFolder);
+            _shell.RevealInFileManager(OutputFolder);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            Console.Add(Error($"No se pudo abrir la carpeta de salida: {exception.Message}"));
+        }
     }
 
     [RelayCommand]

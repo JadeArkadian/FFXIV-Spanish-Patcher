@@ -28,12 +28,6 @@ public sealed class PluginConfiguration : IPluginConfiguration
 
     public BuildFingerprint? LastSuccessfulFingerprint { get; set; }
 
-    /// <summary>Retained for compatibility with configurations written by newer plugin builds.</summary>
-    public bool PluginUpdateNotificationsEnabled { get; set; } = true;
-
-    /// <summary>Last plugin version whose update notification was shown.</summary>
-    public string? LastNotifiedPluginUpdateVersion { get; set; }
-
     public static PluginConfiguration Migrate(PluginConfiguration? savedConfiguration)
     {
         if (savedConfiguration is null)
@@ -56,15 +50,10 @@ public sealed class PluginConfiguration : IPluginConfiguration
         if (configuration.Version == 0)
         {
             configuration.AutoRegenerationEnabled = true;
-            configuration.Version = 1;
         }
 
-        if (configuration.Version == 1)
-        {
-            configuration.PluginUpdateNotificationsEnabled = true;
-            configuration.Version = 2;
-        }
-
+        // Version 2 added only settings that no longer exist: nothing to carry over from 1.
+        configuration.Version = CurrentVersion;
         return configuration;
     }
 }

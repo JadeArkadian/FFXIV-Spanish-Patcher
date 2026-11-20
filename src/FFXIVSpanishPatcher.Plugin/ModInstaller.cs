@@ -33,6 +33,12 @@ public sealed class NoOpModInstallationFaultInjector : IModInstallationFaultInje
 /// </summary>
 public sealed class ModInstaller : IModInstaller
 {
+    // Sibling directories this installer creates beside a mod tree, as ".{tree}{infix}{token}".
+    // TranslationRegenerationService removes the ones a previous attempt left behind.
+    internal const string StageInfix = ".ffxivspanish-stage-";
+    internal const string FailedInfix = ".ffxivspanish-failed-";
+    internal const string BackupInfix = ".ffxivspanish-backup-";
+
     private readonly IPenumbraModRegistry _registry;
     private readonly PenumbraModIdentityService _identity;
     private readonly IPluginDiagnosticLogger _log;
@@ -79,8 +85,8 @@ public sealed class ModInstaller : IModInstaller
 
         var token = Guid.NewGuid().ToString("N");
         var parent = Path.GetDirectoryName(targetPath)!;
-        var stagePath = Path.Combine(parent, $".{directoryName}.ffxivspanish-stage-{token}");
-        var failedPath = Path.Combine(parent, $".{directoryName}.ffxivspanish-failed-{token}");
+        var stagePath = Path.Combine(parent, $".{directoryName}{StageInfix}{token}");
+        var failedPath = Path.Combine(parent, $".{directoryName}{FailedInfix}{token}");
         var backups = new List<ExistingTreeBackup>();
         var promoted = false;
 
@@ -98,7 +104,7 @@ public sealed class ModInstaller : IModInstaller
 
             foreach (var candidate in existing)
             {
-                var backupPath = Path.Combine(parent, $".{candidate.DirectoryName}.ffxivspanish-backup-{token}");
+                var backupPath = Path.Combine(parent, $".{candidate.DirectoryName}{BackupInfix}{token}");
                 Directory.Move(candidate.FullPath, backupPath);
                 backups.Add(new ExistingTreeBackup(candidate, backupPath));
                 _faultInjector.Before(ModInstallationStep.ExistingModBackedUp);

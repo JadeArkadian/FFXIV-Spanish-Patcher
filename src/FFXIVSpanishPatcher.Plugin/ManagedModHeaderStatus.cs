@@ -36,7 +36,7 @@ public static class ManagedModHeaderStatusModel
             return new(ManagedModHeaderStatus.RestartRequired, "Reinicio necesario");
         }
 
-        if (state.Phase is PluginPhase.Checking or PluginPhase.Generating or PluginPhase.Installing or PluginPhase.Reloading)
+        if (state.Phase is PluginPhase.Checking or PluginPhase.Generating)
         {
             return new(ManagedModHeaderStatus.Regenerating, "Actualizando la traducción");
         }

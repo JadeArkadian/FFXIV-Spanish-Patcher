@@ -62,6 +62,47 @@ public sealed class TranslationRegenerationService(
                 Directory.Delete(path, recursive: true);
             }
         }
+
+        // What the installer itself leaves behind. A failed candidate is kept for diagnosis only
+        // until the next attempt, and each one is a full copy of the mod. A backup is deleted only
+        // while the tree it was taken from is back in place: a backup with no such tree (the game
+        // died mid-install) is the only copy of the previous translation.
+        // Matched by name, not by a search pattern: Win32 wildcard rules differ from the plain ones.
+        var leftovers = Directory.EnumerateDirectories(root)
+            .Where(path => IsInstallerLeftover(root, Path.GetFileName(path)))
+            .ToArray();
+        foreach (var path in leftovers)
+        {
+            try
+            {
+                if (new DirectoryInfo(path).LinkTarget is null)
+                {
+                    Directory.Delete(path, recursive: true);
+                }
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                // Reclaiming disk space must never stop the regeneration that is about to run.
+            }
+        }
+    }
+
+    private static bool IsInstallerLeftover(string root, string name)
+    {
+        if (!name.StartsWith('.'))
+        {
+            return false;
+        }
+
+        if (name.Contains(ModInstaller.FailedInfix, StringComparison.Ordinal)
+            || name.Contains(ModInstaller.StageInfix, StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        // ".FFXIVSpanish.ffxivspanish-backup-TOKEN" was taken from the tree "FFXIVSpanish".
+        var backup = name.LastIndexOf(ModInstaller.BackupInfix, StringComparison.Ordinal);
+        return backup > 1 && Directory.Exists(Path.Combine(root, name[1..backup]));
     }
 
     private static void DeleteCandidateBestEffort(string candidateTreePath)

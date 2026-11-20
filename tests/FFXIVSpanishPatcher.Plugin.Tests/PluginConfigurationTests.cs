@@ -46,6 +46,23 @@ public sealed class PluginConfigurationTests
     }
 
     [Fact]
+    public void Migrate_VersionOne_KeepsTheUsersChoicesAndReachesTheCurrentVersion()
+    {
+        var saved = new PluginConfiguration
+        {
+            Version = 1,
+            AutoRegenerationEnabled = false,
+            ManagedModEnabled = false,
+        };
+
+        var configuration = PluginConfiguration.Migrate(saved);
+
+        Assert.Equal(PluginConfiguration.CurrentVersion, configuration.Version);
+        Assert.False(configuration.AutoRegenerationEnabled);
+        Assert.False(configuration.ManagedModEnabled);
+    }
+
+    [Fact]
     public void Migrate_NegativeVersion_Throws()
     {
         var saved = new PluginConfiguration { Version = -1 };

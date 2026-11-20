@@ -42,6 +42,55 @@ public sealed class TranslationRegenerationServiceTests
     }
 
     [Fact]
+    public async Task Regeneration_RemovesWhatAnEarlierInstallationLeftBehind()
+    {
+        var modRoot = Path.Combine(Path.GetTempPath(), "ffxivspanish-leftovers-" + Guid.NewGuid().ToString("N"));
+        string[] removed =
+        [
+            ".FFXIVSpanish.ffxivspanish-failed-aaaa",
+            ".FFXIVSpanish.ffxivspanish-stage-bbbb",
+            // Its tree is back in place, so this copy is redundant.
+            ".FFXIVSpanish.ffxivspanish-backup-cccc",
+            ".Mi.Mod.ffxivspanish-failed-dddd",
+        ];
+        string[] kept =
+        [
+            "FFXIVSpanish",
+            // The game died mid-install: no "Perdido" tree exists, so this is the only copy.
+            ".Perdido.ffxivspanish-backup-eeee",
+            "OtroMod",
+            ".oculto",
+            // Without the leading dot it is somebody's mod, whatever it is called.
+            "Mod.ffxivspanish-failed-ffff",
+        ];
+        foreach (var name in removed.Concat(kept))
+        {
+            Directory.CreateDirectory(Path.Combine(modRoot, name));
+            File.WriteAllText(Path.Combine(modRoot, name, "meta.json"), "{}");
+        }
+
+        try
+        {
+            var fingerprint = Fingerprint();
+            var service = new TranslationRegenerationService(
+                new FakeBuilder(new PatchResult(PatchOutcome.Ok, "/candidate", new PatchStatistics())),
+                new FakeInstaller(new ModInstallResult(true, "ok", "FFXIVSpanish", fingerprint)),
+                new Store(),
+                new PluginConfiguration());
+
+            await service.RegenerateAsync(
+                new TreeBuildRequest("/candidate", fingerprint), modRoot, true, TestContext.Current.CancellationToken);
+
+            Assert.All(removed, name => Assert.False(Directory.Exists(Path.Combine(modRoot, name)), name));
+            Assert.All(kept, name => Assert.True(Directory.Exists(Path.Combine(modRoot, name)), name));
+        }
+        finally
+        {
+            Directory.Delete(modRoot, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task Installation_RecordsTheOwedActivationBeforeTheInstallerRuns()
     {
         var configuration = new PluginConfiguration();

@@ -154,6 +154,39 @@ public sealed class PatchPipelineTests : IDisposable
     }
 
     [Fact]
+    public void Run_CreatesAMissingOutputFolder()
+    {
+        var output = Path.Combine(_temp, "Documentos", "Output", "out.pmp");
+        var pipeline = new PatchPipeline(new ListTranslationSource(ApprovedManifest()), new FakePatchBackendFactory(BuildSource()));
+
+        var result = pipeline.Run(
+            Request() with { OutputPath = output },
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        Assert.True(File.Exists(output));
+    }
+
+    [Fact]
+    public void Run_ReportsAnOutputFolderItCannotCreateAsAFailedRun()
+    {
+        // A file where the folder should be: no platform can create a directory beneath it.
+        var blocker = Path.Combine(_temp, "blocker");
+        File.WriteAllText(blocker, string.Empty);
+        var pipeline = new PatchPipeline(new ListTranslationSource(ApprovedManifest()), new FakePatchBackendFactory(BuildSource()));
+        var events = new List<PipelineEvent>();
+
+        var result = pipeline.Run(
+            Request() with { OutputPath = Path.Combine(blocker, "Output", "out.pmp") },
+            new SyncProgress<PipelineEvent>(events.Add),
+            TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Equal(PatchOutcome.OutputError, result.Outcome);
+        Assert.Contains(events, e => e.Component == PipelineComponent.Packager && e.Level == PipelineLevel.Error);
+    }
+
+    [Fact]
     public void Run_WithTreeOutput_PromotesVerifiedTreeWithoutCreatingPmp()
     {
         var treeOutput = Path.Combine(_temp, "candidate-tree");
