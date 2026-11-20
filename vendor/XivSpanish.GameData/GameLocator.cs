@@ -34,10 +34,21 @@ public static class GameLocator
             return null;
         }
 
-        using var document = JsonDocument.Parse(File.ReadAllText(configPath));
-        return document.RootElement.TryGetProperty("GamePath", out var gamePath)
-            ? gamePath.GetString()
-            : null;
+        // This is another program's file: unreadable, locked or malformed content means
+        // "not detected", never a failure of the caller (which still offers a manual path).
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(configPath));
+            return document.RootElement.ValueKind == JsonValueKind.Object
+                   && document.RootElement.TryGetProperty("GamePath", out var gamePath)
+                   && gamePath.ValueKind == JsonValueKind.String
+                ? gamePath.GetString()
+                : null;
+        }
+        catch (Exception exception) when (exception is JsonException or IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
     }
 
     public static string? ResolveSqpackPath(string? path)

@@ -6,6 +6,56 @@ namespace FFXIVSpanishPatcher.Pipeline;
 /// <summary>Mandatory structural verification for an unpacked categorized Penumbra v4 mod tree.</summary>
 public sealed class ModTreeVerifier
 {
+    /// <summary>Verifies a completed tree by deriving its declared payload from <c>meta.json</c>.</summary>
+    public IReadOnlyList<string> Verify(string treePath)
+    {
+        if (!Directory.Exists(treePath))
+        {
+            return [$"mod tree not found: {treePath}"];
+        }
+
+        var metaPath = Path.Combine(treePath, "meta.json");
+        if (!File.Exists(metaPath))
+        {
+            return ["meta.json missing at mod tree root"];
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllBytes(metaPath));
+            var declared = new Dictionary<string, string>(StringComparer.Ordinal);
+            if (document.RootElement.TryGetProperty("Groups", out var groups) && groups.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var group in groups.EnumerateArray())
+                {
+                    if (!group.TryGetProperty("Options", out var options) || options.ValueKind != JsonValueKind.Array)
+                    {
+                        continue;
+                    }
+
+                    foreach (var option in options.EnumerateArray())
+                    {
+                        if (!option.TryGetProperty("Files", out var files) || files.ValueKind != JsonValueKind.Object)
+                        {
+                            continue;
+                        }
+
+                        foreach (var file in files.EnumerateObject())
+                        {
+                            declared.TryAdd(file.Name, file.Value.GetString() ?? string.Empty);
+                        }
+                    }
+                }
+            }
+
+            return Verify(treePath, declared);
+        }
+        catch (JsonException exception)
+        {
+            return [$"invalid meta.json: {exception.Message}"];
+        }
+    }
+
     public IReadOnlyList<string> Verify(string treePath, IReadOnlyDictionary<string, string> declaredFiles)
     {
         var problems = new List<string>();
@@ -50,21 +100,13 @@ public sealed class ModTreeVerifier
         {
             if (files.TryGetValue(modRelative, out var path)
                 && modRelative.EndsWith(".exd", StringComparison.OrdinalIgnoreCase)
-                && !BeginsWithExdfMagic(path))
+                && ExdPage.FindStructuralProblem(File.ReadAllBytes(path)) is { } problem)
             {
-                problems.Add($"patched EXD is not a valid EXDF page: {modRelative}");
+                problems.Add($"patched EXD is not a valid EXDF page: {modRelative} ({problem})");
             }
         }
 
         return problems;
-    }
-
-    private static bool BeginsWithExdfMagic(string path)
-    {
-        var header = new byte[ExdPage.HeaderSize];
-        using var stream = File.OpenRead(path);
-        var read = stream.Read(header);
-        return read >= 4 && ExdPage.HasExdfMagic(header);
     }
 
     private static Dictionary<string, string> EnumerateSafeFiles(string root, ICollection<string> problems)

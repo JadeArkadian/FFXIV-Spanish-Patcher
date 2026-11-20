@@ -88,6 +88,20 @@ public sealed class GamePathDetectorTests
     }
 
     [Fact]
+    public void TryReadGameVersion_WhenTheVersionFileCannotBeRead_ReturnsNull()
+    {
+        using var install = TempGameInstall();
+        // Held exclusively, as another process might hold it: every read fails.
+        using var locked = new FileStream(
+            Path.Combine(install.Root, "game", "ffxivgame.ver"),
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.None);
+
+        Assert.Null(GamePathDetector.TryReadGameVersion(install.Root));
+    }
+
+    [Fact]
     public void TryReadGameVersion_InvalidPath_ReturnsNull()
         => Assert.Null(GamePathDetector.TryReadGameVersion(@"C:\does\not\exist\anywhere"));
 

@@ -1,0 +1,38 @@
+<Project Sdk="Dalamud.NET.Sdk/15.0.0">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows7.0</TargetFramework>
+    <RootNamespace>FFXIVSpanishPatcher.Plugin</RootNamespace>
+    <AssemblyName>FFXIVSpanishTranslationManager</AssemblyName>
+    <Author>Jade Arkadian y colaboradores</Author>
+    <Name>FFXIV Spanish Translation Manager</Name>
+    <Punchline>Gestiona la traducción al castellano mediante Penumbra.</Punchline>
+    <Description>Genera y administra la traducción al castellano de FINAL FANTASY XIV mediante Penumbra.</Description>
+    <RepoUrl>https://github.com/JadeArkadian/FFXIV-Spanish-Patcher</RepoUrl>
+    <!-- A plugin installed from a repository gets its icon from this URL (only a dev plugin reads
+         the file beside its DLL), so it must point at the copy published on the default branch. -->
+    <IconUrl>https://raw.githubusercontent.com/JadeArkadian/FFXIV-Spanish-Patcher/main/src/FFXIVSpanishPatcher.Plugin/images/icon.png</IconUrl>
+    <Tags>ffxiv;spanish;translation;penumbra</Tags>
+    <DalamudApiLevel>15</DalamudApiLevel>
+    <LoadRequiredState>2</LoadRequiredState>
+    <LoadSync>true</LoadSync>
+    <CanUnloadAsync>true</CanUnloadAsync>
+    <LoadPriority>0</LoadPriority>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FFXIVSpanishPatcher.Pipeline\FFXIVSpanishPatcher.Pipeline.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Dalamud's plugin list shows images/icon.png found next to the plugin DLL. It must be
+         square and at most 512 px; this one is the crystal cropped from docs/assets/logo-git.png. -->
+    <Content Include="images\icon.png" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\data\translations.dat" LogicalName="FFXIVSpanishTranslationManager.translations.dat" />
+    <EmbeddedResource Include="..\..\data\recommended-game-version.txt" LogicalName="FFXIVSpanishTranslationManager.recommended-game-version.txt" />
+    <EmbeddedResource Include="..\..\data\translation-milestones.md" LogicalName="FFXIVSpanishTranslationManager.translation-milestones.md" />
+    <EmbeddedResource Include="..\..\docs\assets\logo-git.png" LogicalName="FFXIVSpanishTranslationManager.logo-git.png" />
+  </ItemGroup>
+</Project>

@@ -32,7 +32,6 @@ public partial class MainViewModel : ObservableObject
     private const string ExternalTranslationsMetadataName = "ExternalTranslations";
     private const string ExternalTranslationsFileName = "translations.dat";
     private const string RecommendedGameVersionResourceName = "FFXIVSpanishPatcher.App.recommended-game-version.txt";
-    private const string LandingPageUrl = "https://ffxivspanish.carrd.co/";
 
     private readonly IShellServices _shell;
     private readonly ITranslationSource _translations;
@@ -77,7 +76,8 @@ public partial class MainViewModel : ObservableObject
         IUpdateCheckService? updateCheckService = null,
         AppBuildInfo? buildInfo = null,
         bool debugLogging = false,
-        DalamudPenumbraService? dalamudService = null)
+        DalamudPenumbraService? dalamudService = null,
+        string? outputFolder = null)
     {
         _shell = shell;
         _translations = translations;
@@ -88,7 +88,7 @@ public partial class MainViewModel : ObservableObject
         _updateCheckService = updateCheckService ?? new GitHubReleaseUpdateCheckService(_buildInfo);
         _dalamudService = dalamudService ?? new DalamudPenumbraService();
         _debugLogging = debugLogging;
-        OutputFolder = Path.Combine(
+        OutputFolder = outputFolder ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
             "FFXIVSpanish Patcher",
             "Output");
@@ -178,16 +178,7 @@ public partial class MainViewModel : ObservableObject
         ? "Instalación, versión, corpus y entorno de Penumbra revisados."
         : "Selecciona una instalación válida mientras se prepara el corpus.";
 
-    public string LegalNoticeText =>
-        "Proyecto no oficial hecho por fans. No está afiliado, patrocinado ni aprobado por Square Enix.\n\n" +
-        "FINAL FANTASY XIV, FFXIV, SQUARE ENIX y todos los nombres, marcas, logotipos, textos y demás " +
-        "propiedad intelectual relacionados pertenecen a sus respectivos propietarios.\n\n" +
-        "Esta aplicación no incluye ni redistribuye archivos del juego: trabaja únicamente sobre los " +
-        "archivos de tu instalación local y genera un paquete separado para Penumbra.\n\n" +
-        "No elude la propiedad del juego, suscripciones, autenticación ni restricciones de licencia. " +
-        "Eres responsable de cumplir los términos y políticas aplicables.\n\n" +
-        "Las traducciones pertenecen a sus autores. La licencia MIT aplica solo al código fuente. " +
-        "Este software se proporciona sin garantía; aviso completo en NOTICE.md.";
+    public string LegalNoticeText => LegalNotice.Text;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(GenerateModCommand))]
@@ -354,7 +345,7 @@ public partial class MainViewModel : ObservableObject
         {
             var entries = _translations.Load();
             var counts = entries
-                .Where(entry => PackageableStatus.IsPackageable(entry, PackageableStatus.Default))
+                .Where(entry => PackageableEntry.IsPackageable(entry, PackageableEntry.DefaultStatuses))
                 .GroupBy(TranslationCategoryCatalog.DomainOf)
                 .ToDictionary(group => group.Key, group => group.Count(), StringComparer.OrdinalIgnoreCase);
 
@@ -424,11 +415,9 @@ public partial class MainViewModel : ObservableObject
             && _dalamudCheck.State == DalamudPenumbraState.RequiresResumeAfterPluginLoad)
         {
             _dalamudPromptHandled = true;
-            var enableOption = await ShowDalamudModalAsync();
-            if (enableOption && _dalamudService.TryEnableResumeAfterPluginLoad(_dalamudCheck))
+            if (await ShowDalamudModalAsync())
             {
-                _dalamudCheck = new DalamudPenumbraCheck(DalamudPenumbraState.Ready, _dalamudCheck.ConfigPath);
-                NotifyEnvironmentProperties();
+                EnableDalamudStartupWait();
             }
         }
 
@@ -442,7 +431,7 @@ public partial class MainViewModel : ObservableObject
         NotifyResultProperties();
 
         IReadOnlyCollection<string>? categories = selected.Length == enabled.Count ? null : selected;
-        Directory.CreateDirectory(OutputFolder);
+        // The pipeline creates the output folder and reports one it cannot create as a failed run.
         var outputName = $"FFXIVSpanish-{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.pmp";
         var request = new PatchRequest
         {
@@ -452,7 +441,7 @@ public partial class MainViewModel : ObservableObject
             OutputPath = Path.Combine(OutputFolder, outputName),
             StagingPath = Path.Combine(Path.GetTempPath(), "ffxivsp-patcher-staging"),
             DebugLogging = _debugLogging,
-            Meta = BuildPackageMeta(enabled),
+            Meta = PackageMetadataFactory.Create(_buildInfo.PackageVersion, InstalledGameVersion, DateTimeOffset.Now),
         };
 
         var progress = new Progress<PipelineEvent>(HandlePipelineEvent);
@@ -507,29 +496,6 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    private PackageMeta BuildPackageMeta(IReadOnlyList<CategoryViewModel> enabled)
-    {
-        var version = $"v{_buildInfo.PackageVersion}"
-                      + (string.IsNullOrEmpty(InstalledGameVersion) ? "" : $"-{InstalledGameVersion}");
-        var includedDomains = string.Join(
-            "\n",
-            enabled.Select(category => $"* {category.Label}"));
-        var enabledByDefaultDomains = string.Join(
-            "\n",
-            enabled.Where(category => category.IsSelected).Select(category => $"* {category.Label}"));
-        var description = new PackageMeta().Description
-                          + $"\n\nVersión del patcher: v{_buildInfo.PackageVersion}"
-                          + $"\nVersión de FFXIV: {InstalledGameVersion ?? "desconocida"}"
-                          + $"\n\nCategorías incluidas:\n{includedDomains}"
-                          + $"\n\nCategorías activadas en primera importación de Penumbra:\n{enabledByDefaultDomains}";
-        return new PackageMeta
-        {
-            Version = version,
-            Description = description,
-            Website = LandingPageUrl,
-        };
-    }
-
     [RelayCommand]
     private async Task BrowseAsync()
     {
@@ -574,8 +540,15 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void OpenOutputFolder()
     {
-        Directory.CreateDirectory(OutputFolder);
-        _shell.RevealInFileManager(OutputFolder);
+        try
+        {
+            Directory.CreateDirectory(OutputFolder);
+            _shell.RevealInFileManager(OutputFolder);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            Console.Add(Error($"No se pudo abrir la carpeta de salida: {exception.Message}"));
+        }
     }
 
     [RelayCommand]
@@ -600,8 +573,24 @@ public partial class MainViewModel : ObservableObject
         }
 
         _dalamudPromptHandled = true;
-        if (await ShowDalamudModalAsync()
-            && _dalamudService.TryEnableResumeAfterPluginLoad(_dalamudCheck))
+        if (await ShowDalamudModalAsync())
+        {
+            EnableDalamudStartupWait();
+        }
+    }
+
+    private void EnableDalamudStartupWait()
+    {
+        if (_dalamudService.IsGameRunning())
+        {
+            // The one case worth a message: the user asked for the change and it cannot be made now.
+            Console.Add(Warning(
+                "FFXIV está abierto: Dalamud sobrescribiría el cambio al guardar su configuración. " +
+                "Cierra el juego y vuelve a intentarlo."));
+            return;
+        }
+
+        if (_dalamudService.TryEnableResumeAfterPluginLoad(_dalamudCheck))
         {
             _dalamudCheck = new DalamudPenumbraCheck(DalamudPenumbraState.Ready, _dalamudCheck.ConfigPath);
             NotifyEnvironmentProperties();

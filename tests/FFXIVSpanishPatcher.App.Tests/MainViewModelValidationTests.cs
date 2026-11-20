@@ -103,6 +103,37 @@ public sealed class MainViewModelValidationTests
     }
 
     [AvaloniaFact]
+    public async Task GenerateMod_WhenTheOutputFolderCannotBeCreated_EndsAsAFailedRunInsteadOfThrowing()
+    {
+        using var install = TempGameInstall("2026.06.18.0000.0000");
+        using var blocked = new BlockedFolder();
+        var viewModel = ReadyViewModel(new CapturingShell(), recommendedGameVersion: null, blocked.Path);
+        viewModel.Categories.Add(Category(selected: true));
+        viewModel.GamePath = install.Root;
+
+        await viewModel.GenerateModCommand.ExecuteAsync(null);
+
+        Assert.False(viewModel.IsBusy);
+        Assert.Equal(PatcherUiStage.Result, viewModel.Stage);
+        Assert.False(viewModel.LastSuccess);
+    }
+
+    [AvaloniaFact]
+    public void OpenOutputFolder_WhenTheFolderCannotBeCreated_ReportsItInsteadOfThrowing()
+    {
+        using var blocked = new BlockedFolder();
+        var shell = new CapturingShell();
+        var viewModel = ReadyViewModel(shell, recommendedGameVersion: null, blocked.Path);
+
+        viewModel.OpenOutputFolderCommand.Execute(null);
+
+        Assert.Null(shell.RevealedPath);
+        Assert.Contains(
+            viewModel.Console,
+            line => line.Text.Contains("carpeta de salida", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [AvaloniaFact]
     public void CategoryCommands_KeepAtLeastOneSelectionRequired()
     {
         var viewModel = ReadyViewModel(new CapturingShell());
@@ -124,12 +155,16 @@ public sealed class MainViewModelValidationTests
     private static MainViewModel ReadyViewModel(CapturingShell shell)
         => ReadyViewModel(shell, recommendedGameVersion: null);
 
-    private static MainViewModel ReadyViewModel(CapturingShell shell, string? recommendedGameVersion)
+    private static MainViewModel ReadyViewModel(
+        CapturingShell shell,
+        string? recommendedGameVersion,
+        string? outputFolder = null)
     {
         var viewModel = new MainViewModel(
             shell,
             new ListTranslationSource([]),
-            recommendedGameVersion)
+            recommendedGameVersion,
+            outputFolder: outputFolder)
         {
             TranslationsReady = true,
         };
@@ -167,16 +202,30 @@ public sealed class MainViewModelValidationTests
         }
     }
 
+    /// <summary>An output folder beneath a regular file: no platform can create it.</summary>
+    private sealed class BlockedFolder : IDisposable
+    {
+        private readonly string _blocker = System.IO.Path.Combine(
+            System.IO.Path.GetTempPath(),
+            "ffxivsp-app-blocker-" + Guid.NewGuid().ToString("N"));
+
+        public BlockedFolder() => File.WriteAllText(_blocker, string.Empty);
+
+        public string Path => System.IO.Path.Combine(_blocker, "Output");
+
+        public void Dispose() => File.Delete(_blocker);
+    }
+
     private sealed class CapturingShell : IShellServices
     {
         public string? PickResult { get; init; }
+
+        public string? RevealedPath { get; private set; }
 
         public Task<string?> PickGameFolderAsync() => Task.FromResult(PickResult);
 
         public Task CopyToClipboardAsync(string text) => Task.CompletedTask;
 
-        public void RevealInFileManager(string path)
-        {
-        }
+        public void RevealInFileManager(string path) => RevealedPath = path;
     }
 }

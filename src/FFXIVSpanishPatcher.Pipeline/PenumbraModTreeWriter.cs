@@ -152,7 +152,7 @@ internal sealed class PackageModMetaV4
     [JsonPropertyName("Image")] public string Image => string.Empty;
     [JsonPropertyName("Version")] public string Version { get; init; } = "0.0.0";
     [JsonPropertyName("Website")] public string Website { get; init; } = string.Empty;
-    [JsonPropertyName("ModTags")] public string[] ModTags => ["translation", "spanish", "castellano", "español", "text", "UI"];
+    [JsonPropertyName("ModTags")] public string[] ModTags => ["translation", "spanish", "castellano", "español", "text", "UI", "ffxiv-spanish-managed"];
     [JsonPropertyName("DefaultData")] public PenumbraModContainer DefaultData => new();
     [JsonPropertyName("Groups")] public IReadOnlyList<PenumbraModGroup> Groups { get; init; } = [];
 

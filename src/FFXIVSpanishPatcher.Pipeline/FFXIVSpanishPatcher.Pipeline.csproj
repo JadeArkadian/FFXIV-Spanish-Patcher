@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Markdig" Version="1.3.2" />
     <PackageReference Include="ZstdSharp.Port" Version="0.8.8" />
     <ProjectReference Include="..\..\vendor\XivSpanish.Core\XivSpanish.Core.csproj" />
     <ProjectReference Include="..\..\vendor\XivSpanish.GameData\XivSpanish.GameData.csproj" />

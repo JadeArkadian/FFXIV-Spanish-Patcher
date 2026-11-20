@@ -15,9 +15,6 @@ public enum PatchOutcome
     /// <summary>Base EXD looks contaminated / already translated. Aborted before writing.</summary>
     Contaminated,
 
-    /// <summary>One or more rows failed the SeString gate and --force-sestring was not set.</summary>
-    SeStringGate,
-
     /// <summary>The generated package failed structural validation.</summary>
     ValidationFailed,
 

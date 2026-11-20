@@ -445,6 +445,7 @@
       "ffxivspanishpatcher.pipeline": {
         "type": "Project",
         "dependencies": {
+          "Markdig": "[1.3.2, )",
           "XivSpanish.Core": "[0.0.0, )",
           "XivSpanish.GameData": "[0.0.0, )",
           "XivSpanish.Packaging": "[0.0.0, )",

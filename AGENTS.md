@@ -6,7 +6,9 @@ los `.md` de documentación pueden ir en español.
 ## Que es esto
 
 **FFXIVSpanish Patcher** es una app de escritorio para generar un mod `.pmp` de Penumbra con la
-traduccion al castellano de Final Fantasy XIV.
+traduccion al castellano de Final Fantasy XIV. Desde v0.6.0 el repo incluye tambien un **plugin de
+Dalamud** (FFXIV Spanish Translation Manager) que genera el mismo mod dentro del juego, lo instala
+en Penumbra y lo mantiene al dia.
 
 Landing page publica del proyecto: <https://ffxivspanish.carrd.co/>. Se usa como `Website` en el
 `meta.json` del `.pmp` generado.
@@ -34,7 +36,13 @@ vendorizado propio bajo `vendor/`.
 - `src/FFXIVSpanishPatcher.Pipeline` - orquestacion `load -> SeString gate -> extract -> patch ->
   package -> verify`, detector de ruta/version del juego, categorias, integridad y eventos
   `IProgress<PipelineEvent>`.
-- `vendor/XivSpanish.Core` - modelos de traduccion, JSONL, manifest, normalizacion, claves de origen.
+- `src/FFXIVSpanishPatcher.Plugin` - plugin Dalamud v0.6.0; reutiliza Pipeline, lee EXH/EXD desde
+  `IDataManager.GameData`, consume de forma degradable la API pública IPC v5 de Penumbra, instala
+  árboles v4 de forma transaccional, regenera cuando cambia el fingerprint y sincroniza en ambos
+  sentidos activación y categorías de Base/Default. `Plugin.cs` es solo el punto de entrada: la
+  orquestación vive en `TranslationManagerSession`, la ventana ImGui en `TranslationManagerWindow`
+  y las notificaciones en `TranslationManagerNotifications`.
+- `vendor/XivSpanish.Core` - modelos de traduccion, JSONL, mapa de dominios, claves de origen.
 - `vendor/XivSpanish.GameData` - Lumina, EXH/EXD, `ExdPatcher`, lectura de filas, parser/tokenizer
   SeString, `GameLocator`.
 - `vendor/XivSpanish.Packaging` - primitivas de empaquetado: broadcast, alias de campos,
@@ -48,11 +56,21 @@ vendorizado propio bajo `vendor/`.
 - `tests/FFXIVSpanishPatcher.Tests` - tests de pipeline, EXD sintetico, categorias, detector, SeString
   y packaging.
 - `tests/FFXIVSpanishPatcher.App.Tests` - tests headless de GUI/blob/viewmodel.
-- `.github/workflows/ci.yml` - build + test en `main` y PR.
+- `tests/FFXIVSpanishPatcher.Plugin.Tests` - carga/cancelación, ZIP Dalamud, configuración, estado
+  y contratos IPC de Penumbra con fakes.
+- `.github/workflows/ci.yml` - build + test en `main` y PR; ejecuta tambien los scripts de
+  empaquetado del plugin y deja su ZIP como artifact.
 - `.github/workflows/release.yml` - tags `vX.Y.Z` publican zips self-contained para `win-x64`,
   `linux-x64` y `osx-arm64`.
 - `build/macos/Info.plist` - metadatos del bundle `.app`.
-- `docs/DESIGN.md` - diseno historico/arquitectura.
+- `dalamud/` - repo custom de Dalamud: `README.md` y el `pluginmaster.json` que escribe la release.
+- `docs/DESIGN.md` - diseno historico/arquitectura, incluida la del plugin.
+- `docs/PLUGIN.md` - guia de usuario y soporte del plugin.
+- `docs/PATCHER_FAQ.md` - preguntas frecuentes del patcher; su seccion "Problemas en el juego"
+  (ingles, cierres, macros) vale tambien para el plugin. El README solo lo enlaza.
+- `docs/PLUGIN_FAQ.md` - preguntas frecuentes propias del plugin (por que Penumbra, patcher vs
+  plugin, actualizaciones, desinstalar). Misma estructura que `docs/PATCHER_FAQ.md`: mantenerlos
+  parejos.
 - `README.md`, `CONTRIBUTING.md`, `AI_USAGE.md`, `NOTICE.md` - docs publicas/legal/uso.
 
 ## `vendor/`: codigo propio
@@ -75,8 +93,8 @@ La procedencia historica vive en `vendor/VENDORED.md`.
    regenerar blob y publicar nueva release.
 4. Datos del juego = extraccion lean desde la instalacion del usuario. No redistribuir archivos de FFXIV.
 5. Corpus empaquetable = `status in {approved, gold}` + `target` no vacio + `sourceKey` util.
-6. SeString = validar compatibilidad. Por defecto, filas incompatibles se omiten con warning; solo
-   empaquetar con `ForceSeString` cuando se quiera diagnosticar conscientemente.
+6. SeString = validar compatibilidad. Las filas incompatibles se omiten con warning y el resto se
+   empaqueta; no existe opcion para forzarlas.
 7. Categorias avanzadas = hibridas: catalogo/labels/tooltips curados en app, contadores y enablement
    derivados del manifest embebido.
 8. Tests de integracion = EXD sintetico generado en codigo. Nunca depender del juego instalado en CI.
@@ -114,7 +132,7 @@ dotnet publish src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj -c Rel
 dotnet publish src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj -c Release -r linux-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
 ```
 
-El proyecto usa `global.json` con SDK `10.0.302` fijado mediante `rollForward: disable`. Los
+El proyecto usa `global.json` con SDK `11.0.100` fijado mediante `rollForward: disable`. Los
 `packages.lock.json` estan versionados; CI y releases restauran con `--locked-mode`.
 
 La app publica con trimming activado (`PublishTrimmed=true`, `TrimMode=full`) y rootea `Lumina` /
@@ -125,17 +143,19 @@ publish real.
 
 `data/translations.dat` es Zstandard-JSONL proyectado. El builder:
 
-- filtra a filas empaquetables (`approved` + `gold`, target no vacio, sourceKey con sheet/row);
+- filtra a filas empaquetables (`approved` + `gold`, target con texto visible, sourceKey con sheet/row).
+  La regla vive una sola vez en `PackageableEntry` (`vendor/XivSpanish.Core`) y la usan el builder
+  y el pipeline;
 - proyecta al modelo runtime (`source`, `target`, `status`, `sourceKey`);
 - comprime con Zstandard mediante `ZstdSharp.Port`;
 - escribe `data/recommended-game-version.txt` cuando tiene fuente de version.
 
-Estado observado el 2026-07-29:
+Estado observado el 2026-11-19:
 
-- `data/translations.dat`: ~16.9 MiB (`17708236` bytes).
-- `data/recommended-game-version.txt`: `2026.07.16.0001.0000`.
+- `data/translations.dat`: ~28.0 MiB (`29353184` bytes).
+- `data/recommended-game-version.txt`: `2026.11.03.0000.0000`.
 - remote GitHub configurado: `JadeArkadian/FFXIV-Spanish-Patcher`.
-- tags publicados/locales hasta `v0.2.5`.
+- tags publicados/locales hasta `v0.5.2`.
 
 CI no reconstruye el corpus: usa el blob versionado.
 
@@ -146,7 +166,7 @@ CI no reconstruye el corpus: usa el blob versionado.
 1. carga traducciones;
 2. aplica seleccion de categorias;
 3. corre `ManifestSeStringGate`;
-4. abre backend de juego real o snapshot (`BaseExdDir`);
+4. abre el backend del juego instalado;
 5. agrupa por pagina EXD;
 6. calcula broadcast para duplicados;
 7. parchea paginas;
@@ -160,8 +180,7 @@ Resultados esperados:
 - `Ok` o `PackagedWithMisses` producen paquete usable.
 - `NothingToPackage`, `Contaminated`, `ValidationFailed`, `GameDataError` y `OutputError` fallan sin
   paquete usable.
-- `SeStringGate` existe como outcome historico/diagnostico, pero el flujo actual omite filas inseguras
-  por defecto en vez de abortar todo el build.
+- Las filas SeString inseguras nunca abortan el build: se omiten y cuentan como omisiones.
 
 ## GUI
 
@@ -205,6 +224,11 @@ Los tags validos son `vX.Y.Z` con cada numero `0..999`. El workflow:
 - publica `osx-arm64` desde macOS;
 - monta `.app` en macOS, incluye `icon.icns` y firma ad-hoc;
 - adjunta zips a GitHub Release;
+- compila el plugin Dalamud con la misma version, pasa sus tests contra ese build y adjunta
+  `FFXIVSpanishTranslationManager-X.Y.Z.zip` a la misma release;
+- cuando todos los assets estan adjuntos, commitea `dalamud/pluginmaster.json` en `main` apuntando
+  a ese ZIP versionado (repo custom de Dalamud). Ese archivo lo escribe solo la release: no editarlo
+  a mano salvo para revertir una publicacion;
 - inyecta version, `RepositorySlug` y URLs de latest release en assembly metadata.
 
 ## No hacer
@@ -221,8 +245,35 @@ Los tags validos son `vX.Y.Z` con cada numero `0..999`. El workflow:
 
 ## Estado actual
 
-El plan inicial F0-F7 esta completado y el proyecto ya esta en fase de mantenimiento/release. La
-evolucion v0.3.0 vive temporalmente en `docs/evolucion-v0.3.0/`; esa carpeta solo se elimina despues
-de validar la implementacion y recibir aprobacion expresa. Pendiente normal de cada release:
-regenerar blob cuando cambie upstream, publicar tag y validar manualmente contra una instalacion real
-de FFXIV y Penumbra en las plataformas que toque. Usar `docs/RELEASE_CHECKLIST.md`.
+El plan inicial F0-F7 esta completado y el proyecto ya esta en fase de mantenimiento/release.
+Pendiente normal de cada release: regenerar blob cuando cambie upstream, publicar tag y validar
+manualmente contra una instalacion real de FFXIV y Penumbra en las plataformas que toque. Usar
+`docs/RELEASE_CHECKLIST.md`.
+
+## Plugin Dalamud v0.6.0
+
+El plugin esta desarrollado. Los planes, decisiones y smoke tests de la v0.5.0 y la v0.6.0
+(`docs/evolucion-v0.6.0/`) se borraron con aprobacion expresa al terminar; siguen en el historial
+de git (ultimo commit que los contiene: `0470052`).
+
+Pendiente:
+
+- La release del plugin aun no ha corrido en GitHub.
+- Prueba humana instalando desde el repo custom, solo posible tras la primera release con plugin
+  (lista en `docs/RELEASE_CHECKLIST.md`).
+- Vigilancia del contrato IPC de Penumbra (la antigua etapa 11), sin empezar: un comprobador
+  .NET, ejecutable en local y en un workflow programado, que compare la version breaking y la
+  feature minima y los nombres y firmas de los endpoints IPC usados contra los canales oficiales
+  stable (estricto) y testing (aviso). Sin dependencia de `Penumbra.Api`, sin ejecutar binarios
+  descargados, y con los tests ordinarios offline.
+
+Reglas que no cambian:
+
+- El plugin reutiliza el motor de arbol Penumbra v4; no duplicar parcheo, SeString ni verificacion.
+- El ZIP no lleva las DLLs que aporta Dalamud (`Dalamud`, `Lumina`, `Lumina.Excel`).
+- Sin dependencia binaria de `Penumbra.Api`: contratos IPC v5 por nombre, degradables.
+- Instalacion transaccional: no llama a `DeleteMod` y conserva/restaura la version previa ante fallos.
+- Administra unicamente Base/Default; no toca colecciones individuales.
+- Desinstalar o descargar el plugin nunca borra el mod de Penumbra.
+- Cada etapa requiere tests, smoke humano y nueva aprobacion antes de su commit.
+- `docs/PLUGIN.md` describe el comportamiento visible: actualizarlo cuando cambie.

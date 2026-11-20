@@ -1,3 +1,4 @@
+using XivSpanish.GameData;
 using XivSpanish.Packager;
 using XivSpanish.Translation;
 
@@ -15,6 +16,32 @@ public readonly record struct ExdResolution(ExdResolutionKind Kind, string? Path
     public static ExdResolution Resolved(string path) => new(ExdResolutionKind.Resolved, path);
     public static ExdResolution MissingSheet() => new(ExdResolutionKind.MissingSheet);
     public static ExdResolution UnresolvedRow() => new(ExdResolutionKind.UnresolvedRow);
+
+    /// <summary>
+    /// The one rule that maps a source key to its EXD page over a live Lumina resolver: the key's
+    /// own <c>ExdPath</c> when it has one, otherwise the page that holds the row. The desktop app
+    /// and the Dalamud plugin read the game through different backends but must agree on this.
+    /// </summary>
+    public static ExdResolution For(ExdResolver resolver, TranslationSourceKey key)
+    {
+        if (!string.IsNullOrWhiteSpace(key.ExdPath))
+        {
+            return Resolved(key.ExdPath);
+        }
+
+        if (!key.RowId.HasValue)
+        {
+            return UnresolvedRow();
+        }
+
+        if (resolver.ReadHeader(key.Sheet) is null)
+        {
+            return MissingSheet();
+        }
+
+        var location = resolver.Resolve(key.Sheet, key.RowId.Value, "en");
+        return location is null ? UnresolvedRow() : Resolved(location.GamePath);
+    }
 }
 
 /// <summary>

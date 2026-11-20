@@ -171,6 +171,22 @@ public static class ExdPatcher
             }
         }
 
+        // A replacement whose row is not in this page (removed or re-paged by a game update) was
+        // never visited above. Report it, so a dropped translation is counted instead of vanishing.
+        var pageRowIds = entries.Select(entry => entry.RowId).ToHashSet();
+        foreach (var (rowId, absentReplacements) in replacements)
+        {
+            if (pageRowIds.Contains(rowId))
+            {
+                continue;
+            }
+
+            foreach (var replacement in absentReplacements)
+            {
+                missed.Add(new MissedReplacement(rowId, replacement.Source, AbsentRowMissReason));
+            }
+        }
+
         var bodyBytes = body.ToArray();
         var output = new byte[dataStart + bodyBytes.Length];
         original.AsSpan(0, HeaderSize).CopyTo(output);
@@ -590,6 +606,10 @@ public static class ExdPatcher
 
         return (fixedData, newBlob.ToArray(), rowApplied);
     }
+
+    /// <summary>Miss reason reported when a replacement targets a row id this page does not contain.
+    /// It is a version difference, not a contaminated base, so the contamination guard ignores it.</summary>
+    public const string AbsentRowMissReason = "row not present in this EXD page";
 
     /// <summary>Miss reason reported when the post-patch run-aware verification rejects a flat-path patch.</summary>
     public const string StaleRunLengthMissReason =

@@ -43,6 +43,9 @@ public static class ExdPage
     /// <summary>Row blocks are padded to this alignment.</summary>
     public const int RowAlignment = 4;
 
+    /// <summary>File offset of the u32 row-index size field (8 bytes per row) in the EXDF header.</summary>
+    public const int IndexSizeOffset = 0x08;
+
     /// <summary>File offset of the u32 body/data-section size field in the EXDF header.</summary>
     public const int DataSectionSizeOffset = 0x0C;
 
@@ -54,7 +57,66 @@ public static class ExdPage
 
     /// <summary>Number of index entries (rows) declared by the header's IndexSize.</summary>
     public static int ReadRowCount(byte[] bytes)
-        => (int)(BinaryPrimitives.ReadUInt32BigEndian(bytes.AsSpan(0x08, 4)) / 8);
+    {
+        var indexSize = BinaryPrimitives.ReadUInt32BigEndian(bytes.AsSpan(IndexSizeOffset, 4));
+        // A damaged or truncated page can declare more index entries than it holds. Reading them
+        // would run off the buffer; this is the page's fault, so it is reported as bad data.
+        if (HeaderSize + (long)indexSize > bytes.Length)
+        {
+            throw new InvalidDataException("The EXD row index does not fit in the page.");
+        }
+
+        return (int)(indexSize / 8);
+    }
+
+    /// <summary>
+    /// Checks that a page this project wrote hangs together: the header sizes add up to the file,
+    /// and every row block starts after the previous one and ends inside the file. Null when it
+    /// does. It needs no sheet layout, so the package verifiers can run it on any patched page.
+    /// Only for pages built by <see cref="ExdPatcher"/>, which writes rows in index order; a
+    /// vanilla page is free to order them differently.
+    /// </summary>
+    public static string? FindStructuralProblem(ReadOnlySpan<byte> bytes)
+    {
+        if (bytes.Length < HeaderSize || !bytes[..4].SequenceEqual("EXDF"u8))
+        {
+            return "not an EXDF page";
+        }
+
+        var indexSize = BinaryPrimitives.ReadUInt32BigEndian(bytes.Slice(IndexSizeOffset, 4));
+        var dataSize = BinaryPrimitives.ReadUInt32BigEndian(bytes.Slice(DataSectionSizeOffset, 4));
+        if (indexSize % 8 != 0)
+        {
+            return $"index size {indexSize} is not a whole number of entries";
+        }
+
+        var dataStart = HeaderSize + (long)indexSize;
+        if (dataStart + dataSize != bytes.Length)
+        {
+            return $"header declares {dataStart + dataSize} bytes but the page has {bytes.Length}";
+        }
+
+        var previousEnd = dataStart;
+        for (var entry = HeaderSize; entry < dataStart; entry += 8)
+        {
+            var rowId = BinaryPrimitives.ReadUInt32BigEndian(bytes.Slice(entry, 4));
+            long offset = BinaryPrimitives.ReadUInt32BigEndian(bytes.Slice(entry + 4, 4));
+            if (offset < previousEnd || offset + RowHeaderSize > bytes.Length)
+            {
+                return $"row {rowId} starts at {offset}, outside the space left for it";
+            }
+
+            var end = offset + RowHeaderSize + BinaryPrimitives.ReadUInt32BigEndian(bytes.Slice((int)offset, 4));
+            if (end > bytes.Length)
+            {
+                return $"row {rowId} ends at {end}, beyond the page";
+            }
+
+            previousEnd = end;
+        }
+
+        return null;
+    }
 
     /// <summary>Reads the i-th index entry: row id + absolute row-block offset.</summary>
     public static (uint RowId, uint Offset) ReadIndexEntry(byte[] bytes, int index)

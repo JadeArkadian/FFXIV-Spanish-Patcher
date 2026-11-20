@@ -2,6 +2,39 @@
 
 Resumen de todos los cambios relevantes del proyecto.
 
+## v0.6.0
+
+Esta versión estrena el **plugin de Dalamud**: la traducción ya se puede instalar y mantener desde
+dentro del juego, sin generar ni importar paquetes a mano. El patcher de escritorio sigue disponible.
+
+### Traducción
+ - Comienza la traducción de Endwalker
+ - Revisada nuevamente la traducción, haciendo especial enfasis en los textos de Shadowbringers
+
+### Plugin de Dalamud
+
+- **FFXIV Spanish Translation Manager**: nuevo plugin que genera la traducción dentro del juego, la
+  instala como mod de Penumbra y la mantiene al día. Se abre con `/ffxives` y se instala desde un
+  repositorio personalizado de Dalamud; la guía está en `docs/PLUGIN.md`.
+  Las actualizaciones llegan tan pronto como se actualice el plugin de Dalamud
+
+### Patcher
+
+- La descripción del mod generado ya no lista las categorías; en su lugar indica la **fecha y hora
+  de generación**.
+- El patcher ya no modifica el ajuste de Dalamud mientras el juego está abierto: avisa y espera a
+  que lo cierres.
+- Las filas que no existen en la instalación del juego se contabilizan como omisiones en lugar de
+  pasar desapercibidas.
+
+### Distribución
+
+- La trauducción se distribuye ahora tambien a través del nuevo plugin de Dalamud. Se recomienda su
+  uso por encima del patcher clásico
+- La versión de Windows del patcher **deja de publicarse en Nexus Mods** y queda solo en GitHub
+  Releases: su análisis de virus marcaba el ejecutable como poco fiable de forma recurrente. Linux y
+  macOS siguen en Nexus.
+
 ## v0.5.2
 
 Esta versión completa casi por entero el guion de misiones de *Shadowbringers*.

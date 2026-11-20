@@ -23,6 +23,37 @@ public sealed class TranslationEntry
     public string? Status { get; set; }
 }
 
+/// <summary>
+/// The single definition of a row that can be packaged. The blob builder uses it to decide what
+/// ships and the pipeline to decide what is written, so the two can never disagree: a row needs a
+/// packageable status, a target with visible text and a source key that names its sheet and row.
+/// </summary>
+public static class PackageableEntry
+{
+    /// <summary>Statuses packaged by default: <c>approved</c> and <c>gold</c> (case-insensitive).</summary>
+    public static readonly IReadOnlySet<string> DefaultStatuses = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        TranslationEntryStatus.Approved,
+        TranslationEntryStatus.Gold,
+    };
+
+    public static bool HasStatus(TranslationEntry entry, IReadOnlySet<string> statuses)
+        => entry.Status is { } status && statuses.Contains(status);
+
+    /// <summary>
+    /// A non-blank target and a complete source key. An empty <em>source</em> is fine: with a
+    /// target it is a valid write-at-offset entry.
+    /// </summary>
+    public static bool HasContent(TranslationEntry entry)
+        => !string.IsNullOrWhiteSpace(entry.Target)
+           && entry.SourceKey is { } key
+           && !string.IsNullOrWhiteSpace(key.Sheet)
+           && key.RowId.HasValue;
+
+    public static bool IsPackageable(TranslationEntry entry, IReadOnlySet<string> statuses)
+        => HasStatus(entry, statuses) && HasContent(entry);
+}
+
 public static class TranslationEntryStatus
 {
     public const string Approved = "approved";

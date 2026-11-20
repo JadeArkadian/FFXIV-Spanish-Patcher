@@ -168,19 +168,6 @@ public sealed class TranslationCategoriesTests
         => Assert.Equal("misiones", TranslationCategories.DomainOf(ForSheet(sheet)));
 
     [Fact]
-    public void IsSelected_NullSelection_IncludesEverything()
-        => Assert.True(TranslationCategories.IsSelected(ForSheet("Item"), selected: null));
-
-    [Fact]
-    public void IsSelected_RespectsSelection_CaseInsensitive()
-    {
-        var selection = TranslationCategories.BuildSelection(["ITEMS"]);
-
-        Assert.True(TranslationCategories.IsSelected(ForSheet("Item"), selection));
-        Assert.False(TranslationCategories.IsSelected(ForSheet("Quest"), selection));
-    }
-
-    [Fact]
     public void PenumbraCatalog_HasTenStableOptionsAndBuildsDefaults()
     {
         Assert.Equal(
