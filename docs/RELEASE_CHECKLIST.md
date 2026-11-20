@@ -102,5 +102,4 @@ Después del tag:
   `docs/PATCHER_FAQ.md`, `docs/COMPATIBILITY.md`, `docs/TRANSLATION_MILESTONES.md`,
   `CONTRIBUTING.md`, `NOTICE.md` y `AGENTS.md`.
 - [ ] Obtener aprobación explícita de la versión.
-- [ ] `docs/evolucion-v0.6.0/` solo se borra tras aprobación expresa, en un commit propio.
 - [ ] Crear el commit/tag final y verificar los assets publicados.

@@ -245,18 +245,27 @@ Los tags validos son `vX.Y.Z` con cada numero `0..999`. El workflow:
 
 ## Estado actual
 
-El plan inicial F0-F7 esta completado y el proyecto ya esta en fase de mantenimiento/release. La
-evolucion v0.6.0 vive temporalmente en `docs/evolucion-v0.6.0/`; esa carpeta solo se elimina despues
-de validar la implementacion y recibir aprobacion expresa. Pendiente normal de cada release:
-regenerar blob cuando cambie upstream, publicar tag y validar manualmente contra una instalacion real
-de FFXIV y Penumbra en las plataformas que toque. Usar `docs/RELEASE_CHECKLIST.md`.
+El plan inicial F0-F7 esta completado y el proyecto ya esta en fase de mantenimiento/release.
+Pendiente normal de cada release: regenerar blob cuando cambie upstream, publicar tag y validar
+manualmente contra una instalacion real de FFXIV y Penumbra en las plataformas que toque. Usar
+`docs/RELEASE_CHECKLIST.md`.
 
 ## Plugin Dalamud v0.6.0
 
-El plan vive en `docs/evolucion-v0.6.0/PLAN-v0.6.0.md`. Etapas 0-10 implementadas (la release del
-plugin aun no ha corrido en GitHub); queda la 11
-(vigilancia del contrato IPC de Penumbra) y la prueba humana completa de la etapa 10 instalando
-desde el repo custom, que solo es posible tras la primera release con plugin.
+El plugin esta desarrollado. Los planes, decisiones y smoke tests de la v0.5.0 y la v0.6.0
+(`docs/evolucion-v0.6.0/`) se borraron con aprobacion expresa al terminar; siguen en el historial
+de git (ultimo commit que los contiene: `0470052`).
+
+Pendiente:
+
+- La release del plugin aun no ha corrido en GitHub.
+- Prueba humana instalando desde el repo custom, solo posible tras la primera release con plugin
+  (lista en `docs/RELEASE_CHECKLIST.md`).
+- Vigilancia del contrato IPC de Penumbra (la antigua etapa 11), sin empezar: un comprobador
+  .NET, ejecutable en local y en un workflow programado, que compare la version breaking y la
+  feature minima y los nombres y firmas de los endpoints IPC usados contra los canales oficiales
+  stable (estricto) y testing (aviso). Sin dependencia de `Penumbra.Api`, sin ejecutar binarios
+  descargados, y con los tests ordinarios offline.
 
 Reglas que no cambian:
 
