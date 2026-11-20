@@ -21,9 +21,10 @@ como alternativa manual.
 
 ### Uso el patcher y quiero pasarme al plugin. ¿Tengo que quitar el mod?
 
-No es necesario. Si lo generaste con la v0.5.0 o posterior: el plugin reconoce ese mod y lo adopta, conservando
-su carpeta y tus categorías. Los paquetes de la v0.4 o anteriores sí hay que quitarlos de Penumbra
-antes. Una vez instalado el plugin, no hace falta volver a usar el patcher.
+Depende de la versión. Si lo generaste con la v0.5.0 o posterior, no es necesario: el plugin
+reconoce ese mod y lo adopta, conservando su carpeta y tus categorías. Los paquetes de la v0.4 o
+anteriores sí hay que quitarlos de Penumbra antes. Una vez instalado el plugin, no hace falta volver
+a usar el patcher.
 
 ### ¿Tengo que instalar .NET o algo más?
 
@@ -84,8 +85,8 @@ contabiliza en la consola. Qué se omite exactamente está explicado en
 
 ### El patcher no encuentra mi instalación de FFXIV. ¿Qué hago?
 
-Pulsa **Examinar** y selecciona la carpeta del juego. La detección automática cubre las ubicaciones
-habituales, pero no todas.
+Pulsa **Selecciona FFXIV** y elige la carpeta del juego. La detección automática cubre las
+ubicaciones habituales, pero no todas.
 
 ### ¿Puedo traducir solo una parte del juego?
 
