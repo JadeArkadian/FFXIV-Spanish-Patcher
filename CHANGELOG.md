@@ -20,28 +20,11 @@ dentro del juego, sin generar ni importar paquetes a mano. El patcher de escrito
 
 ### Patcher
 
-- **Edición Endwalker**: la cabecera, el hito destacado y el historial de hitos anuncian el plugin
-  y el arranque de *Endwalker*, cuyo icono se suma a los de las expansiones.
-- Nuevo botón **Pásate al plugin de Dalamud**: explica qué es el plugin y, si lo confirmas, añade su
-  repositorio a la configuración de Dalamud, descarga el plugin desde las releases del proyecto y lo
-  deja instalado para que Dalamud lo cargue en el siguiente inicio del juego. El botón solo aparece
-  cuando se puede hacer: Dalamud detectado, juego cerrado y ni el repositorio ni el plugin presentes.
-- La barra de progreso avanza de forma suave y muestra un destello mientras se genera el mod, e
-  indica el paso en curso (`Paso 3 de 5`).
-- Interfaz revisada: la ventana cabe en pantallas pequeñas (mínimo `1200 × 680`, antes
-  `1415 × 945`), el texto pequeño es más legible, las comprobaciones ya no muestran ✓ mientras están
-  pendientes, el resultado indica el siguiente paso y `Esc` cierra hitos y avisos.
-- La descripción del mod generado ya no lista las categorías; en su lugar indica la **fecha y hora
-  de generación**.
-- El patcher ya no modifica el ajuste de Dalamud mientras el juego está abierto: avisa y espera a
-  que lo cierres.
-- Las filas que no existen en la instalación del juego se contabilizan como omisiones en lugar de
-  pasar desapercibidas.
+- **Edición Endwalker**: El patcher ha cambiado un poquito a nivel estético.
 
 ### Distribución
 
-- La trauducción se distribuye ahora tambien a través del nuevo plugin de Dalamud. Se recomienda su
-  uso por encima del patcher clásico
+- La trauducción se distribuye ahora tambien a través del nuevo plugin de Dalamud. **Se recomienda su uso por encima del patcher clásico**
 - La versión de Windows del patcher **deja de publicarse en Nexus Mods** y queda solo en GitHub
   Releases: su análisis de virus marcaba el ejecutable como poco fiable de forma recurrente. Linux y
   macOS siguen en Nexus.

@@ -25,6 +25,14 @@ internal sealed class TranslationManagerWindow : IDisposable
     private static readonly Vector4 Surface = new(0.055f, 0.114f, 0.190f, 1f);
     private static readonly Vector4 SurfaceRaised = new(0.075f, 0.145f, 0.235f, 1f);
     private static readonly Vector4 Line = new(0.157f, 0.267f, 0.396f, 1f);
+
+    // The desktop patcher's surfaces, top to bottom: Panel, PanelElevated and PrimaryGradient.
+    private static readonly Vector4 PanelTop = new(0.067f, 0.114f, 0.188f, 1f);
+    private static readonly Vector4 PanelBottom = new(0.043f, 0.090f, 0.157f, 1f);
+    private static readonly Vector4 PanelRaisedTop = new(0.078f, 0.141f, 0.227f, 1f);
+    private static readonly Vector4 PanelRaisedBottom = new(0.055f, 0.102f, 0.176f, 1f);
+    private static readonly Vector4 PrimaryTop = new(0.275f, 0.600f, 1f, 1f);
+    private static readonly Vector4 PrimaryBottom = new(0.157f, 0.459f, 0.847f, 1f);
     private static readonly Vector4 Text = new(0.937f, 0.961f, 0.992f, 1f);
     private static readonly Vector4 Muted = new(0.557f, 0.643f, 0.749f, 1f);
     private static readonly Vector4 Blue = new(0.235f, 0.553f, 1f, 1f);
@@ -61,7 +69,7 @@ internal sealed class TranslationManagerWindow : IDisposable
     private Vector2 _cardStart;
     private float _cardWidth;
     private Vector4? _cardAccent;
-    private Vector4 _cardBackground;
+    private bool _cardRaised;
 
     public TranslationManagerWindow(DalamudServices dalamud, TranslationManagerSession session)
     {
@@ -209,7 +217,7 @@ internal sealed class TranslationManagerWindow : IDisposable
     /// an upper draw channel; <see cref="EndCard"/> then measures it and paints the panel behind.
     /// Cards do not nest.
     /// </summary>
-    private void BeginCard(Vector4? accent = null, Vector4? background = null)
+    private void BeginCard(Vector4? accent = null, bool raised = false)
     {
         var drawList = ImGui.GetWindowDrawList();
         drawList.ChannelsSplit(2);
@@ -217,7 +225,7 @@ internal sealed class TranslationManagerWindow : IDisposable
         _cardStart = ImGui.GetCursorScreenPos();
         _cardWidth = FullWidth;
         _cardAccent = accent;
-        _cardBackground = background ?? Surface;
+        _cardRaised = raised;
         ImGui.SetCursorScreenPos(_cardStart + CardPadding);
         ImGui.BeginGroup();
         ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + CardInnerWidth);
@@ -229,6 +237,7 @@ internal sealed class TranslationManagerWindow : IDisposable
         ImGui.EndGroup();
         var end = new Vector2(_cardStart.X + _cardWidth, ImGui.GetItemRectMax().Y + CardPadding.Y);
         var rounding = 12f * Scale;
+        var (top, bottom) = _cardRaised ? (PanelRaisedTop, PanelRaisedBottom) : (PanelTop, PanelBottom);
         var drawList = ImGui.GetWindowDrawList();
         drawList.ChannelsSetCurrent(0);
         if (_cardAccent is { } accent)
@@ -238,23 +247,63 @@ internal sealed class TranslationManagerWindow : IDisposable
             // so the edge inherits the panel's rounded corners; a 5 px bar of its own cannot be
             // rounded that much and its square ends would stick out of them.
             drawList.AddRectFilled(_cardStart, end, ImGui.GetColorU32(accent), rounding);
-            drawList.AddRectFilled(
+            FillGradient(
+                drawList,
                 new Vector2(_cardStart.X + (5f * Scale), _cardStart.Y),
                 end,
-                ImGui.GetColorU32(_cardBackground),
+                top,
+                bottom,
                 rounding,
-                ImDrawFlags.RoundCornersRight);
+                leftCorners: false);
             drawList.AddRect(_cardStart, end, ImGui.GetColorU32(accent with { W = 0.45f }), rounding);
         }
         else
         {
-            drawList.AddRectFilled(_cardStart, end, ImGui.GetColorU32(_cardBackground), rounding);
+            FillGradient(drawList, _cardStart, end, top, bottom, rounding);
             drawList.AddRect(_cardStart, end, ImGui.GetColorU32(Line), rounding);
         }
         drawList.ChannelsMerge();
         // A zero-height item spanning the card tells ImGui how wide and tall the panel really is.
         ImGui.SetCursorScreenPos(new Vector2(_cardStart.X, end.Y));
         ImGui.Dummy(new Vector2(_cardWidth, 0f));
+    }
+
+    /// <summary>
+    /// A rounded panel shaded from top to bottom, as the patcher's are. ImGui cannot round a
+    /// gradient, so the rounded ends are two flat strips one radius tall in the end colours and
+    /// only the straight middle is shaded; the seams fall where both sides share a colour.
+    /// </summary>
+    private static void FillGradient(
+        ImDrawListPtr drawList,
+        Vector2 min,
+        Vector2 max,
+        Vector4 top,
+        Vector4 bottom,
+        float rounding,
+        bool leftCorners = true)
+    {
+        rounding = MathF.Min(rounding, (max.Y - min.Y) / 2f);
+        var topColor = ImGui.GetColorU32(top);
+        var bottomColor = ImGui.GetColorU32(bottom);
+        drawList.AddRectFilled(
+            min,
+            new Vector2(max.X, min.Y + rounding),
+            topColor,
+            rounding,
+            leftCorners ? ImDrawFlags.RoundCornersTop : ImDrawFlags.RoundCornersTopRight);
+        drawList.AddRectFilled(
+            new Vector2(min.X, max.Y - rounding),
+            max,
+            bottomColor,
+            rounding,
+            leftCorners ? ImDrawFlags.RoundCornersBottom : ImDrawFlags.RoundCornersBottomRight);
+        drawList.AddRectFilledMultiColor(
+            new Vector2(min.X, min.Y + rounding),
+            new Vector2(max.X, max.Y - rounding),
+            topColor,
+            topColor,
+            bottomColor,
+            bottomColor);
     }
 
     private static float CardInnerWidth => FullWidth - (CardPadding.X * 2f);
@@ -303,9 +352,10 @@ internal sealed class TranslationManagerWindow : IDisposable
             ImGui.GetFrameHeight());
         if (primary)
         {
-            ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.145f, 0.388f, 0.816f, 1f));
-            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, Blue);
-            ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.369f, 0.651f, 1f, 1f));
+            // The button keeps its behaviour and keyboard focus; its face is painted below.
+            ImGui.PushStyleColor(ImGuiCol.Button, Vector4.Zero);
+            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, Vector4.Zero);
+            ImGui.PushStyleColor(ImGuiCol.ButtonActive, Vector4.Zero);
         }
 
         var clicked = ImGui.Button("##" + label, size);
@@ -318,6 +368,19 @@ internal sealed class TranslationManagerWindow : IDisposable
         var color = ImGui.GetColorU32(ImGuiCol.Text);
         var x = min.X + ((size.X - contentWidth) / 2f);
         var drawList = ImGui.GetWindowDrawList();
+        if (primary)
+        {
+            // Lighter while hovered, flat while pressed: the feedback the plain button gave.
+            var lift = ImGui.IsItemActive() ? -0.04f : ImGui.IsItemHovered() ? 0.07f : 0f;
+            var shade = new Vector4(lift, lift, lift, 0f);
+            FillGradient(
+                drawList,
+                min,
+                ImGui.GetItemRectMax(),
+                PrimaryTop + shade,
+                PrimaryBottom + shade,
+                ImGui.GetStyle().FrameRounding);
+        }
         using (IconFont.Push())
         {
             drawList.AddText(new Vector2(x, min.Y + ((size.Y - iconSize.Y) / 2f)), color, iconText);
@@ -372,7 +435,7 @@ internal sealed class TranslationManagerWindow : IDisposable
 
     private void DrawHeader()
     {
-        BeginCard(background: SurfaceRaised);
+        BeginCard(raised: true);
         var emblem = 60f * Scale;
         var logo = TextureProvider.GetFromManifestResource(typeof(Plugin).Assembly, LogoResource);
         ImGui.Image(logo.GetWrapOrEmpty().Handle, new Vector2(emblem, emblem), CrystalUvMin, CrystalUvMax);
@@ -762,11 +825,13 @@ internal sealed class TranslationManagerWindow : IDisposable
         var to = MathF.Min(start.X + size.X, start.X + travel);
         if (to > from)
         {
-            drawList.AddRectFilled(
+            drawList.AddRectFilledMultiColor(
                 new Vector2(from, start.Y),
                 new Vector2(to, start.Y + size.Y),
+                ImGui.GetColorU32(Blue),
                 ImGui.GetColorU32(Cyan),
-                size.Y / 2f);
+                ImGui.GetColorU32(Cyan),
+                ImGui.GetColorU32(Blue));
         }
 
         ImGui.Dummy(size);
