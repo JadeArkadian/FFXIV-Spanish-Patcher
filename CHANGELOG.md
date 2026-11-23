@@ -26,7 +26,11 @@ dentro del juego, sin generar ni importar paquetes a mano. El patcher de escrito
   repositorio a la configuración de Dalamud, descarga el plugin desde las releases del proyecto y lo
   deja instalado para que Dalamud lo cargue en el siguiente inicio del juego. El botón solo aparece
   cuando se puede hacer: Dalamud detectado, juego cerrado y ni el repositorio ni el plugin presentes.
-- La barra de progreso avanza de forma suave y muestra un destello mientras se genera el mod.
+- La barra de progreso avanza de forma suave y muestra un destello mientras se genera el mod, e
+  indica el paso en curso (`Paso 3 de 5`).
+- Interfaz revisada: la ventana cabe en pantallas pequeñas (mínimo `1200 × 680`, antes
+  `1415 × 945`), el texto pequeño es más legible, las comprobaciones ya no muestran ✓ mientras están
+  pendientes, el resultado indica el siguiente paso y `Esc` cierra hitos y avisos.
 - La descripción del mod generado ya no lista las categorías; en su lugar indica la **fecha y hora
   de generación**.
 - El patcher ya no modifica el ajuste de Dalamud mientras el juego está abierto: avisa y espera a

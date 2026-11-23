@@ -149,8 +149,9 @@ fallo conserva la salida anterior. Staging y temporales se limpian en `finally`.
 
 ## GUI
 
-`MainWindow.axaml` es común a todos los RIDs. Tamaño de referencia `1240 × 820`, mínimo
-`1080 × 720`, tema oscuro azul noche. Las superficies usan degradados lineales y radiales nativos de
+`MainWindow.axaml` es común a todos los RIDs. Tamaño por defecto `1280 × 845`, mínimo
+`1200 × 680` para caber en un portátil de `1366 × 768` y en 1080p con escala del 125-150 %. Al
+abrirse, la ventana se ajusta al área de trabajo de la pantalla. Tema oscuro azul noche. Las superficies usan degradados lineales y radiales nativos de
 Avalonia: no hay HTML, WebView ni una implementación visual distinta por plataforma.
 
 La tipografía de interfaz es Inter, suministrada por `Avalonia.Fonts.Inter`. Los titulares
@@ -167,6 +168,18 @@ La vista contiene:
 - estado listo/progreso/resultado;
 - consola grande de ancho completo;
 - pie con salida, corpus y estado.
+
+Reglas de ergonomía que la vista mantiene:
+
+- ningún texto informativo baja de 10,5 px;
+- una comprobación solo muestra ✓ cuando es cierta: ruta inválida, versión sin leer y corpus cargando
+  tienen su propio icono, y «FFXIV compatible» solo aparece si las versiones coinciden;
+- una baldosa que hace algo lo dice en cian (`Cambiar ruta…`, `Clic para revisar`); la de Penumbra
+  solo es pulsable mientras hay algo que revisar;
+- el progreso indica `Paso N de 5` y el resultado, el siguiente paso;
+- `Esc` cierra hitos y modales sin aceptarlos, y al abrirse reciben el foco en la opción que no
+  cambia nada;
+- durante la generación no se puede cambiar la ruta del juego.
 
 Los indicadores de etapa no son botones. No hay cancelación porque el proceso es corto. No hay toggle
 de integridad. Cero categorías deshabilita la acción principal.

@@ -118,17 +118,22 @@ public partial class MainViewModel : ObservableObject
     public bool IsGamePathValid => GamePathDetector.IsValid(GamePath);
     public bool IsGameReady => IsGamePathValid;
     public string GameCheckTitle => IsGamePathValid ? "FFXIV detectado" : "Selecciona FFXIV";
-    public string GameCheckSubtitle => IsGamePathValid ? "Ruta válida" : "Ruta pendiente";
+    // The tile is the folder picker: its subtitle says so.
+    public string GameCheckSubtitle => IsGamePathValid ? "Cambiar ruta…" : "Elegir carpeta…";
     public string VersionCheckTitle => VersionCompatibility switch
     {
         GameVersionCompatibility.Match => "Versión compatible",
         GameVersionCompatibility.Different => "Versión diferente",
-        _ => "Versión desconocida",
+        _ => "Versión pendiente",
     };
     public string VersionCheckSubtitle => InstalledGameVersion
         ?? (_recommendedGameVersion is null ? "Sin referencia" : $"Esperada: {_recommendedGameVersion}");
+    public string VersionCheckTooltip =>
+        $"Instalada: {InstalledGameVersion ?? "desconocida"} · Traducción preparada para: " +
+        (_recommendedGameVersion ?? "sin referencia");
     public bool IsVersionWarning => VersionCompatibility == GameVersionCompatibility.Different;
-    public bool IsVersionOk => !IsVersionWarning;
+    public bool IsVersionMatch => VersionCompatibility == GameVersionCompatibility.Match;
+    public bool IsVersionUnknown => VersionCompatibility == GameVersionCompatibility.Unknown;
     public string CorpusCheckTitle => TranslationsReady ? "Corpus verificado" : "Cargando corpus";
     public string CorpusCheckSubtitle => _entries is null ? "Preparando…" : $"{_entries.Count:N0} entradas";
     public string DalamudCheckTitle => _dalamudCheck.State switch
@@ -139,9 +144,9 @@ public partial class MainViewModel : ObservableObject
     };
     public string DalamudCheckSubtitle => _dalamudCheck.State switch
     {
-        DalamudPenumbraState.Ready => "Dalamud espera a los plugins",
-        DalamudPenumbraState.RequiresResumeAfterPluginLoad => "Revisar ajuste de Dalamud",
-        _ => "Sin comprobación disponible",
+        DalamudPenumbraState.Ready => "Carga temprana activa",
+        DalamudPenumbraState.RequiresResumeAfterPluginLoad => "Clic para revisar",
+        _ => "No detectado",
     };
     public bool IsDalamudWarning =>
         _dalamudCheck.State == DalamudPenumbraState.RequiresResumeAfterPluginLoad;
@@ -183,6 +188,14 @@ public partial class MainViewModel : ObservableObject
         ? "Instalación, versión, corpus y entorno de Penumbra revisados."
         : "Selecciona una instalación válida mientras se prepara el corpus.";
 
+    public bool IsReadyToGenerate => IsGamePathValid && TranslationsReady && HasSelectedCategories;
+    public string ReadyHeadline => IsReadyToGenerate ? "Listo para empezar" : "Falta completar la preparación";
+    public string ReadyDetail =>
+        !IsGamePathValid ? "Elige la carpeta de FFXIV en la primera comprobación."
+        : !TranslationsReady ? "Cargando las traducciones incluidas…"
+        : !HasSelectedCategories ? "Marca al menos una categoría."
+        : "La integridad se comprobará siempre al finalizar.";
+
     public string LegalNoticeText => LegalNotice.Text;
 
     [ObservableProperty]
@@ -219,7 +232,7 @@ public partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsAdvancedClosed))]
-    private bool isAdvancedOpen;
+    private bool isAdvancedOpen = true;
 
     [ObservableProperty]
     private bool isMilestoneOpen;
@@ -340,8 +353,10 @@ public partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(GameCheckSubtitle));
         OnPropertyChanged(nameof(VersionCheckTitle));
         OnPropertyChanged(nameof(VersionCheckSubtitle));
+        OnPropertyChanged(nameof(VersionCheckTooltip));
         OnPropertyChanged(nameof(IsVersionWarning));
-        OnPropertyChanged(nameof(IsVersionOk));
+        OnPropertyChanged(nameof(IsVersionMatch));
+        OnPropertyChanged(nameof(IsVersionUnknown));
         NotifyPreparationProperties();
     }
 
@@ -432,7 +447,7 @@ public partial class MainViewModel : ObservableObject
         LastSuccess = null;
         StatusText = "Generando";
         ProgressPercent = 5;
-        ProgressText = "Preparando datos";
+        ProgressText = "Paso 1 de 5 · Preparando traducciones";
         _lastResult = null;
         NotifyResultProperties();
 
@@ -485,19 +500,19 @@ public partial class MainViewModel : ObservableObject
         {
             case PipelineComponent.Extractor:
                 ProgressPercent = Math.Max(ProgressPercent, 25);
-                ProgressText = "Leyendo instalación";
+                ProgressText = "Paso 2 de 5 · Leyendo instalación";
                 break;
             case PipelineComponent.Patcher:
                 ProgressPercent = Math.Max(ProgressPercent, 58);
-                ProgressText = "Aplicando traducciones";
+                ProgressText = "Paso 3 de 5 · Aplicando traducciones";
                 break;
             case PipelineComponent.Packager:
                 ProgressPercent = Math.Max(ProgressPercent, 82);
-                ProgressText = "Empaquetando mod";
+                ProgressText = "Paso 4 de 5 · Empaquetando mod";
                 break;
             case PipelineComponent.Verifier:
                 ProgressPercent = Math.Max(ProgressPercent, 95);
-                ProgressText = "Verificando integridad";
+                ProgressText = "Paso 5 de 5 · Verificando integridad";
                 break;
         }
     }
@@ -505,6 +520,12 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task BrowseAsync()
     {
+        if (IsBusy)
+        {
+            // The running generation already took its path; changing it now would only mislead.
+            return;
+        }
+
         var picked = await _shell.PickGameFolderAsync();
         if (string.IsNullOrWhiteSpace(picked))
         {
@@ -783,6 +804,7 @@ public partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(HasSelectedCategories));
         OnPropertyChanged(nameof(CategorySummary));
         OnPropertyChanged(nameof(ShowCategorySelectionError));
+        NotifyReadiness();
         GenerateModCommand.NotifyCanExecuteChanged();
     }
 
@@ -793,6 +815,14 @@ public partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(CorpusCheckTitle));
         OnPropertyChanged(nameof(CorpusCheckSubtitle));
         OnPropertyChanged(nameof(ShowCategorySelectionError));
+        NotifyReadiness();
+    }
+
+    private void NotifyReadiness()
+    {
+        OnPropertyChanged(nameof(IsReadyToGenerate));
+        OnPropertyChanged(nameof(ReadyHeadline));
+        OnPropertyChanged(nameof(ReadyDetail));
     }
 
     private void NotifyEnvironmentProperties()

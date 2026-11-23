@@ -134,6 +134,38 @@ public sealed class MainViewModelValidationTests
     }
 
     [AvaloniaFact]
+    public void Preparation_DoesNotClaimSuccessBeforeThereIsAnyGameToCheck()
+    {
+        var viewModel = ReadyViewModel(new CapturingShell(), "2026.06.18.0000.0000");
+        viewModel.Categories.Add(Category(selected: true));
+
+        // No game yet: nothing is "compatible" and nothing is ready.
+        Assert.False(viewModel.IsVersionMatch);
+        Assert.True(viewModel.IsVersionUnknown);
+        Assert.False(viewModel.IsReadyToGenerate);
+        Assert.Equal("Falta completar la preparación", viewModel.ReadyHeadline);
+
+        using var install = TempGameInstall("2026.06.18.0000.0000");
+        viewModel.GamePath = install.Root;
+
+        Assert.True(viewModel.IsVersionMatch);
+        Assert.True(viewModel.IsReadyToGenerate);
+        Assert.Equal("Listo para empezar", viewModel.ReadyHeadline);
+    }
+
+    [AvaloniaFact]
+    public async Task Browse_WhileGenerating_KeepsThePathTheRunIsUsing()
+    {
+        using var install = TempGameInstall("2026.06.18.0000.0000");
+        var viewModel = ReadyViewModel(new CapturingShell { PickResult = install.Root });
+        viewModel.IsBusy = true;
+
+        await viewModel.BrowseCommand.ExecuteAsync(null);
+
+        Assert.Null(viewModel.GamePath);
+    }
+
+    [AvaloniaFact]
     public void CategoryCommands_KeepAtLeastOneSelectionRequired()
     {
         var viewModel = ReadyViewModel(new CapturingShell());

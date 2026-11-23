@@ -35,15 +35,18 @@ git diff --check
 
 ## Validación visual
 
-- [ ] Preparación a `1240 × 820`.
-- [ ] Opciones avanzadas abiertas.
+- [ ] Preparación a `1280 × 845`, con las opciones avanzadas abiertas de inicio.
+- [ ] Preparación sin juego detectado: ninguna comprobación pendiente muestra ✓.
+- [ ] Opciones avanzadas cerradas y vueltas a abrir.
 - [ ] Cero categorías.
 - [ ] Modal de mismatch.
 - [ ] Modal de Dalamud.
 - [ ] Botón y modal de invitación al plugin; el destello del botón es discreto.
 - [ ] Generando: la barra avanza suave y su destello se detiene al terminar.
 - [ ] Resultado correcto, parcial y error.
-- [ ] Tamaño mínimo `1080 × 720`.
+- [ ] Tamaño mínimo `1200 × 680`: sin solapes ni textos cortados sin tooltip.
+- [ ] En una pantalla de `1366 × 768` la ventana se abre entera dentro del área de trabajo.
+- [ ] `Esc` cierra hitos y modales; el foco entra en ellos al abrirse.
 - [ ] Escalas 100 %, 125 %, 150 % y 200 %.
 - [ ] Logo centrado y sin recortes.
 - [ ] Consola grande, coloreada y con selección continua de varias líneas.

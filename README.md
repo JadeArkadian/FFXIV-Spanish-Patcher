@@ -132,7 +132,7 @@ nada, no se crea un paquete vacío. Consulta la consola para conocer la cobertur
 1. Abre `FFXIVSpanishPatcher`.
 2. Si detecta la instalación de FFXIV, la ruta aparecerá automáticamente.
 3. Si no la detecta, pulsa **Selecciona FFXIV** y elige la carpeta del juego.
-4. Abre **Opciones avanzadas y categorías** para decidir qué categorías quedarán activadas al
+4. En **Opciones avanzadas y categorías** (abierto de inicio) decide qué categorías quedarán activadas al
    importar en Penumbra. El paquete siempre incluye traducción completa; debe quedar al menos una
    categoría marcada.
 5. Pulsa **Crear traducción para Penumbra**.
