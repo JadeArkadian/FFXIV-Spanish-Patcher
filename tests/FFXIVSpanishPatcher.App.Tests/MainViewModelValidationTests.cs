@@ -152,6 +152,85 @@ public sealed class MainViewModelValidationTests
         Assert.False(viewModel.ShowCategorySelectionError);
     }
 
+    [AvaloniaTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task PluginInvite_AddsTheRepositoryAndInstallsThePluginOnlyAfterConfirmation(bool accept)
+    {
+        using var dalamud = new TempDalamud();
+        var packages = new FakePluginPackageSource(TestPluginPackage.Create());
+        var viewModel = InviteViewModel(new CapturingShell(), dalamud, gameRunning: false, packages);
+
+        var invitation = viewModel.InvitePluginCommand.ExecuteAsync(null);
+        Assert.True(viewModel.IsModalOpen);
+        Assert.Equal("Instalar plugin", viewModel.ModalPrimaryText);
+        Assert.Contains("/main/dalamud/pluginmaster.json", viewModel.ModalExplanation, StringComparison.Ordinal);
+        Assert.Contains("descargará", viewModel.ModalExplanation, StringComparison.Ordinal);
+        Assert.Equal("{}", dalamud.Config);
+        Assert.Equal(0, packages.Downloads);
+
+        (accept ? viewModel.AcceptModalCommand : viewModel.DismissModalCommand).Execute(null);
+        await invitation;
+
+        Assert.Equal(accept, dalamud.Config.Contains("/main/dalamud/pluginmaster.json", StringComparison.Ordinal));
+        Assert.Equal(accept ? 1 : 0, packages.Downloads);
+        Assert.Equal(accept, dalamud.PluginInstalled);
+        // Once done there is nothing left to offer; declining keeps the offer open.
+        Assert.Equal(!accept, viewModel.IsPluginInviteVisible);
+        Assert.Equal(
+            accept,
+            viewModel.Console.Any(line => line.Text.Contains("próximo inicio", StringComparison.Ordinal)));
+    }
+
+    [AvaloniaFact]
+    public async Task PluginInvite_WhenTheDownloadFails_ChangesNothingAndCanBeRetried()
+    {
+        using var dalamud = new TempDalamud();
+        var viewModel = InviteViewModel(
+            new CapturingShell(),
+            dalamud,
+            gameRunning: false,
+            new FakePluginPackageSource(package: null));
+
+        var invitation = viewModel.InvitePluginCommand.ExecuteAsync(null);
+        viewModel.AcceptModalCommand.Execute(null);
+        await invitation;
+
+        Assert.Equal("{}", dalamud.Config);
+        Assert.False(dalamud.PluginInstalled);
+        Assert.True(viewModel.IsPluginInviteVisible);
+        Assert.Contains(viewModel.Console, line => line.Text.Contains("más tarde", StringComparison.Ordinal));
+    }
+
+    [AvaloniaFact]
+    public async Task PluginInvite_WhenItCanNoLongerBeDone_ChangesNothingAndHides()
+    {
+        using var dalamud = new TempDalamud();
+        var packages = new FakePluginPackageSource(TestPluginPackage.Create());
+        var viewModel = InviteViewModel(new CapturingShell(), dalamud, gameRunning: true, packages);
+
+        await viewModel.InvitePluginCommand.ExecuteAsync(null);
+
+        Assert.False(viewModel.IsModalOpen);
+        Assert.False(viewModel.IsPluginInviteVisible);
+        Assert.Equal("{}", dalamud.Config);
+        Assert.Equal(0, packages.Downloads);
+        Assert.False(dalamud.PluginInstalled);
+        Assert.Contains(viewModel.Console, line => line.Text.Contains("Cierra FFXIV", StringComparison.Ordinal));
+    }
+
+    private static MainViewModel InviteViewModel(
+        CapturingShell shell,
+        TempDalamud dalamud,
+        bool gameRunning,
+        IPluginPackageSource packages)
+        => new(
+            shell,
+            new ListTranslationSource([]),
+            recommendedGameVersion: null,
+            dalamudService: new DalamudPenumbraService(isGameRunning: () => gameRunning, root: dalamud.Root),
+            pluginPackages: packages);
+
     private static MainViewModel ReadyViewModel(CapturingShell shell)
         => ReadyViewModel(shell, recommendedGameVersion: null);
 
@@ -200,6 +279,27 @@ public sealed class MainViewModelValidationTests
                 Directory.Delete(Root, recursive: true);
             }
         }
+    }
+
+    /// <summary>A Dalamud root with an empty configuration, so no test touches the real one.</summary>
+    private sealed class TempDalamud : IDisposable
+    {
+        public TempDalamud()
+        {
+            Directory.CreateDirectory(Root);
+            File.WriteAllText(ConfigPath, "{}");
+        }
+
+        public string Root { get; } =
+            Path.Combine(Path.GetTempPath(), "ffxivsp-app-dalamud-" + Guid.NewGuid().ToString("N"));
+
+        public string Config => File.ReadAllText(ConfigPath);
+
+        public bool PluginInstalled => Directory.Exists(Path.Combine(Root, "installedPlugins"));
+
+        private string ConfigPath => Path.Combine(Root, "dalamudConfig.json");
+
+        public void Dispose() => Directory.Delete(Root, recursive: true);
     }
 
     /// <summary>An output folder beneath a regular file: no platform can create it.</summary>

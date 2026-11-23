@@ -198,9 +198,39 @@ controles nativos para conservar el diseño y evitar una superficie web.
 considera Penumbra presente si encuentra un manifiesto identificable. Si
 `IsResumeGameAfterPluginLoad` no es `true`, la GUI ofrece corregirlo.
 
-La edición se hace con temporal en el mismo directorio, flush, detección SHA-256 de cambios
-concurrentes, reemplazo atómico y relectura. Todo fallo de esta integración externa es silencioso por
-contrato.
+El botón **Pásate al plugin de Dalamud** añade el repositorio personalizado del plugin a
+`ThirdRepoList`, tras una confirmación que explica el cambio. Respeta el formato de Dalamud
+(Newtonsoft con `$type` como primera propiedad), reactiva la entrada si ya existía desactivada y no
+toca una lista con una forma desconocida. No necesita Penumbra: basta con que exista la configuración
+de Dalamud.
+
+El botón solo se muestra mientras la invitación se puede cumplir (`CanInstallPlugin`): hay
+configuración de Dalamud, se puede abrir en escritura exclusiva, el juego está cerrado, el
+repositorio no está añadido y el plugin no está instalado. Se evalúa al arrancar y al pulsar; no se
+vuelve a evaluar si el juego se cierra con el patcher abierto.
+
+Después instala el plugin. Dalamud no tiene cola de instalación: al arrancar carga lo que haya en
+`installedPlugins/<InternalName>/<versión>/` y activa en el perfil por defecto un plugin que ningún
+perfil conoce. `GitHubPluginPackageSource` lee `dalamud/pluginmaster.json`, solo sigue un
+`DownloadLinkInstall` que apunte a las releases del propio repositorio y descarga el ZIP con límite
+de tamaño. `DalamudPenumbraService.InstallPlugin` lo extrae en un directorio temporal junto a
+`installedPlugins`, rechaza entradas que escapen de él, exige el DLL y un manifiesto con el
+`InternalName` esperado y una versión válida, anota `InstalledFromUrl` y `WorkingPluginId` como hace
+el instalador de Dalamud y lo mueve a su sitio. Nunca sustituye un plugin ya instalado: actualizarlo
+es cosa de Dalamud. Es la segunda conexión de red del patcher, junto a la comprobación de versión, y
+solo ocurre tras la confirmación. La descarga va antes de tocar Dalamud: si falla, no se cambia nada
+y el botón sigue disponible. El repositorio se compara por URL exacta, igual que hace Dalamud al
+emparejar un plugin con su repositorio; reutilizar una entrada con otra grafía dejaría el plugin
+huérfano y sin cargar. Esta ruta depende del comportamiento interno de Dalamud, no de un contrato público:
+revisarla si una versión nueva deja de cargar el plugin.
+
+Las dos ediciones de la configuración se hacen con temporal en el mismo directorio, flush, detección SHA-256 de cambios
+concurrentes, reemplazo atómico y relectura, y nunca con el juego abierto. Todo fallo de esta
+integración externa es silencioso por contrato.
+
+Los destellos del botón y de la barra de progreso animan un pincel de gradiente. El pincel en reposo
+del control animado debe ser también un gradiente: con un color sólido, Avalonia lanza una excepción
+al arrancar o parar la animación.
 
 ## Plugin de Dalamud
 

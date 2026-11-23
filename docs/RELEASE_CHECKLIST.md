@@ -40,7 +40,8 @@ git diff --check
 - [ ] Cero categorías.
 - [ ] Modal de mismatch.
 - [ ] Modal de Dalamud.
-- [ ] Generando.
+- [ ] Botón y modal de invitación al plugin; el destello del botón es discreto.
+- [ ] Generando: la barra avanza suave y su destello se detiene al terminar.
 - [ ] Resultado correcto, parcial y error.
 - [ ] Tamaño mínimo `1080 × 720`.
 - [ ] Escalas 100 %, 125 %, 150 % y 200 %.
@@ -72,6 +73,12 @@ Publicar `win-x64`, `linux-x64` y `osx-arm64` con las mismas propiedades que el 
 - [ ] **Ahora no** no modifica configuración.
 - [ ] **Activar opción** cambia únicamente la propiedad lógica y se relee como `true`.
 - [ ] Fallos de detección/configuración de Dalamud permanecen silenciosos.
+- [ ] **Pásate al plugin de Dalamud** con el juego cerrado: añade el repositorio y Dalamud lo
+  muestra en `/xlsettings` en el siguiente arranque, con el resto de repositorios intactos.
+- [ ] El botón no aparece sin Dalamud, con el juego abierto, ni con el repositorio o el plugin ya
+  presentes.
+- [ ] Sin `pluginmaster.json` publicado o sin red: no cambia nada en Dalamud y el botón sigue
+  disponible.
 - [ ] Integridad se ejecuta siempre.
 - [ ] Los archivos originales del juego permanecen intactos.
 
@@ -93,6 +100,9 @@ Después del tag:
 - [ ] La release incluye `FFXIVSpanishTranslationManager-X.Y.Z.zip` y su `.sha256`.
 - [ ] `dalamud/pluginmaster.json` en `main` apunta a ese ZIP y declara la versión `X.Y.Z.0`.
 - [ ] Instalar desde el repositorio personalizado en `/xlplugins` funciona en una instalación limpia.
+- [ ] **Pásate al plugin de Dalamud** del patcher publicado, en una instalación sin el plugin: lo
+  descarga, Dalamud lo carga activado en el siguiente arranque y después le ofrece actualizaciones.
+- [ ] Windows: Microsoft Defender no marca el patcher al descargar e instalar el plugin.
 - [ ] Con la versión anterior instalada, el plugin avisa de la nueva al arrancar y en su ventana.
 - [ ] Actualizar desde la versión anterior regenera la traducción una sola vez.
 

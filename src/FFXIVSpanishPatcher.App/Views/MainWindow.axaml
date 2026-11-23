@@ -63,6 +63,37 @@
       <GradientStop Color="#1B293D" Offset="0.38"/>
       <GradientStop Color="#101D31" Offset="1"/>
     </RadialGradientBrush>
+    <!-- Sheen keyframes: same stops, the gradient vector slides from off-left to off-right.
+         The animated control must also use a gradient as its resting brush: Avalonia casts that
+         value to a gradient when the animation starts or stops, and throws on a solid colour. -->
+    <LinearGradientBrush x:Key="InviteSheenStart" StartPoint="-100%,0%" EndPoint="0%,0%">
+      <GradientStop Color="#3D8A6A22" Offset="0"/>
+      <GradientStop Color="#3D8A6A22" Offset="0.38"/>
+      <GradientStop Color="#A6F0BD58" Offset="0.5"/>
+      <GradientStop Color="#3D8A6A22" Offset="0.62"/>
+      <GradientStop Color="#3D8A6A22" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="InviteSheenEnd" StartPoint="100%,0%" EndPoint="200%,0%">
+      <GradientStop Color="#3D8A6A22" Offset="0"/>
+      <GradientStop Color="#3D8A6A22" Offset="0.38"/>
+      <GradientStop Color="#A6F0BD58" Offset="0.5"/>
+      <GradientStop Color="#3D8A6A22" Offset="0.62"/>
+      <GradientStop Color="#3D8A6A22" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="ProgressSheenStart" StartPoint="-100%,0%" EndPoint="0%,0%">
+      <GradientStop Color="#3C8DFF" Offset="0"/>
+      <GradientStop Color="#3C8DFF" Offset="0.3"/>
+      <GradientStop Color="#A6E9FF" Offset="0.5"/>
+      <GradientStop Color="#3C8DFF" Offset="0.7"/>
+      <GradientStop Color="#3C8DFF" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="ProgressSheenEnd" StartPoint="100%,0%" EndPoint="200%,0%">
+      <GradientStop Color="#3C8DFF" Offset="0"/>
+      <GradientStop Color="#3C8DFF" Offset="0.3"/>
+      <GradientStop Color="#A6E9FF" Offset="0.5"/>
+      <GradientStop Color="#3C8DFF" Offset="0.7"/>
+      <GradientStop Color="#3C8DFF" Offset="1"/>
+    </LinearGradientBrush>
     <SolidColorBrush x:Key="Line" Color="#29405F"/>
     <SolidColorBrush x:Key="LineSoft" Color="#1D3350"/>
     <SolidColorBrush x:Key="Text" Color="#EFF5FD"/>
@@ -153,6 +184,39 @@
       <Setter Property="Padding" Value="4,2"/>
       <Setter Property="FontSize" Value="11"/>
     </Style>
+    <Style Selector="Button.plugin">
+      <Setter Property="Background" Value="{StaticResource InviteSheenStart}"/>
+      <Setter Property="BorderBrush" Value="#8AF0BD58"/>
+      <Setter Property="Foreground" Value="#FFE9BC"/>
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <!-- Subtle invitation: a gold glint crosses the button every few seconds. -->
+      <Style.Animations>
+        <Animation Duration="0:0:1.6" DelayBetweenIterations="0:0:3.4" IterationCount="INFINITE">
+          <KeyFrame Cue="0%">
+            <Setter Property="Background" Value="{StaticResource InviteSheenStart}"/>
+          </KeyFrame>
+          <KeyFrame Cue="100%">
+            <Setter Property="Background" Value="{StaticResource InviteSheenEnd}"/>
+          </KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <Style Selector="Button.plugin:pointerover">
+      <Setter Property="BorderBrush" Value="{StaticResource Gold}"/>
+    </Style>
+    <Style Selector="ProgressBar.live">
+      <Style.Animations>
+        <Animation Duration="0:0:1.4" DelayBetweenIterations="0:0:0.5" IterationCount="INFINITE">
+          <KeyFrame Cue="0%">
+            <Setter Property="Foreground" Value="{StaticResource ProgressSheenStart}"/>
+          </KeyFrame>
+          <KeyFrame Cue="100%">
+            <Setter Property="Foreground" Value="{StaticResource ProgressSheenEnd}"/>
+          </KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
     <Style Selector="Button.console">
       <Setter Property="Background" Value="{StaticResource SecondaryGradient}"/>
       <Setter Property="BorderBrush" Value="#2C4668"/>
@@ -237,11 +301,11 @@
                   <RotateTransform Angle="45"/>
                 </Border.RenderTransform>
               </Border>
-              <TextBlock Text="Edición Shadowbringers"
+              <TextBlock Text="Edición Endwalker"
                          Foreground="{StaticResource Gold}"
                          FontSize="13"
                          FontWeight="SemiBold"/>
-              <TextBlock Text="· Traducción en curso sobre ARR, Heavensward y Stormblood completos"
+              <TextBlock Text="· Traducción en curso sobre ARR, Heavensward, Stormblood y Shadowbringers completos"
                          Foreground="#C8D5E6"
                          FontSize="13"/>
             </StackPanel>
@@ -647,33 +711,59 @@
                     <Image x:Name="MilestoneShadowbringersIcon" Source="/Assets/shb-icon.png"
                            ToolTip.Tip="Shadowbringers" Stretch="Uniform"/>
                   </Border>
+                  <Border Width="42" Height="42" Padding="4" CornerRadius="10"
+                          Background="#24121E30" BorderBrush="#4A9DB4E8" BorderThickness="1">
+                    <Image x:Name="MilestoneEndwalkerIcon" Source="/Assets/ew-icon.png"
+                           ToolTip.Tip="Endwalker" Stretch="Uniform"/>
+                  </Border>
                 </StackPanel>
-                <TextBlock x:Name="MilestoneTitle" Text="Empieza Shadowbringers."
+                <TextBlock x:Name="MilestoneTitle" Text="Empieza Endwalker."
                            Foreground="{StaticResource Text}"
                            FontFamily="{StaticResource DisplayFont}"
                            FontSize="27"
                            FontWeight="Normal"
                            LetterSpacing="-0.3"/>
-                <TextBlock Text="Con A Realm Reborn, Heavensward y Stormblood ya completos, esta edición abre la traducción de Shadowbringers y suma el contenido del parche 7.56: el job de domador de bestias, su minijuego y el capítulo final de la historia."
+                <TextBlock Text="Con Shadowbringers ya completo, arranca la traducción de Endwalker. Y la traducción estrena plugin de Dalamud: se instala y se actualiza sola desde dentro del juego."
                            Foreground="{StaticResource Muted}"
                            FontSize="11.5"
                            LineHeight="16"
                            TextWrapping="Wrap"
+                           HorizontalAlignment="Left"
                            MaxWidth="380"/>
                 <StackPanel Orientation="Horizontal" Spacing="13">
                   <TextBlock Text="{Binding AppVersionLabel, StringFormat='Corpus {0}'}"
                              Foreground="#728AA8"
                              FontSize="9.5"/>
-                  <TextBlock Text="ARR, Heavensward y Stormblood al 100 % · Shadowbringers al 19,6 %"
+                  <TextBlock Text="De ARR a Shadowbringers al 100 % · Endwalker en marcha"
                              Foreground="#728AA8"
                              FontSize="9.5"/>
                   <TextBlock Text="Sin archivos originales"
                              Foreground="#728AA8"
                              FontSize="9.5"/>
                 </StackPanel>
-                <Button Classes="text" HorizontalAlignment="Left"
-                        Content="Ver hitos de traducción"
-                        Command="{Binding ShowMilestonesCommand}"/>
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                  <Button x:Name="PluginInvite"
+                          Classes="plugin"
+                          IsVisible="{Binding IsPluginInviteVisible}"
+                          Command="{Binding InvitePluginCommand}"
+                          ToolTip.Tip="Instala el plugin en Dalamud. Se pide confirmación antes de cambiar nada.">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <Border Width="9" Height="9" CornerRadius="2"
+                              Background="#66F0BD58"
+                              BorderBrush="{StaticResource Gold}" BorderThickness="1"
+                              VerticalAlignment="Center"
+                              RenderTransformOrigin="50%,50%">
+                        <Border.RenderTransform>
+                          <RotateTransform Angle="45"/>
+                        </Border.RenderTransform>
+                      </Border>
+                      <TextBlock Text="Pásate al plugin de Dalamud" VerticalAlignment="Center"/>
+                    </StackPanel>
+                  </Button>
+                  <Button Classes="text" VerticalAlignment="Center"
+                          Content="Ver hitos de traducción"
+                          Command="{Binding ShowMilestonesCommand}"/>
+                </StackPanel>
               </StackPanel>
             </Grid>
           </Border>
@@ -714,8 +804,17 @@
                     <TextBlock Grid.Column="1" Text="{Binding ProgressPercent, StringFormat='{}{0} %'}"
                                Foreground="{StaticResource Cyan}" FontSize="11" FontWeight="SemiBold"/>
                   </Grid>
-                  <ProgressBar Value="{Binding ProgressPercent}" Minimum="0" Maximum="100"
-                               Height="8" Foreground="{StaticResource Blue}" Background="#152A4568"/>
+                  <ProgressBar x:Name="GenerationProgress"
+                               Classes.live="{Binding IsGeneratingStage}"
+                               Value="{Binding ProgressPercent, Mode=OneWay}" Minimum="0" Maximum="100"
+                               Height="8" Foreground="{StaticResource ProgressSheenStart}"
+                               Background="#152A4568">
+                    <ProgressBar.Transitions>
+                      <Transitions>
+                        <DoubleTransition Property="Value" Duration="0:0:0.5" Easing="CubicEaseOut"/>
+                      </Transitions>
+                    </ProgressBar.Transitions>
+                  </ProgressBar>
                   <Grid ColumnDefinitions="*,*,*,*,*">
                     <TextBlock Grid.Column="0" Text="Traducciones" Foreground="#7E99B8" FontSize="9"/>
                     <TextBlock Grid.Column="1" Text="Extracción" Foreground="#7E99B8" FontSize="9"/>

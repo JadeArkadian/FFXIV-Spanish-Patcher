@@ -27,6 +27,10 @@ importarlo ni repetir el proceso tras cada actualización.
 
 ## Instalación
 
+Si usas el patcher v0.6.0 o posterior, su botón **Pásate al plugin de Dalamud** hace los tres
+primeros pasos por ti con el juego cerrado: añade el repositorio, descarga el plugin y lo deja
+instalado para el siguiente inicio. Continúa entonces en el paso 4.
+
 1. En el juego, escribe `/xlsettings` y abre la pestaña **Experimental**.
 2. En **Custom Plugin Repositories**, pega esta dirección, pulsa **+** y guarda:
 

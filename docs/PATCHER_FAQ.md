@@ -26,6 +26,15 @@ reconoce ese mod y lo adopta, conservando su carpeta y tus categorías. Los paqu
 anteriores sí hay que quitarlos de Penumbra antes. Una vez instalado el plugin, no hace falta volver
 a usar el patcher.
 
+Desde la v0.6.0, el botón **Pásate al plugin de Dalamud** del patcher lo hace por ti: con el juego
+cerrado y tras pedirte confirmación, añade el repositorio del plugin a Dalamud, descarga el plugin
+desde las releases del proyecto y lo deja instalado. En el siguiente inicio del juego ya está
+cargado; ábrelo con `/ffxives`. Si la descarga falla no se cambia nada y puedes volver a intentarlo
+más tarde.
+
+El botón no aparece si el patcher no encuentra Dalamud, si FFXIV está abierto al iniciar el patcher,
+o si el repositorio o el plugin ya están en Dalamud.
+
 ### ¿Tengo que instalar .NET o algo más?
 
 No. El patcher es un ejecutable autónomo: se descomprime y se ejecuta. Lo que sí necesitas es Final
@@ -170,8 +179,10 @@ Tienes dos soluciones:
 
 ### ¿Cómo quito la traducción del todo?
 
-Borra el mod **FFXIV en Español** en Penumbra y reinicia el juego. El patcher no instala nada: para
-quitarlo basta con borrar su carpeta y, si quieres, la de salida.
+Borra el mod **FFXIV en Español** en Penumbra y reinicia el juego. Si instalaste el plugin de
+Dalamud, también con el botón del patcher, desinstálalo antes en `/xlplugins`: mientras siga
+instalado, volverá a crear el mod. El patcher en sí no se instala: para quitarlo basta con borrar su
+carpeta y, si quieres, la de salida.
 
 ### Solo quiero volver al inglés un rato
 

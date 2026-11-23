@@ -194,6 +194,9 @@ La GUI debe seguir siendo una herramienta directa, no landing page:
 - consola streaming grande, coloreada y multiseleccionable;
 - historial de hitos desde `data/translation-milestones.md`;
 - deteccion silenciosa de Dalamud/Penumbra y correccion opcional del ajuste de carga;
+- invitacion al plugin: un boton destacado que, tras confirmar, añade el repo custom a Dalamud,
+  descarga el ZIP del plugin de las releases del propio repo y lo deja en `installedPlugins`; se
+  oculta si no hay Dalamud, no se puede escribir su config, o el repo o el plugin ya estan;
 - abrir carpeta/salida;
 - comprobacion de nueva version via GitHub Releases;
 - textos orientados a usuario final en castellano.

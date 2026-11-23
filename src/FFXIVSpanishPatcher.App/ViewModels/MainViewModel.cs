@@ -39,9 +39,11 @@ public partial class MainViewModel : ObservableObject
     private readonly AppBuildInfo _buildInfo;
     private readonly IUpdateCheckService _updateCheckService;
     private readonly DalamudPenumbraService _dalamudService;
+    private readonly IPluginPackageSource _pluginPackages;
     private readonly bool _debugLogging;
     private IReadOnlyList<TranslationEntry>? _entries;
     private DalamudPenumbraCheck _dalamudCheck = new(DalamudPenumbraState.NotDetected);
+    private bool _pluginInviteVisible;
     private PatchResult? _lastResult;
     private TaskCompletionSource<bool>? _modalCompletion;
     private bool _updateCheckStarted;
@@ -77,7 +79,8 @@ public partial class MainViewModel : ObservableObject
         AppBuildInfo? buildInfo = null,
         bool debugLogging = false,
         DalamudPenumbraService? dalamudService = null,
-        string? outputFolder = null)
+        string? outputFolder = null,
+        IPluginPackageSource? pluginPackages = null)
     {
         _shell = shell;
         _translations = translations;
@@ -87,6 +90,7 @@ public partial class MainViewModel : ObservableObject
         _buildInfo = buildInfo ?? AppBuildInfo.FromAssembly(typeof(MainViewModel).Assembly);
         _updateCheckService = updateCheckService ?? new GitHubReleaseUpdateCheckService(_buildInfo);
         _dalamudService = dalamudService ?? new DalamudPenumbraService();
+        _pluginPackages = pluginPackages ?? new GitHubPluginPackageSource(_buildInfo);
         _debugLogging = debugLogging;
         OutputFolder = outputFolder ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
@@ -142,6 +146,7 @@ public partial class MainViewModel : ObservableObject
     public bool IsDalamudWarning =>
         _dalamudCheck.State == DalamudPenumbraState.RequiresResumeAfterPluginLoad;
     public bool IsDalamudOk => !IsDalamudWarning;
+    public bool IsPluginInviteVisible => _pluginInviteVisible;
 
     public bool IsPreparationStage => Stage == PatcherUiStage.Preparation;
     public bool IsGeneratingStage => Stage == PatcherUiStage.Generating;
@@ -279,6 +284,7 @@ public partial class MainViewModel : ObservableObject
         }
 
         _dalamudCheck = _dalamudService.Inspect();
+        RefreshPluginInvite();
         NotifyEnvironmentProperties();
 
         if (!_updateCheckStarted)
@@ -595,6 +601,74 @@ public partial class MainViewModel : ObservableObject
             _dalamudCheck = new DalamudPenumbraCheck(DalamudPenumbraState.Ready, _dalamudCheck.ConfigPath);
             NotifyEnvironmentProperties();
         }
+    }
+
+    [RelayCommand]
+    private async Task InvitePluginAsync()
+    {
+        const string InstallHint =
+            "En el juego, abre /xlplugins, busca «FFXIV Spanish Translation Manager» e instálalo.";
+
+        var url = _buildInfo.PluginRepositoryUrl;
+        if (!RefreshPluginInvite())
+        {
+            // Something changed since the button was shown, most likely the game was started.
+            Console.Add(Warning(
+                "Ahora no se puede instalar el plugin desde el patcher. Cierra FFXIV y vuelve a abrir el patcher."));
+            return;
+        }
+
+        var accepted = await ShowModalAsync(
+            "La traducción, ahora también como plugin de Dalamud",
+            "FFXIV Spanish Translation Manager genera la traducción dentro del juego, la instala en Penumbra y " +
+            "la mantiene al día: no tendrás que crear ni importar paquetes tras cada parche. Es la forma " +
+            "recomendada de usar la traducción a partir de ahora y conserva el mod que ya hayas creado con el " +
+            "patcher.",
+            "¿Quieres instalarlo ahora? El patcher añadirá esta dirección a tus repositorios personalizados " +
+            "de Dalamud y descargará el plugin desde las releases del proyecto en GitHub:" +
+            $"{Environment.NewLine}{url}",
+            "El plugin se copia en la carpeta de plugins de Dalamud y se cargará en el próximo inicio del " +
+            "juego. No se modifican Penumbra ni los archivos del juego.",
+            "Instalar plugin",
+            "Ahora no");
+        if (!accepted)
+        {
+            return;
+        }
+
+        // Downloaded before Dalamud is touched: a failed download leaves nothing half done.
+        Console.Add(Info("Descargando el plugin desde GitHub…"));
+        var package = await _pluginPackages.DownloadAsync();
+        if (package is null)
+        {
+            RefreshPluginInvite();
+            Console.Add(Warning(
+                "No se pudo descargar el plugin. No se ha cambiado nada en Dalamud: inténtalo más tarde."));
+            return;
+        }
+
+        if (!_dalamudService.TryAddPluginRepository(url))
+        {
+            RefreshPluginInvite();
+            Console.Add(Warning(
+                "No se pudo modificar la configuración de Dalamud. Añade el repositorio desde el juego en " +
+                $"/xlsettings → Experimental → Custom Plugin Repositories: {url}"));
+            return;
+        }
+
+        var installed = await Task.Run(() => _dalamudService.InstallPlugin(package, url));
+        RefreshPluginInvite();
+        Console.Add(installed
+            ? Info("Plugin instalado: Dalamud lo cargará en el próximo inicio del juego. Ábrelo con /ffxives.")
+            : Warning("No se pudo instalar el plugin; el repositorio sí queda añadido. " + InstallHint));
+    }
+
+    /// <summary>The invitation is only shown while the patcher can actually carry it out.</summary>
+    private bool RefreshPluginInvite()
+    {
+        _pluginInviteVisible = _dalamudService.CanInstallPlugin(_buildInfo.PluginRepositoryUrl);
+        OnPropertyChanged(nameof(IsPluginInviteVisible));
+        return _pluginInviteVisible;
     }
 
     [RelayCommand]

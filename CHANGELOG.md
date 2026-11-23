@@ -20,6 +20,13 @@ dentro del juego, sin generar ni importar paquetes a mano. El patcher de escrito
 
 ### Patcher
 
+- **Edición Endwalker**: la cabecera, el hito destacado y el historial de hitos anuncian el plugin
+  y el arranque de *Endwalker*, cuyo icono se suma a los de las expansiones.
+- Nuevo botón **Pásate al plugin de Dalamud**: explica qué es el plugin y, si lo confirmas, añade su
+  repositorio a la configuración de Dalamud, descarga el plugin desde las releases del proyecto y lo
+  deja instalado para que Dalamud lo cargue en el siguiente inicio del juego. El botón solo aparece
+  cuando se puede hacer: Dalamud detectado, juego cerrado y ni el repositorio ni el plugin presentes.
+- La barra de progreso avanza de forma suave y muestra un destello mientras se genera el mod.
 - La descripción del mod generado ya no lista las categorías; en su lugar indica la **fecha y hora
   de generación**.
 - El patcher ya no modifica el ajuste de Dalamud mientras el juego está abierto: avisa y espera a
