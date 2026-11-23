@@ -20,14 +20,25 @@ internal static class MarkdownAvaloniaRenderer
     public static Control Render(MarkdownDocument document)
     {
         var panel = new StackPanel { Spacing = 10 };
-        AddBlocks(panel.Children, document);
+        AddBlocks(panel.Children, document, skipLeadingTitle: true);
         return panel;
     }
 
-    private static void AddBlocks(Controls controls, ContainerBlock container)
+    private static void AddBlocks(
+        Controls controls,
+        ContainerBlock container,
+        bool skipLeadingTitle = false)
     {
+        var firstBlock = true;
         foreach (var block in container)
         {
+            if (firstBlock && skipLeadingTitle && block is HeadingBlock { Level: 1 })
+            {
+                firstBlock = false;
+                continue;
+            }
+
+            firstBlock = false;
             controls.Add(RenderBlock(block));
         }
     }

@@ -33,7 +33,7 @@ nativos; no se usa un navegador incrustado.
    dotnet test tests/FFXIVSpanishPatcher.App.Tests/FFXIVSpanishPatcher.App.Tests.csproj
    ```
 
-3. Abrir la aplicación y revisar el modal a `1240 × 820` y `1080 × 720`.
+3. Abrir la aplicación y revisar el modal a `1280 × 845` y `1200 × 680`.
 4. Comprobar tablas, listas, enlaces y scroll.
 5. Publicar al menos un RID recortado para comprobar que el recurso embebido sobrevive al trimming.
 

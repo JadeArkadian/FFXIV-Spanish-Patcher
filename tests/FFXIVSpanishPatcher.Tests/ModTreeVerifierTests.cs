@@ -55,6 +55,23 @@ public sealed class ModTreeVerifierTests : IDisposable
     }
 
     [Fact]
+    public void Verify_RejectsADeclaredPageThatDoesNotHangTogether()
+    {
+        const string gamePath = "exd/addon_0_en.exd";
+        const string modPath = "files/categories/09-interfaz/exd/addon_0_en.exd";
+        WriteMetadata(defaultSettings: 1);
+        var file = Path.Combine(_root, modPath);
+        Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+        // It starts like a page, which is all the verifier used to look at, and is cut short.
+        File.WriteAllBytes(file, SyntheticExd.BuildExd([(1u, "Hello")])[..^2]);
+        var declared = new Dictionary<string, string> { [gamePath] = modPath };
+
+        var problems = new ModTreeVerifier().Verify(_root, declared);
+
+        Assert.Contains(problems, problem => problem.Contains("not a valid EXDF page", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void VerifyArchive_RejectsLegacyManifest()
     {
         var archivePath = Path.Combine(_root, "legacy.pmp");

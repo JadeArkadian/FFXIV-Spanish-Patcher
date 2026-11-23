@@ -2,7 +2,9 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
+using Avalonia.Input;
 using Avalonia.Media.Imaging;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using FFXIVSpanishPatcher.App.Services;
 using FFXIVSpanishPatcher.App.ViewModels;
@@ -38,6 +40,12 @@ public class MainWindowSmokeTests
                 NullUpdateCheckService.Instance)
             : CreateVisualViewModel(entries, out visualGameRoot);
         var window = new MainWindow { DataContext = viewModel };
+        // FFXIVSP_VISUAL_SIZE=1200x680 renders the screenshot at another window size.
+        if (Environment.GetEnvironmentVariable("FFXIVSP_VISUAL_SIZE")?.Split('x') is [var width, var height])
+        {
+            window.Width = double.Parse(width, System.Globalization.CultureInfo.InvariantCulture);
+            window.Height = double.Parse(height, System.Globalization.CultureInfo.InvariantCulture);
+        }
 
         window.Show();
         if (visualState is null)
@@ -73,10 +81,16 @@ public class MainWindowSmokeTests
                 viewModel.ModalSecondaryText = "Volver";
                 viewModel.IsModalOpen = true;
                 break;
+            case "milestones":
+                viewModel.IsMilestoneOpen = true;
+                break;
+            case "invite":
+                _ = viewModel.InvitePluginCommand.ExecuteAsync(null);
+                break;
             case "generating":
                 viewModel.Stage = PatcherUiStage.Generating;
                 viewModel.ProgressPercent = 58;
-                viewModel.ProgressText = "Aplicando traducciones";
+                viewModel.ProgressText = "Paso 3 de 5 · Aplicando traducciones";
                 viewModel.StatusText = "Generando";
                 break;
             case "result":
@@ -115,17 +129,19 @@ public class MainWindowSmokeTests
         Assert.NotNull(window.FindControl<ConsoleLogTextBlock>("ConsoleText"));
         Assert.Contains(
             window.GetVisualDescendants().OfType<TextBlock>(),
-            textBlock => textBlock.Text == "Edición Shadowbringers");
+            textBlock => textBlock.Text == "Edición Endwalker");
         Assert.DoesNotContain(
             window.GetVisualDescendants().OfType<TextBlock>(),
-            textBlock => textBlock.Text == "Edición Stormblood");
+            textBlock => textBlock.Text == "Edición Shadowbringers");
         Assert.Equal(
-            "Empieza Shadowbringers.",
+            "Empieza Endwalker.",
             window.FindControl<TextBlock>("MilestoneTitle")?.Text);
         Assert.NotNull(window.FindControl<Image>("MilestoneArrIcon")?.Source);
         Assert.NotNull(window.FindControl<Image>("MilestoneHeavenswardIcon")?.Source);
         Assert.NotNull(window.FindControl<Image>("MilestoneStormbloodIcon")?.Source);
         Assert.NotNull(window.FindControl<Image>("MilestoneShadowbringersIcon")?.Source);
+        Assert.NotNull(window.FindControl<Image>("MilestoneEndwalkerIcon")?.Source);
+        Assert.NotNull(window.FindControl<Button>("PluginInvite")?.Command);
         AssertVerticallyAligned(
             window,
             "GameCheckContent",
@@ -147,6 +163,85 @@ public class MainWindowSmokeTests
         {
             Directory.Delete(visualGameRoot, recursive: true);
         }
+    }
+
+    [AvaloniaFact]
+    public async Task MainWindow_SheenAnimationsStartAndStopCleanly()
+    {
+        var dalamudRoot = Path.Combine(Path.GetTempPath(), "ffxivsp-sheen-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dalamudRoot);
+        File.WriteAllText(Path.Combine(dalamudRoot, "dalamudConfig.json"), "{}");
+        try
+        {
+            var viewModel = new MainViewModel(
+                new NoopShell(),
+                new ListTranslationSource([]),
+                recommendedGameVersion: null,
+                updateCheckService: NullUpdateCheckService.Instance,
+                dalamudService: new DalamudPenumbraService(isGameRunning: () => false, root: dalamudRoot),
+                pluginPackages: new FakePluginPackageSource(TestPluginPackage.Create()));
+            var window = new MainWindow { DataContext = viewModel };
+            window.Show();
+            viewModel.Start();
+            var progress = window.FindControl<ProgressBar>("GenerationProgress")!;
+            var invite = window.FindControl<Button>("PluginInvite")!;
+
+            // Starting or stopping a sheen swaps the animated brush with the resting one. If that
+            // one is not a gradient too, Avalonia throws inside the binding, which then drops
+            // the class and leaves the animation running.
+            viewModel.Stage = PatcherUiStage.Generating;
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            Dispatcher.UIThread.RunJobs();
+            Assert.Contains("live", progress.Classes);
+
+            viewModel.Stage = PatcherUiStage.Result;
+            Dispatcher.UIThread.RunJobs();
+            Assert.DoesNotContain("live", progress.Classes);
+
+            // The invitation is offered while it can be carried out and leaves once it is done.
+            Assert.True(invite.IsVisible);
+            var invitation = viewModel.InvitePluginCommand.ExecuteAsync(null);
+            viewModel.AcceptModalCommand.Execute(null);
+            await invitation;
+            Dispatcher.UIThread.RunJobs();
+            Assert.False(invite.IsVisible);
+
+            viewModel.Stage = PatcherUiStage.Generating;
+            Dispatcher.UIThread.RunJobs();
+            window.Close();
+        }
+        finally
+        {
+            Directory.Delete(dalamudRoot, recursive: true);
+        }
+    }
+
+    [AvaloniaFact]
+    public async Task MainWindow_EscapeClosesOverlaysWithoutAcceptingThem()
+    {
+        var viewModel = new MainViewModel(
+            new NoopShell(),
+            new ListTranslationSource([]),
+            NullUpdateCheckService.Instance);
+        var window = new MainWindow { DataContext = viewModel };
+        window.Show();
+
+        viewModel.ShowMilestonesCommand.Execute(null);
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(window.FindControl<Button>("MilestoneClose")!.IsFocused);
+        window.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
+        Assert.False(viewModel.IsMilestoneOpen);
+
+        var answer = (Task<bool>)typeof(MainViewModel)
+            .GetMethod("ShowDalamudModalAsync", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .Invoke(viewModel, null)!;
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(window.FindControl<Button>("ModalSecondary")!.IsFocused);
+        window.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
+
+        Assert.False(viewModel.IsModalOpen);
+        Assert.False(await answer);
+        window.Close();
     }
 
     [AvaloniaFact]
@@ -199,8 +294,8 @@ public class MainWindowSmokeTests
         }
         var window = new MainWindow
         {
-            Width = 1415,
-            Height = 945,
+            Width = 1200,
+            Height = 680,
             DataContext = viewModel,
         };
 
@@ -209,8 +304,8 @@ public class MainWindowSmokeTests
         var frame = window.CaptureRenderedFrame();
 
         Assert.NotNull(frame);
-        Assert.True(frame.PixelSize.Width >= 1415 * scale);
-        Assert.True(frame.PixelSize.Height >= 945 * scale);
+        Assert.True(frame.PixelSize.Width >= 1200 * scale);
+        Assert.True(frame.PixelSize.Height >= 680 * scale);
         AssertInsideWindow(window, window.FindControl<Border>("SetupPanel"));
         AssertInsideWindow(window, window.FindControl<Border>("ConsolePanel"));
         AssertInsideWindow(window, window.FindControl<Button>("PrimaryAction"));

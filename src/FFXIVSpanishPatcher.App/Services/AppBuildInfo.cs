@@ -16,6 +16,13 @@ public sealed record AppBuildInfo(
 
     public string WindowTitle => $"FFXIVSpanish Patcher {DisplayVersion}";
 
+    /// <summary>Custom Dalamud repository that the release workflow publishes on the main branch.</summary>
+    public string PluginRepositoryUrl =>
+        $"https://raw.githubusercontent.com/{RepositorySlug}/main/dalamud/pluginmaster.json";
+
+    /// <summary>The only place a plugin package may be downloaded from: this repository's releases.</summary>
+    public string PluginDownloadPrefix => $"https://github.com/{RepositorySlug}/releases/download/";
+
     public static AppBuildInfo FromAssembly(Assembly assembly)
     {
         var metadata = assembly.GetCustomAttributes<AssemblyMetadataAttribute>()

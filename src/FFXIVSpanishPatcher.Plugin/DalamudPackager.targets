@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <Target Name="PackagePlugin" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
+    <!-- Only the files directly in the build output go into the ZIP. Packing the whole folder
+         would also pick up bin/Release/publish when someone has run "dotnet publish", shipping a
+         second copy of every DLL, the ones Dalamud provides included. The manifest is listed by
+         name because the packager writes it after this list is computed. -->
+    <ItemGroup>
+      <PluginPackageFile Include="$(OutputPath)*"
+                         Exclude="$(OutputPath)Dalamud.dll;$(OutputPath)Lumina.dll;$(OutputPath)Lumina.Excel.dll;$(OutputPath)Microsoft.Extensions.ObjectPool.dll;$(OutputPath)$(AssemblyName).json" />
+    </ItemGroup>
+    <DalamudPackager ProjectDir="$(ProjectDir)"
+                     OutputPath="$(OutputPath)"
+                     AssemblyName="$(AssemblyName)"
+                     MakeZip="true"
+                     Include="$(AssemblyName).json;@(PluginPackageFile->'%(Filename)%(Extension)')"
+                     ManifestType="csproj"
+                     Author="$(Author)"
+                     Name="$(Name)"
+                     Punchline="$(Punchline)"
+                     Description="$(Description)"
+                     RepoUrl="$(RepoUrl)"
+                     IconUrl="$(IconUrl)"
+                     Tags="$(Tags)"
+                     DalamudApiLevel="$(DalamudApiLevel)"
+                     LoadRequiredState="$(LoadRequiredState)"
+                     LoadSync="$(LoadSync)"
+                     CanUnloadAsync="$(CanUnloadAsync)"
+                     LoadPriority="$(LoadPriority)" />
+  </Target>
+</Project>

@@ -131,6 +131,9 @@ public sealed class PatchPipelineTests : IDisposable
 
         using var metadata = JsonDocument.Parse(ReadEntryBytes(archive, "meta.json"));
         Assert.Equal(4, metadata.RootElement.GetProperty("FileVersion").GetInt32());
+        Assert.Contains(
+            metadata.RootElement.GetProperty("ModTags").EnumerateArray().Select(tag => tag.GetString()),
+            tag => tag == "ffxiv-spanish-managed");
         var groups = metadata.RootElement.GetProperty("Groups");
         var group = Assert.Single(groups.EnumerateArray());
         Assert.Equal("Categorías de traducción", group.GetProperty("Name").GetString());
@@ -148,6 +151,57 @@ public sealed class PatchPipelineTests : IDisposable
         // Verification is mandatory and reports success before the output is promoted.
         Assert.Contains(events, e => e.Component == PipelineComponent.Verifier && e.Level == PipelineLevel.Ok);
         Assert.DoesNotContain(events, e => e.Level == PipelineLevel.Debug);
+    }
+
+    [Fact]
+    public void Run_CreatesAMissingOutputFolder()
+    {
+        var output = Path.Combine(_temp, "Documentos", "Output", "out.pmp");
+        var pipeline = new PatchPipeline(new ListTranslationSource(ApprovedManifest()), new FakePatchBackendFactory(BuildSource()));
+
+        var result = pipeline.Run(
+            Request() with { OutputPath = output },
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        Assert.True(File.Exists(output));
+    }
+
+    [Fact]
+    public void Run_ReportsAnOutputFolderItCannotCreateAsAFailedRun()
+    {
+        // A file where the folder should be: no platform can create a directory beneath it.
+        var blocker = Path.Combine(_temp, "blocker");
+        File.WriteAllText(blocker, string.Empty);
+        var pipeline = new PatchPipeline(new ListTranslationSource(ApprovedManifest()), new FakePatchBackendFactory(BuildSource()));
+        var events = new List<PipelineEvent>();
+
+        var result = pipeline.Run(
+            Request() with { OutputPath = Path.Combine(blocker, "Output", "out.pmp") },
+            new SyncProgress<PipelineEvent>(events.Add),
+            TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Equal(PatchOutcome.OutputError, result.Outcome);
+        Assert.Contains(events, e => e.Component == PipelineComponent.Packager && e.Level == PipelineLevel.Error);
+    }
+
+    [Fact]
+    public void Run_WithTreeOutput_PromotesVerifiedTreeWithoutCreatingPmp()
+    {
+        var treeOutput = Path.Combine(_temp, "candidate-tree");
+        var pipeline = new PatchPipeline(new ListTranslationSource(ApprovedManifest()), new FakePatchBackendFactory(BuildSource()));
+
+        var result = pipeline.Run(
+            Request() with { TreeOutputPath = treeOutput },
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        Assert.Equal(treeOutput, result.OutputPath);
+        Assert.True(File.Exists(Path.Combine(treeOutput, "meta.json")));
+        Assert.True(TranslationModIdentity.HasValidMarker(treeOutput));
+        Assert.False(File.Exists(Path.Combine(_temp, "out.pmp")));
+        Assert.Empty(new ModTreeVerifier().Verify(treeOutput));
     }
 
     [Fact]
@@ -491,6 +545,31 @@ public sealed class PatchPipelineTests : IDisposable
         Assert.Equal(1, result.Statistics.UnsupportedPages);
         Assert.Equal(2, result.Statistics.UnsupportedPageEntries);
         Assert.Equal(2, result.Statistics.SkippedEntries);
+    }
+
+    [Fact]
+    public void Run_WhenAPageIsDamaged_SkipsItAndPackagesTheRest()
+    {
+        const string damagedPath = "exd/damaged_0_en.exd";
+        // The header claims a thousand index entries; the file ends long before them.
+        var damaged = SyntheticExd.BuildExd([(8u, "Old text")]);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(damaged.AsSpan(ExdPage.IndexSizeOffset), 8000);
+        var entries = ApprovedManifest()
+            .Append(Approved("Damaged", 8u, "Text", damagedPath, "Old text", "Texto antiguo"))
+            .ToList();
+        var source = BuildSource()
+            .AddPage(damagedPath, damaged)
+            .AddLayout("Damaged", new ExdLayout(4, [0], 1));
+        var pipeline = new PatchPipeline(
+            new ListTranslationSource(entries),
+            new FakePatchBackendFactory(source));
+
+        var result = pipeline.Run(Request(), cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        Assert.Equal(PatchOutcome.PackagedWithMisses, result.Outcome);
+        Assert.Equal(1, result.Statistics.UnsupportedPages);
+        Assert.Equal(4, result.Applied);
     }
 
     [Fact]

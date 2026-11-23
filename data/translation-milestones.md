@@ -1,5 +1,38 @@
 # Hitos de traducción
 
+## v0.6.0 — Plugin de Dalamud y arranque de Endwalker
+
+La traducción estrena **plugin de Dalamud**. **FFXIV Spanish Translation Manager** genera la
+traducción dentro del juego, la instala en Penumbra y la mantiene al día: ya no hace falta crear un
+paquete, importarlo y repetir el proceso tras cada parche. Es la forma recomendada de usar la
+traducción a partir de ahora; este patcher de escritorio sigue disponible como alternativa manual.
+
+Para pasarte, cierra el juego y pulsa **Pásate al plugin de Dalamud** en la ventana principal. Tras
+pedirte confirmación, el patcher añade el repositorio del plugin a Dalamud, lo descarga y lo deja
+instalado: Dalamud lo carga en el siguiente inicio del juego y se abre con `/ffxives`. El plugin
+adopta el mod que ya hayas creado con el patcher y conserva tus categorías. El botón solo aparece
+si el patcher encuentra Dalamud y el plugin aún no está añadido; si no lo ves, la guía completa
+está en
+[docs/PLUGIN.md](https://github.com/JadeArkadian/FFXIV-Spanish-Patcher/blob/main/docs/PLUGIN.md).
+
+En la traducción, **Shadowbringers** se suma a las expansiones completas y **arranca Endwalker**,
+que parte de cero.
+
+| Área | Estado |
+| --- | --- |
+| Plugin de Dalamud | Disponible desde su repositorio personalizado |
+| A Realm Reborn, Heavensward y Stormblood | Completos y revisados |
+| Shadowbringers | Completo (44.094/44.105 líneas) y revisado de nuevo |
+| Endwalker | Empieza la traducción (47.150 líneas por delante) |
+
+El avance global alcanza **659.014/827.118 líneas traducibles (79,7 %)** y **5.673/7.024 hojas
+completadas (80,8 %)**.
+
+### Qué viene después
+
+- Historia principal de *Endwalker* y el resto de su contenido.
+- Revisión continua de terminología y coherencia entre expansiones.
+
 ## v0.5.0 — Empieza Shadowbringers
 
 Con **A Realm Reborn**, **Heavensward** y **Stormblood** ya completos, esta edición abre la

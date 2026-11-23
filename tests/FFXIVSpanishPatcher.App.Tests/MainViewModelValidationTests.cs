@@ -103,6 +103,69 @@ public sealed class MainViewModelValidationTests
     }
 
     [AvaloniaFact]
+    public async Task GenerateMod_WhenTheOutputFolderCannotBeCreated_EndsAsAFailedRunInsteadOfThrowing()
+    {
+        using var install = TempGameInstall("2026.06.18.0000.0000");
+        using var blocked = new BlockedFolder();
+        var viewModel = ReadyViewModel(new CapturingShell(), recommendedGameVersion: null, blocked.Path);
+        viewModel.Categories.Add(Category(selected: true));
+        viewModel.GamePath = install.Root;
+
+        await viewModel.GenerateModCommand.ExecuteAsync(null);
+
+        Assert.False(viewModel.IsBusy);
+        Assert.Equal(PatcherUiStage.Result, viewModel.Stage);
+        Assert.False(viewModel.LastSuccess);
+    }
+
+    [AvaloniaFact]
+    public void OpenOutputFolder_WhenTheFolderCannotBeCreated_ReportsItInsteadOfThrowing()
+    {
+        using var blocked = new BlockedFolder();
+        var shell = new CapturingShell();
+        var viewModel = ReadyViewModel(shell, recommendedGameVersion: null, blocked.Path);
+
+        viewModel.OpenOutputFolderCommand.Execute(null);
+
+        Assert.Null(shell.RevealedPath);
+        Assert.Contains(
+            viewModel.Console,
+            line => line.Text.Contains("carpeta de salida", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [AvaloniaFact]
+    public void Preparation_DoesNotClaimSuccessBeforeThereIsAnyGameToCheck()
+    {
+        var viewModel = ReadyViewModel(new CapturingShell(), "2026.06.18.0000.0000");
+        viewModel.Categories.Add(Category(selected: true));
+
+        // No game yet: nothing is "compatible" and nothing is ready.
+        Assert.False(viewModel.IsVersionMatch);
+        Assert.True(viewModel.IsVersionUnknown);
+        Assert.False(viewModel.IsReadyToGenerate);
+        Assert.Equal("Falta completar la preparación", viewModel.ReadyHeadline);
+
+        using var install = TempGameInstall("2026.06.18.0000.0000");
+        viewModel.GamePath = install.Root;
+
+        Assert.True(viewModel.IsVersionMatch);
+        Assert.True(viewModel.IsReadyToGenerate);
+        Assert.Equal("Listo para empezar", viewModel.ReadyHeadline);
+    }
+
+    [AvaloniaFact]
+    public async Task Browse_WhileGenerating_KeepsThePathTheRunIsUsing()
+    {
+        using var install = TempGameInstall("2026.06.18.0000.0000");
+        var viewModel = ReadyViewModel(new CapturingShell { PickResult = install.Root });
+        viewModel.IsBusy = true;
+
+        await viewModel.BrowseCommand.ExecuteAsync(null);
+
+        Assert.Null(viewModel.GamePath);
+    }
+
+    [AvaloniaFact]
     public void CategoryCommands_KeepAtLeastOneSelectionRequired()
     {
         var viewModel = ReadyViewModel(new CapturingShell());
@@ -121,15 +184,98 @@ public sealed class MainViewModelValidationTests
         Assert.False(viewModel.ShowCategorySelectionError);
     }
 
+    [AvaloniaTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task PluginInvite_AddsTheRepositoryAndInstallsThePluginOnlyAfterConfirmation(bool accept)
+    {
+        using var dalamud = new TempDalamud();
+        var packages = new FakePluginPackageSource(TestPluginPackage.Create());
+        var viewModel = InviteViewModel(new CapturingShell(), dalamud, gameRunning: false, packages);
+
+        var invitation = viewModel.InvitePluginCommand.ExecuteAsync(null);
+        Assert.True(viewModel.IsModalOpen);
+        Assert.Equal("Instalar plugin", viewModel.ModalPrimaryText);
+        Assert.Contains("/main/dalamud/pluginmaster.json", viewModel.ModalExplanation, StringComparison.Ordinal);
+        Assert.Contains("descargará", viewModel.ModalExplanation, StringComparison.Ordinal);
+        Assert.Equal("{}", dalamud.Config);
+        Assert.Equal(0, packages.Downloads);
+
+        (accept ? viewModel.AcceptModalCommand : viewModel.DismissModalCommand).Execute(null);
+        await invitation;
+
+        Assert.Equal(accept, dalamud.Config.Contains("/main/dalamud/pluginmaster.json", StringComparison.Ordinal));
+        Assert.Equal(accept ? 1 : 0, packages.Downloads);
+        Assert.Equal(accept, dalamud.PluginInstalled);
+        // Once done there is nothing left to offer; declining keeps the offer open.
+        Assert.Equal(!accept, viewModel.IsPluginInviteVisible);
+        Assert.Equal(
+            accept,
+            viewModel.Console.Any(line => line.Text.Contains("próximo inicio", StringComparison.Ordinal)));
+    }
+
+    [AvaloniaFact]
+    public async Task PluginInvite_WhenTheDownloadFails_ChangesNothingAndCanBeRetried()
+    {
+        using var dalamud = new TempDalamud();
+        var viewModel = InviteViewModel(
+            new CapturingShell(),
+            dalamud,
+            gameRunning: false,
+            new FakePluginPackageSource(package: null));
+
+        var invitation = viewModel.InvitePluginCommand.ExecuteAsync(null);
+        viewModel.AcceptModalCommand.Execute(null);
+        await invitation;
+
+        Assert.Equal("{}", dalamud.Config);
+        Assert.False(dalamud.PluginInstalled);
+        Assert.True(viewModel.IsPluginInviteVisible);
+        Assert.Contains(viewModel.Console, line => line.Text.Contains("más tarde", StringComparison.Ordinal));
+    }
+
+    [AvaloniaFact]
+    public async Task PluginInvite_WhenItCanNoLongerBeDone_ChangesNothingAndHides()
+    {
+        using var dalamud = new TempDalamud();
+        var packages = new FakePluginPackageSource(TestPluginPackage.Create());
+        var viewModel = InviteViewModel(new CapturingShell(), dalamud, gameRunning: true, packages);
+
+        await viewModel.InvitePluginCommand.ExecuteAsync(null);
+
+        Assert.False(viewModel.IsModalOpen);
+        Assert.False(viewModel.IsPluginInviteVisible);
+        Assert.Equal("{}", dalamud.Config);
+        Assert.Equal(0, packages.Downloads);
+        Assert.False(dalamud.PluginInstalled);
+        Assert.Contains(viewModel.Console, line => line.Text.Contains("Cierra FFXIV", StringComparison.Ordinal));
+    }
+
+    private static MainViewModel InviteViewModel(
+        CapturingShell shell,
+        TempDalamud dalamud,
+        bool gameRunning,
+        IPluginPackageSource packages)
+        => new(
+            shell,
+            new ListTranslationSource([]),
+            recommendedGameVersion: null,
+            dalamudService: new DalamudPenumbraService(isGameRunning: () => gameRunning, root: dalamud.Root),
+            pluginPackages: packages);
+
     private static MainViewModel ReadyViewModel(CapturingShell shell)
         => ReadyViewModel(shell, recommendedGameVersion: null);
 
-    private static MainViewModel ReadyViewModel(CapturingShell shell, string? recommendedGameVersion)
+    private static MainViewModel ReadyViewModel(
+        CapturingShell shell,
+        string? recommendedGameVersion,
+        string? outputFolder = null)
     {
         var viewModel = new MainViewModel(
             shell,
             new ListTranslationSource([]),
-            recommendedGameVersion)
+            recommendedGameVersion,
+            outputFolder: outputFolder)
         {
             TranslationsReady = true,
         };
@@ -167,16 +313,51 @@ public sealed class MainViewModelValidationTests
         }
     }
 
+    /// <summary>A Dalamud root with an empty configuration, so no test touches the real one.</summary>
+    private sealed class TempDalamud : IDisposable
+    {
+        public TempDalamud()
+        {
+            Directory.CreateDirectory(Root);
+            File.WriteAllText(ConfigPath, "{}");
+        }
+
+        public string Root { get; } =
+            Path.Combine(Path.GetTempPath(), "ffxivsp-app-dalamud-" + Guid.NewGuid().ToString("N"));
+
+        public string Config => File.ReadAllText(ConfigPath);
+
+        public bool PluginInstalled => Directory.Exists(Path.Combine(Root, "installedPlugins"));
+
+        private string ConfigPath => Path.Combine(Root, "dalamudConfig.json");
+
+        public void Dispose() => Directory.Delete(Root, recursive: true);
+    }
+
+    /// <summary>An output folder beneath a regular file: no platform can create it.</summary>
+    private sealed class BlockedFolder : IDisposable
+    {
+        private readonly string _blocker = System.IO.Path.Combine(
+            System.IO.Path.GetTempPath(),
+            "ffxivsp-app-blocker-" + Guid.NewGuid().ToString("N"));
+
+        public BlockedFolder() => File.WriteAllText(_blocker, string.Empty);
+
+        public string Path => System.IO.Path.Combine(_blocker, "Output");
+
+        public void Dispose() => File.Delete(_blocker);
+    }
+
     private sealed class CapturingShell : IShellServices
     {
         public string? PickResult { get; init; }
+
+        public string? RevealedPath { get; private set; }
 
         public Task<string?> PickGameFolderAsync() => Task.FromResult(PickResult);
 
         public Task CopyToClipboardAsync(string text) => Task.CompletedTask;
 
-        public void RevealInFileManager(string path)
-        {
-        }
+        public void RevealInFileManager(string path) => RevealedPath = path;
     }
 }

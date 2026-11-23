@@ -37,7 +37,17 @@ public static partial class GamePathDetector
                 continue;
             }
 
-            var version = File.ReadAllText(candidate).Trim();
+            string version;
+            try
+            {
+                version = File.ReadAllText(candidate).Trim();
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                // Locked or unreadable: an unknown version, never a failure of the caller.
+                continue;
+            }
+
             if (!string.IsNullOrWhiteSpace(version))
             {
                 return version;

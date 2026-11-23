@@ -6,10 +6,11 @@
         x:DataType="vm:MainViewModel"
         Icon="/Assets/icon.ico"
         Title="{Binding WindowTitle}"
-        Width="1415"
-        Height="945"
-        MinWidth="1415"
-        MinHeight="945"
+        Width="1280"
+        Height="845"
+        MinWidth="1200"
+        MinHeight="680"
+        WindowStartupLocation="CenterScreen"
         Background="{StaticResource AppBackground}"
         FontFamily="fonts:Inter#Inter">
 
@@ -63,6 +64,37 @@
       <GradientStop Color="#1B293D" Offset="0.38"/>
       <GradientStop Color="#101D31" Offset="1"/>
     </RadialGradientBrush>
+    <!-- Sheen keyframes: same stops, the gradient vector slides from off-left to off-right.
+         The animated control must also use a gradient as its resting brush: Avalonia casts that
+         value to a gradient when the animation starts or stops, and throws on a solid colour. -->
+    <LinearGradientBrush x:Key="InviteSheenStart" StartPoint="-100%,0%" EndPoint="0%,0%">
+      <GradientStop Color="#3D8A6A22" Offset="0"/>
+      <GradientStop Color="#3D8A6A22" Offset="0.38"/>
+      <GradientStop Color="#A6F0BD58" Offset="0.5"/>
+      <GradientStop Color="#3D8A6A22" Offset="0.62"/>
+      <GradientStop Color="#3D8A6A22" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="InviteSheenEnd" StartPoint="100%,0%" EndPoint="200%,0%">
+      <GradientStop Color="#3D8A6A22" Offset="0"/>
+      <GradientStop Color="#3D8A6A22" Offset="0.38"/>
+      <GradientStop Color="#A6F0BD58" Offset="0.5"/>
+      <GradientStop Color="#3D8A6A22" Offset="0.62"/>
+      <GradientStop Color="#3D8A6A22" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="ProgressSheenStart" StartPoint="-100%,0%" EndPoint="0%,0%">
+      <GradientStop Color="#3C8DFF" Offset="0"/>
+      <GradientStop Color="#3C8DFF" Offset="0.3"/>
+      <GradientStop Color="#A6E9FF" Offset="0.5"/>
+      <GradientStop Color="#3C8DFF" Offset="0.7"/>
+      <GradientStop Color="#3C8DFF" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="ProgressSheenEnd" StartPoint="100%,0%" EndPoint="200%,0%">
+      <GradientStop Color="#3C8DFF" Offset="0"/>
+      <GradientStop Color="#3C8DFF" Offset="0.3"/>
+      <GradientStop Color="#A6E9FF" Offset="0.5"/>
+      <GradientStop Color="#3C8DFF" Offset="0.7"/>
+      <GradientStop Color="#3C8DFF" Offset="1"/>
+    </LinearGradientBrush>
     <SolidColorBrush x:Key="Line" Color="#29405F"/>
     <SolidColorBrush x:Key="LineSoft" Color="#1D3350"/>
     <SolidColorBrush x:Key="Text" Color="#EFF5FD"/>
@@ -151,13 +183,99 @@
       <Setter Property="BorderThickness" Value="0"/>
       <Setter Property="Foreground" Value="{StaticResource Cyan}"/>
       <Setter Property="Padding" Value="4,2"/>
+      <Setter Property="FontSize" Value="12"/>
+    </Style>
+    <Style Selector="Button.plugin">
+      <Setter Property="Background" Value="{StaticResource InviteSheenStart}"/>
+      <Setter Property="BorderBrush" Value="#8AF0BD58"/>
+      <Setter Property="Foreground" Value="#FFE9BC"/>
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <!-- Subtle invitation: a gold glint crosses the button every few seconds. -->
+      <Style.Animations>
+        <Animation Duration="0:0:1.6" DelayBetweenIterations="0:0:3.4" IterationCount="INFINITE">
+          <KeyFrame Cue="0%">
+            <Setter Property="Background" Value="{StaticResource InviteSheenStart}"/>
+          </KeyFrame>
+          <KeyFrame Cue="100%">
+            <Setter Property="Background" Value="{StaticResource InviteSheenEnd}"/>
+          </KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <Style Selector="Button.plugin:pointerover">
+      <Setter Property="BorderBrush" Value="{StaticResource Gold}"/>
+    </Style>
+    <Style Selector="ProgressBar.live">
+      <Style.Animations>
+        <Animation Duration="0:0:1.4" DelayBetweenIterations="0:0:0.5" IterationCount="INFINITE">
+          <KeyFrame Cue="0%">
+            <Setter Property="Foreground" Value="{StaticResource ProgressSheenStart}"/>
+          </KeyFrame>
+          <KeyFrame Cue="100%">
+            <Setter Property="Foreground" Value="{StaticResource ProgressSheenEnd}"/>
+          </KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <!-- Check tiles. A tile that does something is a Button and shows its hint in cyan. -->
+    <Style Selector="Border.tile">
+      <Setter Property="Padding" Value="9,8"/>
+      <Setter Property="MinHeight" Value="60"/>
+      <Setter Property="CornerRadius" Value="9"/>
+      <Setter Property="Background" Value="{StaticResource InsetPanel}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource LineSoft}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+    <Style Selector="Button.tile">
+      <Setter Property="Padding" Value="9,8"/>
+      <Setter Property="MinHeight" Value="60"/>
+      <Setter Property="CornerRadius" Value="9"/>
+      <Setter Property="Background" Value="{StaticResource InsetPanel}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource LineSoft}"/>
+      <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+    </Style>
+    <Style Selector="Border.tileIcon">
+      <Setter Property="Width" Value="24"/>
+      <Setter Property="Height" Value="24"/>
+      <Setter Property="CornerRadius" Value="12"/>
+      <Setter Property="BorderBrush" Value="#4156D69B"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Background" Value="#2A0C3A38"/>
+    </Style>
+    <Style Selector="Border.tileIcon TextBlock">
+      <Setter Property="FontSize" Value="11.5"/>
+      <Setter Property="HorizontalAlignment" Value="Center"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Border.tileIcon TextBlock.ok">
+      <Setter Property="Foreground" Value="{StaticResource Green}"/>
+    </Style>
+    <Style Selector="Border.tileIcon TextBlock.warn">
+      <Setter Property="Foreground" Value="{StaticResource Yellow}"/>
+    </Style>
+    <Style Selector="Border.tileIcon TextBlock.wait">
+      <Setter Property="Foreground" Value="{StaticResource Muted}"/>
+    </Style>
+    <Style Selector="TextBlock.tileTitle">
+      <Setter Property="Foreground" Value="#E1EAF5"/>
+      <Setter Property="FontSize" Value="11.5"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+    <Style Selector="TextBlock.tileSub">
+      <Setter Property="Foreground" Value="#8CA3C0"/>
       <Setter Property="FontSize" Value="11"/>
+      <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+    <Style Selector="TextBlock.tileSub.link">
+      <Setter Property="Foreground" Value="{StaticResource Cyan}"/>
     </Style>
     <Style Selector="Button.console">
       <Setter Property="Background" Value="{StaticResource SecondaryGradient}"/>
       <Setter Property="BorderBrush" Value="#2C4668"/>
       <Setter Property="Padding" Value="11,6"/>
-      <Setter Property="FontSize" Value="11"/>
+      <Setter Property="FontSize" Value="11.5"/>
       <Setter Property="MinHeight" Value="30"/>
     </Style>
     <Style Selector="TextBox">
@@ -168,7 +286,7 @@
     </Style>
     <Style Selector="CheckBox">
       <Setter Property="Foreground" Value="#D7E3F2"/>
-      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="FontSize" Value="11.5"/>
       <Setter Property="MinHeight" Value="24"/>
     </Style>
     <Style Selector="Expander">
@@ -181,20 +299,19 @@
     </Style>
   </Window.Styles>
 
-  <Grid RowDefinitions="96,*,44" Background="{StaticResource AppBackground}">
+  <Grid RowDefinitions="76,*,38" Background="{StaticResource AppBackground}">
     <Border Grid.Row="0"
             Background="{StaticResource HeaderBackground}"
             BorderBrush="{StaticResource Line}"
             BorderThickness="0,0,0,1"
             BoxShadow="0 8 30 0 #22000000"
-            Padding="30,12">
-      <Grid ColumnDefinitions="*,Auto">
-        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-          <Border Width="66"
-                  Height="66"
-                  Margin="0,0,16,0"
+            Padding="24,8">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+          <Border Width="54"
+                  Height="54"
+                  Margin="0,0,14,0"
                   ClipToBounds="True"
-                  CornerRadius="18"
+                  CornerRadius="15"
                   BorderBrush="#4666A0CE"
                   BorderThickness="1"
                   BoxShadow="0 8 22 0 #40125487">
@@ -206,13 +323,13 @@
               </LinearGradientBrush>
             </Border.Background>
             <Image Source="/Assets/logo-git.png"
-                   Width="100"
-                   Height="100"
+                   Width="82"
+                   Height="82"
                    Stretch="Uniform"
                    HorizontalAlignment="Center"
                    VerticalAlignment="Top"/>
           </Border>
-          <StackPanel VerticalAlignment="Center" Spacing="6">
+          <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4" Margin="0,0,16,0">
             <StackPanel Orientation="Horizontal" Spacing="12">
               <TextBlock Classes="h1" Text="FFXIV Spanish Patcher" VerticalAlignment="Center"/>
               <Border Padding="9,4"
@@ -226,7 +343,7 @@
                            FontWeight="Bold"/>
               </Border>
             </StackPanel>
-            <StackPanel Orientation="Horizontal" Spacing="8">
+            <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="8">
               <Border Width="13"
                       Height="13"
                       BorderBrush="{StaticResource Gold}"
@@ -237,18 +354,20 @@
                   <RotateTransform Angle="45"/>
                 </Border.RenderTransform>
               </Border>
-              <TextBlock Text="Edición Shadowbringers"
+              <TextBlock Grid.Column="1" Text="Edición Endwalker"
                          Foreground="{StaticResource Gold}"
                          FontSize="13"
                          FontWeight="SemiBold"/>
-              <TextBlock Text="· Traducción en curso sobre ARR, Heavensward y Stormblood completos"
+              <TextBlock Grid.Column="2"
+                         Text="· Traducción en curso sobre ARR, Heavensward, Stormblood y Shadowbringers completos"
+                         ToolTip.Tip="Traducción en curso sobre ARR, Heavensward, Stormblood y Shadowbringers completos"
+                         TextTrimming="CharacterEllipsis"
                          Foreground="#C8D5E6"
                          FontSize="13"/>
-            </StackPanel>
+            </Grid>
           </StackPanel>
-        </StackPanel>
 
-        <StackPanel Grid.Column="1"
+        <StackPanel Grid.Column="2"
                     Orientation="Horizontal"
                     Spacing="12"
                     VerticalAlignment="Center">
@@ -257,7 +376,7 @@
                   BorderThickness="1"
                   CornerRadius="10"
                   Background="#2A0C3A38"
-                  IsVisible="{Binding IsVersionOk}">
+                  IsVisible="{Binding IsVersionMatch}">
             <StackPanel Orientation="Horizontal" Spacing="8">
               <Border Width="8" Height="8" CornerRadius="4"
                       Background="{StaticResource Green}"
@@ -356,15 +475,20 @@
       </Grid>
     </Border>
 
-    <Grid Grid.Row="1" Margin="28,19,28,15" RowDefinitions="1.36*,14,0.64*">
-      <Grid Grid.Row="0" ColumnDefinitions="1.55*,18,1*">
+    <Grid Grid.Row="1" Margin="24,14,24,12">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="1.36*" MinHeight="385"/>
+        <RowDefinition Height="12"/>
+        <RowDefinition Height="0.64*" MinHeight="130"/>
+      </Grid.RowDefinitions>
+      <Grid Grid.Row="0" ColumnDefinitions="1.7*,18,1*">
         <Border x:Name="SetupPanel" Grid.Column="0" Classes="card" Padding="18,16">
           <Grid RowDefinitions="Auto,10,Auto,10,*,10,Auto">
               <Grid Grid.Row="0">
                 <StackPanel Spacing="5">
                   <TextBlock Text="COMPROBACIÓN PREVIA"
                              Foreground="{StaticResource Cyan}"
-                             FontSize="10"
+                             FontSize="10.5"
                              FontWeight="Bold"
                              LetterSpacing="1.2"/>
                   <TextBlock Classes="h2" Text="{Binding SetupTitle}"/>
@@ -374,95 +498,71 @@
 
               <Grid Grid.Row="2" ColumnDefinitions="*,7,*,7,*,7,*">
                 <Button Grid.Column="0"
+                        Classes="tile"
                         Command="{Binding BrowseCommand}"
-                        ToolTip.Tip="{Binding GamePath}"
-                        Padding="10,9"
-                        MinHeight="60"
-                        Background="{StaticResource InsetPanel}"
-                        BorderBrush="{StaticResource LineSoft}">
-                  <Grid x:Name="GameCheckContent"
-                        ColumnDefinitions="26,*"
-                        VerticalAlignment="Center">
-                    <Border Width="24" Height="24" CornerRadius="12"
-                            BorderBrush="#4156D69B" BorderThickness="1" Background="#2A0C3A38">
-                      <TextBlock Text="✓" Foreground="{StaticResource Green}" FontSize="11"
-                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        ToolTip.Tip="{Binding GamePath}">
+                  <Grid x:Name="GameCheckContent" ColumnDefinitions="24,*" Height="32" VerticalAlignment="Center">
+                    <Border Classes="tileIcon">
+                      <Grid>
+                        <TextBlock Classes="ok" Text="✓" IsVisible="{Binding IsGamePathValid}"/>
+                        <TextBlock Classes="warn" Text="!" IsVisible="{Binding !IsGamePathValid}"/>
+                      </Grid>
                     </Border>
-                    <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center">
-                      <TextBlock Text="{Binding GameCheckTitle}" Foreground="#E1EAF5" FontSize="10.5" FontWeight="SemiBold"/>
-                      <TextBlock Text="{Binding GameCheckSubtitle}" Foreground="#7892B1" FontSize="9.5"/>
+                    <StackPanel Grid.Column="1" Margin="7,0,0,0" VerticalAlignment="Center">
+                      <TextBlock Classes="tileTitle" Text="{Binding GameCheckTitle}"/>
+                      <TextBlock Classes="tileSub link" Text="{Binding GameCheckSubtitle}"/>
                     </StackPanel>
                   </Grid>
                 </Button>
 
-                <Border Grid.Column="2" Padding="10,9" CornerRadius="9" MinHeight="60"
-                        Background="{StaticResource InsetPanel}"
-                        BorderBrush="{StaticResource LineSoft}" BorderThickness="1">
-                  <Grid x:Name="VersionCheckContent"
-                        ColumnDefinitions="26,*"
-                        VerticalAlignment="Center">
-                    <Border Width="24" Height="24" CornerRadius="12"
-                            BorderBrush="#4156D69B" BorderThickness="1" Background="#2A0C3A38">
+                <Border Grid.Column="2" Classes="tile" ToolTip.Tip="{Binding VersionCheckTooltip}">
+                  <Grid x:Name="VersionCheckContent" ColumnDefinitions="24,*" Height="32" VerticalAlignment="Center">
+                    <Border Classes="tileIcon">
                       <Grid>
-                        <TextBlock Text="✓" Foreground="{StaticResource Green}" FontSize="11"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center"
-                                   IsVisible="{Binding IsVersionOk}"/>
-                        <TextBlock Text="!" Foreground="{StaticResource Yellow}" FontSize="11"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center"
-                                   IsVisible="{Binding IsVersionWarning}"/>
+                        <TextBlock Classes="ok" Text="✓" IsVisible="{Binding IsVersionMatch}"/>
+                        <TextBlock Classes="warn" Text="!" IsVisible="{Binding IsVersionWarning}"/>
+                        <TextBlock Classes="wait" Text="?" IsVisible="{Binding IsVersionUnknown}"/>
                       </Grid>
                     </Border>
-                    <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center">
-                      <TextBlock Text="{Binding VersionCheckTitle}" Foreground="#E1EAF5" FontSize="10.5" FontWeight="SemiBold"/>
-                      <TextBlock Text="{Binding VersionCheckSubtitle}" Foreground="#7892B1" FontSize="9.5"
-                                 TextTrimming="CharacterEllipsis"/>
+                    <StackPanel Grid.Column="1" Margin="7,0,0,0" VerticalAlignment="Center">
+                      <TextBlock Classes="tileTitle" Text="{Binding VersionCheckTitle}"/>
+                      <TextBlock Classes="tileSub" Text="{Binding VersionCheckSubtitle}"/>
                     </StackPanel>
                   </Grid>
                 </Border>
 
-                <Border Grid.Column="4" Padding="10,9" CornerRadius="9" MinHeight="60"
-                        Background="{StaticResource InsetPanel}"
-                        BorderBrush="{StaticResource LineSoft}" BorderThickness="1">
-                  <Grid x:Name="CorpusCheckContent"
-                        ColumnDefinitions="26,*"
-                        VerticalAlignment="Center">
-                    <Border Width="24" Height="24" CornerRadius="12"
-                            BorderBrush="#4156D69B" BorderThickness="1" Background="#2A0C3A38">
-                      <TextBlock Text="✓" Foreground="{StaticResource Green}" FontSize="11"
-                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <Border Grid.Column="4" Classes="tile">
+                  <Grid x:Name="CorpusCheckContent" ColumnDefinitions="24,*" Height="32" VerticalAlignment="Center">
+                    <Border Classes="tileIcon">
+                      <Grid>
+                        <TextBlock Classes="ok" Text="✓" IsVisible="{Binding TranslationsReady}"/>
+                        <TextBlock Classes="wait" Text="…" IsVisible="{Binding !TranslationsReady}"/>
+                      </Grid>
                     </Border>
-                    <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center">
-                      <TextBlock Text="{Binding CorpusCheckTitle}" Foreground="#E1EAF5" FontSize="10.5" FontWeight="SemiBold"/>
-                      <TextBlock Text="{Binding CorpusCheckSubtitle}" Foreground="#7892B1" FontSize="9.5"/>
+                    <StackPanel Grid.Column="1" Margin="7,0,0,0" VerticalAlignment="Center">
+                      <TextBlock Classes="tileTitle" Text="{Binding CorpusCheckTitle}"/>
+                      <TextBlock Classes="tileSub" Text="{Binding CorpusCheckSubtitle}"/>
                     </StackPanel>
                   </Grid>
                 </Border>
 
+                <!-- Only a button while there is something to review. -->
                 <Button Grid.Column="6"
+                        Classes="tile"
                         Command="{Binding ReviewDalamudCommand}"
-                        Padding="10,9"
-                        MinHeight="60"
-                        Background="{StaticResource InsetPanel}"
-                        BorderBrush="{StaticResource LineSoft}">
-                  <Grid x:Name="DalamudCheckContent"
-                        ColumnDefinitions="26,*"
-                        VerticalAlignment="Center">
-                    <Border Width="24" Height="24" CornerRadius="12"
-                            BorderBrush="#4156D69B" BorderThickness="1" Background="#2A0C3A38">
+                        IsHitTestVisible="{Binding IsDalamudWarning}"
+                        Focusable="{Binding IsDalamudWarning}">
+                  <Grid x:Name="DalamudCheckContent" ColumnDefinitions="24,*" Height="32" VerticalAlignment="Center">
+                    <Border Classes="tileIcon">
                       <Grid>
-                        <TextBlock Text="✓" Foreground="{StaticResource Green}" FontSize="11"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center"
-                                   IsVisible="{Binding IsDalamudOk}"/>
-                        <TextBlock Text="!" Foreground="{StaticResource Yellow}" FontSize="11"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center"
-                                   IsVisible="{Binding IsDalamudWarning}"/>
+                        <TextBlock Classes="ok" Text="✓" IsVisible="{Binding IsDalamudOk}"/>
+                        <TextBlock Classes="warn" Text="!" IsVisible="{Binding IsDalamudWarning}"/>
                       </Grid>
                     </Border>
-                    <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center">
-                      <TextBlock Text="{Binding DalamudCheckTitle}" Foreground="#E1EAF5" FontSize="10.5"
-                                 FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                      <TextBlock Text="{Binding DalamudCheckSubtitle}" Foreground="#7892B1" FontSize="9.5"
-                                 TextTrimming="CharacterEllipsis"/>
+                    <StackPanel Grid.Column="1" Margin="7,0,0,0" VerticalAlignment="Center">
+                      <TextBlock Classes="tileTitle" Text="{Binding DalamudCheckTitle}"/>
+                      <TextBlock Classes="tileSub" Classes.link="{Binding IsDalamudWarning}"
+                                 Text="{Binding DalamudCheckSubtitle}"/>
                     </StackPanel>
                   </Grid>
                 </Button>
@@ -481,11 +581,12 @@
                     <StackPanel Spacing="3">
                       <TextBlock Text="Contenido del mod"
                                  Foreground="#E2EBF6"
-                                 FontSize="12.5"
+                                 FontSize="13"
                                  FontWeight="SemiBold"/>
                       <TextBlock Text="Configuración recomendada. Incluye toda traducción aprobada disponible."
+                                 TextTrimming="CharacterEllipsis"
                                  Foreground="{StaticResource Muted}"
-                                 FontSize="10.5"
+                                 FontSize="11.5"
                                  IsVisible="{Binding IsAdvancedClosed}"/>
                     </StackPanel>
                     <Border Grid.Column="1"
@@ -494,10 +595,11 @@
                             Background="#233C6FA9"
                             BorderBrush="#333C78B3"
                             BorderThickness="1"
+                            Margin="10,0,0,0"
                             VerticalAlignment="Top">
                       <TextBlock Text="{Binding CategorySummary}"
                                  Foreground="#BDD8F5"
-                                 FontSize="10"/>
+                                 FontSize="11"/>
                     </Border>
                   </Grid>
 
@@ -510,7 +612,7 @@
                           BorderBrush="#55F2C96D"
                           BorderThickness="1">
                     <TextBlock Foreground="#FFD09A"
-                               FontSize="10.5"
+                               FontSize="11.5"
                                TextWrapping="Wrap"
                                Text="La instalación usa una versión distinta. Al generar se pedirá confirmación y se aplicará best effort, omitiendo contenido inexistente."/>
                   </Border>
@@ -519,9 +621,9 @@
                           HorizontalAlignment="Left"
                           Command="{Binding ToggleAdvancedCommand}">
                     <StackPanel Orientation="Horizontal" Spacing="5">
-                      <TextBlock Text="▸" IsVisible="{Binding IsAdvancedClosed}" FontSize="10"/>
-                      <TextBlock Text="▾" IsVisible="{Binding IsAdvancedOpen}" FontSize="10"/>
-                      <TextBlock Text="Opciones avanzadas y categorías" Foreground="#C3D2E4" FontSize="11"/>
+                      <TextBlock Text="▸" IsVisible="{Binding IsAdvancedClosed}" FontSize="11"/>
+                      <TextBlock Text="▾" IsVisible="{Binding IsAdvancedOpen}" FontSize="11"/>
+                      <TextBlock Text="Opciones avanzadas y categorías" Foreground="#C3D2E4" FontSize="12"/>
                     </StackPanel>
                   </Button>
                   <StackPanel x:Name="AdvancedPanel"
@@ -529,8 +631,8 @@
                               Spacing="5">
                       <Grid ColumnDefinitions="*,Auto,Auto">
                         <StackPanel Spacing="1">
-                          <TextBlock Text="Categorías activadas en primera importación de Penumbra" Foreground="{StaticResource Muted}" FontSize="10"/>
-                          <TextBlock Text="El paquete siempre incluye traducción completa." Foreground="#6F86A2" FontSize="9"/>
+                          <TextBlock Text="Categorías activadas en primera importación de Penumbra" Foreground="{StaticResource Muted}" FontSize="11.5"/>
+                          <TextBlock Text="El paquete siempre incluye traducción completa." Foreground="#8CA3C0" FontSize="11"/>
                         </StackPanel>
                         <Button Grid.Column="1" Classes="text" Content="Todas"
                                 Command="{Binding SelectAllCategoriesCommand}"/>
@@ -550,14 +652,14 @@
                                       ToolTip.Tip="{Binding Tooltip}"
                                       HorizontalAlignment="Stretch"
                                       HorizontalContentAlignment="Stretch"
-                                      FontSize="9.5">
+                                      FontSize="11">
                               <StackPanel Spacing="0">
                                 <TextBlock Text="{Binding Label}"
                                            TextWrapping="NoWrap"
                                            TextTrimming="CharacterEllipsis"/>
                                 <TextBlock Text="{Binding Count, StringFormat='({0:N0})'}"
-                                           Foreground="#6F86A2"
-                                           FontSize="9.5"/>
+                                           Foreground="#8CA3C0"
+                                           FontSize="10.5"/>
                               </StackPanel>
                             </CheckBox>
                           </DataTemplate>
@@ -566,7 +668,7 @@
                       <TextBlock IsVisible="{Binding ShowCategorySelectionError}"
                                  Text="Selecciona al menos una categoría para generar el mod."
                                  Foreground="#FFD09A"
-                                 FontSize="11"/>
+                                 FontSize="12"/>
                     </StackPanel>
                   </StackPanel>
                 </ScrollViewer>
@@ -586,7 +688,12 @@
           </Grid>
         </Border>
 
-        <Grid Grid.Column="2" RowDefinitions="1.05*,10,0.95*">
+        <Grid Grid.Column="2">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="1.05*" MinHeight="215"/>
+            <RowDefinition Height="10"/>
+            <RowDefinition Height="0.95*" MinHeight="160"/>
+          </Grid.RowDefinitions>
           <Border Grid.Row="0"
                   Classes="card elevated"
                   Background="{StaticResource HeroGlow}"
@@ -608,101 +715,120 @@
                          StrokeThickness="1"/>
               </Canvas>
               <StackPanel VerticalAlignment="Center" Spacing="7">
-                <Border HorizontalAlignment="Left"
-                        Padding="10,5"
-                        CornerRadius="8"
-                        Background="#247B5D20"
-                        BorderBrush="#5A9E7B32"
-                        BorderThickness="1">
-                  <StackPanel Orientation="Horizontal" Spacing="7">
-                    <Border Width="10" Height="10" CornerRadius="3"
-                            BorderBrush="{StaticResource Gold}" BorderThickness="1"
-                            RenderTransformOrigin="50%,50%">
-                      <Border.RenderTransform>
-                        <RotateTransform Angle="45"/>
-                      </Border.RenderTransform>
+                <Grid ColumnDefinitions="Auto,*">
+                  <Border VerticalAlignment="Center"
+                          Padding="10,5"
+                          CornerRadius="8"
+                          Background="#247B5D20"
+                          BorderBrush="#5A9E7B32"
+                          BorderThickness="1">
+                    <StackPanel Orientation="Horizontal" Spacing="7">
+                      <Border Width="10" Height="10" CornerRadius="3"
+                              BorderBrush="{StaticResource Gold}" BorderThickness="1"
+                              RenderTransformOrigin="50%,50%">
+                        <Border.RenderTransform>
+                          <RotateTransform Angle="45"/>
+                        </Border.RenderTransform>
+                      </Border>
+                      <TextBlock Text="HITO DE TRADUCCIÓN" Foreground="{StaticResource Gold}"
+                                 FontSize="10.5" FontWeight="Bold"/>
+                    </StackPanel>
+                  </Border>
+                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6"
+                              HorizontalAlignment="Right">
+                    <Border Width="36" Height="36" Padding="3" CornerRadius="9"
+                            Background="#24121E30" BorderBrush="#4A8EA4BF" BorderThickness="1">
+                      <Image x:Name="MilestoneArrIcon" Source="/Assets/arr-icon.png"
+                             ToolTip.Tip="A Realm Reborn" Stretch="Uniform"/>
                     </Border>
-                    <TextBlock Text="HITO DE TRADUCCIÓN" Foreground="{StaticResource Gold}"
-                               FontSize="10" FontWeight="Bold"/>
+                    <Border Width="36" Height="36" Padding="3" CornerRadius="9"
+                            Background="#24121E30" BorderBrush="#4AF0BD58" BorderThickness="1">
+                      <Image x:Name="MilestoneHeavenswardIcon" Source="/Assets/hw-icon.png"
+                             ToolTip.Tip="Heavensward" Stretch="Uniform"/>
+                    </Border>
+                    <Border Width="36" Height="36" Padding="3" CornerRadius="9"
+                            Background="#24121E30" BorderBrush="#4AD46A4A" BorderThickness="1">
+                      <Image x:Name="MilestoneStormbloodIcon" Source="/Assets/stb-icon.png"
+                             ToolTip.Tip="Stormblood" Stretch="Uniform"/>
+                    </Border>
+                    <Border Width="36" Height="36" Padding="3" CornerRadius="9"
+                            Background="#24121E30" BorderBrush="#4A8E6FBF" BorderThickness="1">
+                      <Image x:Name="MilestoneShadowbringersIcon" Source="/Assets/shb-icon.png"
+                             ToolTip.Tip="Shadowbringers" Stretch="Uniform"/>
+                    </Border>
+                    <Border Width="36" Height="36" Padding="3" CornerRadius="9"
+                            Background="#24121E30" BorderBrush="#4A9DB4E8" BorderThickness="1">
+                      <Image x:Name="MilestoneEndwalkerIcon" Source="/Assets/ew-icon.png"
+                             ToolTip.Tip="Endwalker" Stretch="Uniform"/>
+                    </Border>
                   </StackPanel>
-                </Border>
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                  <Border Width="42" Height="42" Padding="4" CornerRadius="10"
-                          Background="#24121E30" BorderBrush="#4A8EA4BF" BorderThickness="1">
-                    <Image x:Name="MilestoneArrIcon" Source="/Assets/arr-icon.png"
-                           ToolTip.Tip="A Realm Reborn" Stretch="Uniform"/>
-                  </Border>
-                  <Border Width="42" Height="42" Padding="4" CornerRadius="10"
-                          Background="#24121E30" BorderBrush="#4AF0BD58" BorderThickness="1">
-                    <Image x:Name="MilestoneHeavenswardIcon" Source="/Assets/hw-icon.png"
-                           ToolTip.Tip="Heavensward" Stretch="Uniform"/>
-                  </Border>
-                  <Border Width="42" Height="42" Padding="4" CornerRadius="10"
-                          Background="#24121E30" BorderBrush="#4AD46A4A" BorderThickness="1">
-                    <Image x:Name="MilestoneStormbloodIcon" Source="/Assets/stb-icon.png"
-                           ToolTip.Tip="Stormblood" Stretch="Uniform"/>
-                  </Border>
-                  <Border Width="42" Height="42" Padding="4" CornerRadius="10"
-                          Background="#24121E30" BorderBrush="#4A8E6FBF" BorderThickness="1">
-                    <Image x:Name="MilestoneShadowbringersIcon" Source="/Assets/shb-icon.png"
-                           ToolTip.Tip="Shadowbringers" Stretch="Uniform"/>
-                  </Border>
-                </StackPanel>
-                <TextBlock x:Name="MilestoneTitle" Text="Empieza Shadowbringers."
+                </Grid>
+                <TextBlock x:Name="MilestoneTitle" Text="Empieza Endwalker."
                            Foreground="{StaticResource Text}"
                            FontFamily="{StaticResource DisplayFont}"
                            FontSize="27"
                            FontWeight="Normal"
                            LetterSpacing="-0.3"/>
-                <TextBlock Text="Con A Realm Reborn, Heavensward y Stormblood ya completos, esta edición abre la traducción de Shadowbringers y suma el contenido del parche 7.56: el job de domador de bestias, su minijuego y el capítulo final de la historia."
+                <TextBlock Text="Con Shadowbringers ya completo, arranca la traducción de Endwalker. Y la traducción estrena plugin de Dalamud: se instala y se actualiza sola desde dentro del juego."
                            Foreground="{StaticResource Muted}"
-                           FontSize="11.5"
-                           LineHeight="16"
+                           FontSize="12"
+                           LineHeight="17"
                            TextWrapping="Wrap"
-                           MaxWidth="380"/>
-                <StackPanel Orientation="Horizontal" Spacing="13">
-                  <TextBlock Text="{Binding AppVersionLabel, StringFormat='Corpus {0}'}"
-                             Foreground="#728AA8"
-                             FontSize="9.5"/>
-                  <TextBlock Text="ARR, Heavensward y Stormblood al 100 % · Shadowbringers al 19,6 %"
-                             Foreground="#728AA8"
-                             FontSize="9.5"/>
-                  <TextBlock Text="Sin archivos originales"
-                             Foreground="#728AA8"
-                             FontSize="9.5"/>
+                           HorizontalAlignment="Left"
+                           MaxWidth="430"/>
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                  <Button x:Name="PluginInvite"
+                          Classes="plugin"
+                          IsVisible="{Binding IsPluginInviteVisible}"
+                          Command="{Binding InvitePluginCommand}"
+                          ToolTip.Tip="Instala el plugin en Dalamud. Se pide confirmación antes de cambiar nada.">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <Border Width="9" Height="9" CornerRadius="2"
+                              Background="#66F0BD58"
+                              BorderBrush="{StaticResource Gold}" BorderThickness="1"
+                              VerticalAlignment="Center"
+                              RenderTransformOrigin="50%,50%">
+                        <Border.RenderTransform>
+                          <RotateTransform Angle="45"/>
+                        </Border.RenderTransform>
+                      </Border>
+                      <TextBlock Text="Pásate al plugin de Dalamud" VerticalAlignment="Center"/>
+                    </StackPanel>
+                  </Button>
+                  <Button Classes="text" VerticalAlignment="Center"
+                          Content="Ver hitos de traducción"
+                          Command="{Binding ShowMilestonesCommand}"/>
                 </StackPanel>
-                <Button Classes="text" HorizontalAlignment="Left"
-                        Content="Ver hitos de traducción"
-                        Command="{Binding ShowMilestonesCommand}"/>
               </StackPanel>
             </Grid>
           </Border>
 
           <Border Grid.Row="2" Classes="card elevated" Padding="18,15">
             <Grid RowDefinitions="Auto,*">
-              <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
-                <TextBlock Classes="h3" Text="Estado de generación"/>
-                <TextBlock Grid.Column="1"
-                           Text="Consola visible abajo"
-                           Foreground="#758CA8"
-                           FontSize="9.5"/>
-              </Grid>
+              <TextBlock Grid.Row="0" Classes="h3" Text="Estado de generación"/>
 
               <Grid Grid.Row="1">
                 <StackPanel IsVisible="{Binding IsPreparationStage}"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
                             Spacing="8">
-                  <Border Width="48" Height="48" CornerRadius="24"
+                  <Border Width="44" Height="44" CornerRadius="22"
                           BorderBrush="#5556D69B" BorderThickness="1"
                           BoxShadow="0 0 22 0 #3856D69B"
-                          Background="#2A0C3A38">
-                    <TextBlock Text="✓" Foreground="{StaticResource Green}" FontSize="22"
+                          Background="#2A0C3A38"
+                          IsVisible="{Binding IsReadyToGenerate}">
+                    <TextBlock Text="✓" Foreground="{StaticResource Green}" FontSize="20"
                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
                   </Border>
-                  <TextBlock Classes="h3" Text="Listo para empezar" HorizontalAlignment="Center"/>
-                  <TextBlock Text="La integridad se comprobará siempre al finalizar."
-                             Foreground="{StaticResource Muted}" FontSize="11.5"/>
+                  <Border Width="44" Height="44" CornerRadius="22"
+                          BorderBrush="#55F2C96D" BorderThickness="1" Background="#289B701F"
+                          IsVisible="{Binding !IsReadyToGenerate}">
+                    <TextBlock Text="!" Foreground="{StaticResource Yellow}" FontSize="20"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  </Border>
+                  <TextBlock Classes="h3" Text="{Binding ReadyHeadline}" HorizontalAlignment="Center"/>
+                  <TextBlock Text="{Binding ReadyDetail}" HorizontalAlignment="Center"
+                             Foreground="{StaticResource Muted}" FontSize="12"/>
                 </StackPanel>
 
                 <StackPanel IsVisible="{Binding IsGeneratingStage}"
@@ -710,22 +836,24 @@
                             Spacing="10">
                   <TextBlock Classes="h3" Text="Generando el mod"/>
                   <Grid ColumnDefinitions="*,Auto">
-                    <TextBlock Text="{Binding ProgressText}" Foreground="{StaticResource Muted}" FontSize="11"/>
+                    <TextBlock Text="{Binding ProgressText}" Foreground="#B4C5DA" FontSize="12"/>
                     <TextBlock Grid.Column="1" Text="{Binding ProgressPercent, StringFormat='{}{0} %'}"
-                               Foreground="{StaticResource Cyan}" FontSize="11" FontWeight="SemiBold"/>
+                               Foreground="{StaticResource Cyan}" FontSize="12" FontWeight="SemiBold"/>
                   </Grid>
-                  <ProgressBar Value="{Binding ProgressPercent}" Minimum="0" Maximum="100"
-                               Height="8" Foreground="{StaticResource Blue}" Background="#152A4568"/>
-                  <Grid ColumnDefinitions="*,*,*,*,*">
-                    <TextBlock Grid.Column="0" Text="Traducciones" Foreground="#7E99B8" FontSize="9"/>
-                    <TextBlock Grid.Column="1" Text="Extracción" Foreground="#7E99B8" FontSize="9"/>
-                    <TextBlock Grid.Column="2" Text="Parcheando" Foreground="{StaticResource Cyan}" FontSize="9"/>
-                    <TextBlock Grid.Column="3" Text="Empaquetado" Foreground="#7E99B8" FontSize="9"/>
-                    <TextBlock Grid.Column="4" Text="Integridad" Foreground="#7E99B8" FontSize="9"/>
-                  </Grid>
+                  <ProgressBar x:Name="GenerationProgress"
+                               Classes.live="{Binding IsGeneratingStage}"
+                               Value="{Binding ProgressPercent, Mode=OneWay}" Minimum="0" Maximum="100"
+                               Height="8" Foreground="{StaticResource ProgressSheenStart}"
+                               Background="#152A4568">
+                    <ProgressBar.Transitions>
+                      <Transitions>
+                        <DoubleTransition Property="Value" Duration="0:0:0.5" Easing="CubicEaseOut"/>
+                      </Transitions>
+                    </ProgressBar.Transitions>
+                  </ProgressBar>
                 </StackPanel>
 
-                <StackPanel IsVisible="{Binding IsResultStage}" Spacing="10" VerticalAlignment="Center">
+                <StackPanel IsVisible="{Binding IsResultStage}" Spacing="8" VerticalAlignment="Center">
                   <Grid ColumnDefinitions="42,*">
                     <Border Width="38" Height="38" CornerRadius="19"
                             BorderBrush="#4D56D69B" BorderThickness="1" Background="#2556D69B"
@@ -748,35 +876,38 @@
                     <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                       <TextBlock Classes="h3" Text="{Binding ResultTitle}"/>
                       <TextBlock Text="{Binding ResultSubtitle}" Foreground="{StaticResource Muted}"
-                                 FontSize="10.5" TextTrimming="CharacterEllipsis"/>
+                                 FontSize="11.5" TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
                   </Grid>
                   <Grid ColumnDefinitions="*,*,*,*" IsVisible="{Binding IsUsableResult}">
                     <StackPanel Grid.Column="0">
                       <TextBlock Text="{Binding ResultApplied}" Foreground="{StaticResource Text}"
                                  FontWeight="SemiBold" HorizontalAlignment="Center"/>
-                      <TextBlock Text="Aplicadas" Foreground="{StaticResource Muted}" FontSize="9"
+                      <TextBlock Text="Aplicadas" Foreground="{StaticResource Muted}" FontSize="10.5"
                                  HorizontalAlignment="Center"/>
                     </StackPanel>
                     <StackPanel Grid.Column="1">
                       <TextBlock Text="{Binding ResultPages}" Foreground="{StaticResource Text}"
                                  FontWeight="SemiBold" HorizontalAlignment="Center"/>
-                      <TextBlock Text="Páginas" Foreground="{StaticResource Muted}" FontSize="9"
+                      <TextBlock Text="Páginas" Foreground="{StaticResource Muted}" FontSize="10.5"
                                  HorizontalAlignment="Center"/>
                     </StackPanel>
                     <StackPanel Grid.Column="2">
                       <TextBlock Text="{Binding ResultOmitted}" Foreground="{StaticResource Yellow}"
                                  FontWeight="SemiBold" HorizontalAlignment="Center"/>
-                      <TextBlock Text="Omitidas" Foreground="{StaticResource Muted}" FontSize="9"
+                      <TextBlock Text="Omitidas" Foreground="{StaticResource Muted}" FontSize="10.5"
                                  HorizontalAlignment="Center"/>
                     </StackPanel>
                     <StackPanel Grid.Column="3">
                       <TextBlock Text="{Binding ResultFailures}" Foreground="{StaticResource Green}"
                                  FontWeight="SemiBold" HorizontalAlignment="Center"/>
-                      <TextBlock Text="Fallos" Foreground="{StaticResource Muted}" FontSize="9"
+                      <TextBlock Text="Fallos" Foreground="{StaticResource Muted}" FontSize="10.5"
                                  HorizontalAlignment="Center"/>
                     </StackPanel>
                   </Grid>
+                  <TextBlock IsVisible="{Binding IsUsableResult}"
+                             Text="Siguiente paso: importa el archivo en Penumbra y reinicia el juego."
+                             Foreground="#B4C5DA" FontSize="11.5" TextWrapping="Wrap"/>
                 </StackPanel>
               </Grid>
             </Grid>
@@ -794,7 +925,7 @@
             <StackPanel>
               <TextBlock Classes="h3" Text="Consola"/>
               <TextBlock Text="Selección continua con ratón, Ctrl+A y Ctrl+C."
-                         Foreground="{StaticResource Muted}" FontSize="10"/>
+                         Foreground="{StaticResource Muted}" FontSize="11"/>
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="7">
               <Button Classes="console" Content="Seleccionar todo" Click="SelectConsoleAll_OnClick"/>
@@ -827,7 +958,7 @@
             Background="{StaticResource HeaderBackground}"
             BorderBrush="{StaticResource Line}"
             BorderThickness="0,1,0,0"
-            Padding="26,0">
+            Padding="24,0">
       <Grid ColumnDefinitions="*,Auto,Auto" VerticalAlignment="Center">
         <TextBlock Text="{Binding OutputFolder, StringFormat='Salida: {0}'}"
                    Foreground="{StaticResource Muted}"
@@ -860,7 +991,8 @@
       </Grid>
     </Border>
 
-    <Grid Grid.RowSpan="3" Background="#D9050B14" IsVisible="{Binding IsMilestoneOpen}">
+    <Grid Grid.RowSpan="3" Background="#D9050B14" IsVisible="{Binding IsMilestoneOpen}"
+          PointerPressed="MilestoneBackdrop_OnPointerPressed">
       <Border Width="760" MaxHeight="660" Classes="card elevated" Padding="23"
               HorizontalAlignment="Center" VerticalAlignment="Center">
         <Grid RowDefinitions="Auto,12,*">
@@ -870,7 +1002,7 @@
               <TextBlock Text="Contenido incluido en data/translation-milestones.md"
                          Foreground="{StaticResource Muted}" FontSize="11"/>
             </StackPanel>
-            <Button Grid.Column="1" Classes="secondary" Content="Cerrar"
+            <Button x:Name="MilestoneClose" Grid.Column="1" Classes="secondary" Content="Cerrar (Esc)"
                     Command="{Binding CloseMilestonesCommand}"/>
           </Grid>
           <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled"
@@ -902,7 +1034,7 @@
           <TextBlock Text="{Binding ModalNote}" Foreground="{StaticResource Muted}"
                      FontSize="11.5" TextWrapping="Wrap"/>
           <Grid ColumnDefinitions="*,10,*" Margin="0,4,0,0">
-            <Button Grid.Column="0" Classes="secondary"
+            <Button x:Name="ModalSecondary" Grid.Column="0" Classes="secondary"
                     Content="{Binding ModalSecondaryText}"
                     Command="{Binding DismissModalCommand}"/>
             <Button Grid.Column="2" Classes="primary"

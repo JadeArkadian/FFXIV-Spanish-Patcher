@@ -26,34 +26,23 @@ public sealed record ManifestSeStringViolation(TranslationEntry Entry, SeStringC
         => $"SESTRING GATE: {Label} — target is not payload-compatible with source:"
            + Environment.NewLine
            + string.Join(Environment.NewLine, Report.Violations.Select(v => $"    {v}"));
-
-    /// <summary>Multi-line block describing a forced override for this row.</summary>
-    public string DescribeOverride()
-        => $"{ManifestSeStringGate.OverrideMarker}: {Label} — packaging despite violations:"
-           + Environment.NewLine
-           + string.Join(Environment.NewLine, Report.Violations.Select(v => $"    {v}"));
 }
 
 /// <summary>
-/// Hard SeString gate run at manifest load, before any build work (T-19-03). Every entry that
-/// would be packaged and whose source carries payload machinery, or whose target carries an
-/// allow-listed standard macro, must pass
-/// <see cref="SeStringCompatibilityValidator"/>; otherwise the build fails (exit ≠ 0) listing ALL
-/// offending rows — the check never stops at the first violation. Plain-text rows without a
-/// reserved target macro pass trivially.
-/// Mirrors the XivSpanish.Jsonl T-19-02 gate, including the loudly-logged
-/// <c>--force-sestring</c> override.
+/// SeString gate run at manifest load, before any build work (T-19-03). Every entry that would
+/// be packaged and whose source carries payload machinery, or whose target carries an
+/// allow-listed standard macro, must pass <see cref="SeStringCompatibilityValidator"/>. ALL
+/// offending rows are listed — the check never stops at the first violation — and the pipeline
+/// leaves them out of the package. Plain-text rows without a reserved target macro pass
+/// trivially. Mirrors the XivSpanish.Jsonl T-19-02 gate.
 /// </summary>
 public static class ManifestSeStringGate
 {
-    /// <summary>Marker prefixed to every forced-override line so it stands out in logs/transcripts.</summary>
-    public const string OverrideMarker = "!! SESTRING OVERRIDE (--force-sestring)";
-
     /// <summary>
     /// Checks every entry and collects ALL violations. Payload-bearing sources and targets carrying
     /// reserved standard-macro delimiters are validated;
     /// entries with a null/empty target are skipped (they are not packageable and are reported as
-    /// skips elsewhere). The caller decides whether the manifest is rejected or force-overridden.
+    /// skips elsewhere).
     /// </summary>
     public static IReadOnlyList<ManifestSeStringViolation> Check(IEnumerable<TranslationEntry> entries)
     {

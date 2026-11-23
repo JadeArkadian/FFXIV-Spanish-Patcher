@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/FFXIVSpanishPatcher.App/FFXIVSpanishPatcher.App.csproj" />
     <Project Path="src/FFXIVSpanishPatcher.Pipeline/FFXIVSpanishPatcher.Pipeline.csproj" />
+    <Project Path="src/FFXIVSpanishPatcher.Plugin/FFXIVSpanishPatcher.Plugin.csproj" />
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/XivSpanish.BlobBuilder/XivSpanish.BlobBuilder.csproj" />
@@ -9,6 +10,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/FFXIVSpanishPatcher.App.Tests/FFXIVSpanishPatcher.App.Tests.csproj" />
     <Project Path="tests/FFXIVSpanishPatcher.Tests/FFXIVSpanishPatcher.Tests.csproj" />
+    <Project Path="tests/FFXIVSpanishPatcher.Plugin.Tests/FFXIVSpanishPatcher.Plugin.Tests.csproj" />
   </Folder>
   <Folder Name="/vendor/">
     <Project Path="vendor/XivSpanish.Core/XivSpanish.Core.csproj" />

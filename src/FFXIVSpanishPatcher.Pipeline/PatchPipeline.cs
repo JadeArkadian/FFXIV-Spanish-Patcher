@@ -70,7 +70,7 @@ public sealed class PatchPipeline
 
         var unsafeSeStringEntries = new HashSet<TranslationEntry>();
         bool IsPackageableEntry(TranslationEntry e)
-            => Packageable(e, request.Statuses) is null;
+            => PackageableEntry.IsPackageable(e, request.Statuses);
         bool IsCandidate(TranslationEntry e)
             => IsPackageableEntry(e) && !unsafeSeStringEntries.Contains(e);
         var candidateEntries = entries.Count(IsPackageableEntry);
@@ -113,36 +113,56 @@ public sealed class PatchPipeline
                 pair => pair.Value.Snapshot(),
                 StringComparer.OrdinalIgnoreCase));
 
-        // 2. SeString gate over the build candidates. Unsafe rows are skipped by default; a few bad
-        // corpus rows must not abort an otherwise valid package.
+        // Every page that cannot be patched is counted once, under the reason it was left out.
+        void SkipPage(
+            PageSkip reason,
+            string exdPath,
+            PagePatch page,
+            MutableCategoryStatistics category,
+            string message)
+        {
+            var entryCount = page.ManifestEntryCount;
+            switch (reason)
+            {
+                case PageSkip.MissingSheet:
+                    missingSheets.Add(page.Sheet);
+                    missingSheetEntries += entryCount;
+                    category.MissingSheetEntries += entryCount;
+                    break;
+                case PageSkip.MissingPage:
+                    missingPages.Add(exdPath);
+                    missingPageEntries += entryCount;
+                    category.MissingPageEntries += entryCount;
+                    break;
+                case PageSkip.Unsupported:
+                    unsupportedPages++;
+                    unsupportedPageEntries += entryCount;
+                    category.UnsupportedPageEntries += entryCount;
+                    break;
+            }
+
+            skippedPages++;
+            category.SkippedPages++;
+            Report(PipelineComponent.Patcher, message, PipelineLevel.Warning, entryCount);
+        }
+
+        // 2. SeString gate over the build candidates. Unsafe rows are skipped; a few bad corpus
+        // rows must not abort an otherwise valid package.
         var gate = ManifestSeStringGate.Check(entries.Where(IsPackageableEntry));
         if (gate.Count > 0)
         {
-            if (request.ForceSeString)
+            foreach (var violation in gate)
             {
-                foreach (var violation in gate)
-                {
-                    Report(PipelineComponent.Patcher, violation.DescribeOverride(), PipelineLevel.Warning);
-                }
-
-                Report(PipelineComponent.Patcher,
-                    $"{gate.Count} fila(s) empaquetadas pese a violaciones SeString.", PipelineLevel.Warning);
+                unsafeSeStringEntries.Add(violation.Entry);
+                categoryStatistics[TranslationCategoryCatalog.DomainOf(violation.Entry)].UnsafeSeStringEntries++;
+                Report(
+                    PipelineComponent.Patcher,
+                    $"omitida fila insegura: {violation.Describe()}",
+                    PipelineLevel.Warning);
             }
-            else
-            {
-                foreach (var violation in gate)
-                {
-                    unsafeSeStringEntries.Add(violation.Entry);
-                    categoryStatistics[TranslationCategoryCatalog.DomainOf(violation.Entry)].UnsafeSeStringEntries++;
-                    Report(
-                        PipelineComponent.Patcher,
-                        $"omitida fila insegura: {violation.Describe()}",
-                        PipelineLevel.Warning);
-                }
 
-                Report(PipelineComponent.Pipeline,
-                    $"SeString gate: {gate.Count} fila(s) omitida(s) por SeString incompatible. Se continúa con el resto.", PipelineLevel.Warning);
-            }
+            Report(PipelineComponent.Pipeline,
+                $"SeString gate: {gate.Count} fila(s) omitida(s) por SeString incompatible. Se continúa con el resto.", PipelineLevel.Warning);
         }
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -275,61 +295,29 @@ public sealed class PatchPipeline
                     catch (Exception exception) when (exception is IOException or InvalidDataException)
                     {
                         gameReadErrors++;
-                        missingPages.Add(exdPath);
-                        missingPageEntries += page.ManifestEntryCount;
-                        skippedPages++;
-                        category.MissingPageEntries += page.ManifestEntryCount;
-                        category.SkippedPages++;
-                        Report(
-                            PipelineComponent.Patcher,
-                            $"omitida página {exdPath}: no se pudo leer ({exception.Message})",
-                            PipelineLevel.Warning,
-                            page.ManifestEntryCount);
+                        SkipPage(PageSkip.MissingPage, exdPath, page, category,
+                            $"omitida página {exdPath}: no se pudo leer ({exception.Message})");
                         continue;
                     }
 
                     if (layout is null)
                     {
-                        missingSheets.Add(page.Sheet);
-                        missingSheetEntries += page.ManifestEntryCount;
-                        skippedPages++;
-                        category.MissingSheetEntries += page.ManifestEntryCount;
-                        category.SkippedPages++;
-                        Report(
-                            PipelineComponent.Patcher,
-                            $"omitida hoja {page.Sheet}: falta su layout EXH ({page.ManifestEntryCount} entrada(s))",
-                            PipelineLevel.Warning,
-                            page.ManifestEntryCount);
+                        SkipPage(PageSkip.MissingSheet, exdPath, page, category,
+                            $"omitida hoja {page.Sheet}: falta su layout EXH ({page.ManifestEntryCount} entrada(s))");
                         continue;
                     }
 
                     if (raw is null)
                     {
-                        missingPages.Add(exdPath);
-                        missingPageEntries += page.ManifestEntryCount;
-                        skippedPages++;
-                        category.MissingPageEntries += page.ManifestEntryCount;
-                        category.SkippedPages++;
-                        Report(
-                            PipelineComponent.Patcher,
-                            $"omitida página {exdPath}: no existe en esta versión ({page.ManifestEntryCount} entrada(s))",
-                            PipelineLevel.Warning,
-                            page.ManifestEntryCount);
+                        SkipPage(PageSkip.MissingPage, exdPath, page, category,
+                            $"omitida página {exdPath}: no existe en esta versión ({page.ManifestEntryCount} entrada(s))");
                         continue;
                     }
 
                     if (layout.Value.Variant == 2)
                     {
-                        unsupportedPages++;
-                        unsupportedPageEntries += page.ManifestEntryCount;
-                        skippedPages++;
-                        category.UnsupportedPageEntries += page.ManifestEntryCount;
-                        category.SkippedPages++;
-                        Report(
-                            PipelineComponent.Patcher,
-                            $"omitida página {exdPath}: {page.Sheet} es subrow variant 2 (no soportado)",
-                            PipelineLevel.Warning,
-                            page.ManifestEntryCount);
+                        SkipPage(PageSkip.Unsupported, exdPath, page, category,
+                            $"omitida página {exdPath}: {page.Sheet} es subrow variant 2 (no soportado)");
                         continue;
                     }
 
@@ -343,16 +331,8 @@ public sealed class PatchPipeline
                     catch (Exception exception) when (exception is IOException or InvalidDataException)
                     {
                         gameReadErrors++;
-                        missingPages.Add(exdPath);
-                        missingPageEntries += page.ManifestEntryCount;
-                        skippedPages++;
-                        category.MissingPageEntries += page.ManifestEntryCount;
-                        category.SkippedPages++;
-                        Report(
-                            PipelineComponent.Patcher,
-                            $"omitida página {exdPath}: no se pudo leer su esquema ({exception.Message})",
-                            PipelineLevel.Warning,
-                            page.ManifestEntryCount);
+                        SkipPage(PageSkip.MissingPage, exdPath, page, category,
+                            $"omitida página {exdPath}: no se pudo leer su esquema ({exception.Message})");
                         continue;
                     }
 
@@ -369,16 +349,8 @@ public sealed class PatchPipeline
                     }
                     catch (InvalidDataException exception)
                     {
-                        unsupportedPages++;
-                        unsupportedPageEntries += page.ManifestEntryCount;
-                        skippedPages++;
-                        category.UnsupportedPageEntries += page.ManifestEntryCount;
-                        category.SkippedPages++;
-                        Report(
-                            PipelineComponent.Patcher,
-                            $"omitida página {exdPath}: {exception.Message}",
-                            PipelineLevel.Warning,
-                            page.ManifestEntryCount);
+                        SkipPage(PageSkip.Unsupported, exdPath, page, category,
+                            $"omitida página {exdPath}: {exception.Message}");
                         continue;
                     }
                     var broadcasted = 0;
@@ -458,16 +430,17 @@ public sealed class PatchPipeline
                     }
                     catch (InvalidDataException exception)
                     {
-                        unsupportedPages++;
-                        unsupportedPageEntries += page.ManifestEntryCount;
-                        skippedPages++;
-                        category.UnsupportedPageEntries += page.ManifestEntryCount;
-                        category.SkippedPages++;
-                        Report(
-                            PipelineComponent.Patcher,
-                            $"omitida página {exdPath}: {exception.Message}",
-                            PipelineLevel.Warning,
-                            page.ManifestEntryCount);
+                        SkipPage(PageSkip.Unsupported, exdPath, page, category,
+                            $"omitida página {exdPath}: {exception.Message}");
+                        continue;
+                    }
+
+                    // The game trusts these offsets blindly. A page that does not hang together is
+                    // left in English rather than handed to the client.
+                    if (ExdPage.FindStructuralProblem(result.Bytes) is { } structuralProblem)
+                    {
+                        SkipPage(PageSkip.Unsupported, exdPath, page, category,
+                            $"omitida página {exdPath}: el resultado no es coherente ({structuralProblem})");
                         continue;
                     }
 
@@ -557,6 +530,18 @@ public sealed class PatchPipeline
                     return PatchResult.Failure(PatchOutcome.ValidationFailed, Statistics(writer.FileCount));
                 }
 
+                if (!string.IsNullOrWhiteSpace(request.TreeOutputPath))
+                {
+                    PromoteVerifiedTree(writer.StagingPath, request.TreeOutputPath);
+                    Report(PipelineComponent.Verifier, "Integridad del árbol verificada", PipelineLevel.Ok);
+                    Report(PipelineComponent.Packager, "Árbol de mod publicado en su destino", PipelineLevel.Ok);
+                    var treeStatistics = Statistics(writer.FileCount);
+                    var treeOutcome = treeStatistics.HasOmissions ? PatchOutcome.PackagedWithMisses : PatchOutcome.Ok;
+                    Report(PipelineComponent.Pipeline, CoverageMessage(treeStatistics),
+                        treeOutcome == PatchOutcome.Ok ? PipelineLevel.Ok : PipelineLevel.Warning);
+                    return new PatchResult(treeOutcome, request.TreeOutputPath, treeStatistics);
+                }
+
                 Report(PipelineComponent.Packager, "Generando .pmp temporal...");
                 var output = PmpArchiveWriter.Create(writer.StagingPath, temporaryOutput);
                 Report(PipelineComponent.Packager,
@@ -622,35 +607,13 @@ public sealed class PatchPipeline
         }
     }
 
-    /// <summary>Reason an entry is not packageable, or null when it is.</summary>
-    private static string? Packageable(TranslationEntry entry, IReadOnlySet<string> statuses)
-    {
-        if (!PackageableStatus.IsPackageable(entry, statuses))
-        {
-            return $"status '{entry.Status}' not in [{string.Join(", ", statuses)}]";
-        }
-
-        if (string.IsNullOrEmpty(entry.Target))
-        {
-            return "empty target";
-        }
-
-        if (entry.SourceKey is null || string.IsNullOrWhiteSpace(entry.SourceKey.Sheet) || !entry.SourceKey.RowId.HasValue)
-        {
-            return "incomplete source key";
-        }
-
-        // An empty source with a non-empty target is a valid write-at-offset entry.
-        return null;
-    }
-
     private static BroadcastCatalog BuildBroadcastCatalog(
         IReadOnlyList<TranslationEntry> entries, IReadOnlySet<string> statuses)
     {
         var broadcast = new BroadcastCatalog();
         foreach (var entry in entries)
         {
-            if (Packageable(entry, statuses) is not null)
+            if (!PackageableEntry.IsPackageable(entry, statuses))
             {
                 continue;
             }
@@ -713,6 +676,23 @@ public sealed class PatchPipeline
         {
             File.Move(temporaryPath, fullOutput);
         }
+    }
+
+    private static void PromoteVerifiedTree(string temporaryTree, string treeOutputPath)
+    {
+        if (Directory.Exists(treeOutputPath) || File.Exists(treeOutputPath))
+        {
+            throw new IOException($"Ya existe el destino del árbol de mod: {treeOutputPath}");
+        }
+
+        var parent = Path.GetDirectoryName(treeOutputPath);
+        if (string.IsNullOrWhiteSpace(parent))
+        {
+            throw new IOException("El destino del árbol de mod no tiene directorio padre.");
+        }
+
+        Directory.CreateDirectory(parent);
+        Directory.Move(temporaryTree, treeOutputPath);
     }
 
     private static void DeleteFileBestEffort(string path)
@@ -820,6 +800,14 @@ public sealed class PatchPipeline
 
         public IReadOnlyDictionary<uint, IReadOnlyList<StringReplacement>> ToReplacements()
             => _rows.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<StringReplacement>)pair.Value);
+    }
+
+    /// <summary>Why a page was left out; each reason has its own counters.</summary>
+    private enum PageSkip
+    {
+        MissingSheet,
+        MissingPage,
+        Unsupported,
     }
 
     private sealed class MutableCategoryStatistics

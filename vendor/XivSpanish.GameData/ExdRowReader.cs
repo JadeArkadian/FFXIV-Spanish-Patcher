@@ -2,13 +2,6 @@ using System.Buffers.Binary;
 
 namespace XivSpanish.GameData;
 
-/// <summary>One string column read from a base EXD row: the column ordinal (its index into the
-/// sheet's ordered String columns), the tokenized source text it currently holds, and whether the
-/// raw bytes carried any SeString payload (a 0x02…0x03 macro). Payload-bearing strings are format
-/// templates the UI consumes positionally; broadcasting a translation onto an UNLISTED duplicate of
-/// such a row is risky (it bypasses the reviewed payload-aware path), so the packager skips them.</summary>
-public readonly record struct ExdColumnValue(int ColumnOrdinal, string Source, bool HasPayload);
-
 /// <summary>
 /// Read-only enumerator over the String columns of a base (pre-patch) EXD page. Shares the row
 /// walk with <see cref="ExdPatcher"/> via <see cref="ExdPage"/> but never writes: it exists so the
@@ -20,33 +13,9 @@ public readonly record struct ExdColumnValue(int ColumnOrdinal, string Source, b
 public static class ExdRowReader
 {
     /// <summary>
-    /// Yields, for every Default-variant row in the page, each non-empty String column with its
-    /// ordinal and tokenized source text. Subrow/malformed rows are skipped (the patcher does not
-    /// support them either). Source text is tokenized identically to the extractor (run-unaware
-    /// flat tokenization) so it matches manifest <c>source</c> strings byte-for-byte semantics.
-    /// </summary>
-    public static IEnumerable<(uint RowId, ExdColumnValue Column)> Read(
-        byte[] original,
-        int fixedDataSize,
-        IReadOnlyList<int> stringColumnOffsets)
-    {
-        foreach (var (rowId, ordinal, raw) in ReadRawStrings(original, fixedDataSize, stringColumnOffsets))
-        {
-            var source = SeStringTokenizer.TokenizeRawText(raw);
-            if (!string.IsNullOrEmpty(source))
-            {
-                // 0x02 is the SeString macro start byte: its presence means the string carries a
-                // payload (format template). The caller skips broadcasting onto unlisted rows.
-                var hasPayload = Array.IndexOf(raw, (byte)0x02) >= 0;
-                yield return (rowId, new ExdColumnValue(ordinal, source, hasPayload));
-            }
-        }
-    }
-
-    /// <summary>
     /// Yields the RAW (undecoded) bytes of every non-empty String column of every Default-variant
     /// row. This is the byte-level view round-trip tests and corpus validators consume; subrow and
-    /// malformed rows are skipped exactly as in <see cref="Read"/>.
+    /// malformed rows are skipped (the patcher does not support them either).
     /// </summary>
     public static IEnumerable<(uint RowId, int ColumnOrdinal, byte[] Raw)> ReadRawStrings(
         byte[] original,
