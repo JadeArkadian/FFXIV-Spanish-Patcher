@@ -37,6 +37,12 @@ public static class SeStringTreeTokenizer
     /// <summary>Tokenizes a run-aware tree into reversible baliza text plus an ordered token map.</summary>
     public static TokenizedSeString Tokenize(IReadOnlyList<SeNode> nodes)
     {
+        // Most strings are one run of plain text: same result as the walk below, without its buffers.
+        if (nodes.Count == 1 && nodes[0] is SeNode.Literal only)
+        {
+            return new TokenizedSeString(only.Text.Replace("<", "<<", StringComparison.Ordinal), []);
+        }
+
         var sb = new StringBuilder();
         var tokens = new List<TokenOccurrence>();
         var nameCounts = new Dictionary<string, int>(StringComparer.Ordinal);

@@ -164,6 +164,11 @@ public static class ExdPage
     /// empty space; see AGENTS.md technical lessons).
     /// </summary>
     public static byte[] ReadNulTerminatedBytes(ReadOnlySpan<byte> area, int start)
+        => NulTerminatedSpan(area, start).ToArray();
+
+    /// <summary>The same bytes as <see cref="ReadNulTerminatedBytes"/>, as a view over the heap
+    /// instead of a copy, for callers that only inspect them.</summary>
+    public static ReadOnlySpan<byte> NulTerminatedSpan(ReadOnlySpan<byte> area, int start)
     {
         if (start < 0 || start >= area.Length)
         {
@@ -176,6 +181,6 @@ public static class ExdPage
             end++;
         }
 
-        return area[start..end].ToArray();
+        return area[start..end];
     }
 }

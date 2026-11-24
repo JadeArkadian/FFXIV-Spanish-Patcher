@@ -270,26 +270,44 @@ public static class SeStringParser
     /// </summary>
     /// <param name="segments">List of Literal and Payload segments.</param>
     /// <returns>Byte array with NUL terminator.</returns>
-    public static byte[] Serialize(List<SeStringSegment> segments)
-    {
-        using var stream = new MemoryStream();
+    public static byte[] Serialize(List<SeStringSegment> segments) => Serialize(segments, terminate: true);
 
+    /// <summary>
+    /// Serializes segments with or without the trailing NUL. The size is known up front, so the
+    /// result is written once; the EXD blob writer adds its own terminator and asks for none.
+    /// </summary>
+    internal static byte[] Serialize(List<SeStringSegment> segments, bool terminate)
+    {
+        var length = terminate ? 1 : 0;
+        foreach (var segment in segments)
+        {
+            length += segment switch
+            {
+                SeStringSegment.Literal lit => Encoding.UTF8.GetByteCount(lit.Text),
+                SeStringSegment.Payload payload => payload.Bytes.Length,
+                _ => 0,
+            };
+        }
+
+        // A terminated result keeps its last byte at zero: that is the NUL.
+        var bytes = new byte[length];
+        var position = 0;
         foreach (var segment in segments)
         {
             switch (segment)
             {
                 case SeStringSegment.Literal lit:
-                    stream.Write(Encoding.UTF8.GetBytes(lit.Text));
+                    position += Encoding.UTF8.GetBytes(lit.Text, bytes.AsSpan(position));
                     break;
 
                 case SeStringSegment.Payload payload:
-                    stream.Write(payload.Bytes);
+                    payload.Bytes.CopyTo(bytes, position);
+                    position += payload.Bytes.Length;
                     break;
             }
         }
 
-        stream.WriteByte(NulTerminator);
-        return stream.ToArray();
+        return bytes;
     }
 
     /// <summary>
@@ -407,6 +425,11 @@ public static class SeStringParser
         if (sourceTokens.Count != targetTokens.Count)
         {
             return false;
+        }
+
+        if (sourceTokens.Count == 0)
+        {
+            return true;
         }
 
         return sourceTokens

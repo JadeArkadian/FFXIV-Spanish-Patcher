@@ -216,10 +216,11 @@ public static class SeStringTree
             }
             else
             {
-                var literalBytes = ReadLiteral(bytes, ref pos, end);
-                if (literalBytes.Count > 0)
+                var literalStart = pos;
+                SkipLiteral(bytes, ref pos, end);
+                if (pos > literalStart)
                 {
-                    nodes.Add(new SeNode.Literal(Encoding.UTF8.GetString(literalBytes.ToArray())));
+                    nodes.Add(new SeNode.Literal(Encoding.UTF8.GetString(bytes, literalStart, pos - literalStart)));
                 }
                 else if (pos < end)
                 {
@@ -233,11 +234,11 @@ public static class SeStringTree
         return nodes;
     }
 
-    // Reads a maximal UTF-8 literal run from bytes[pos..end), stopping at 0x02/0xFF or an invalid
-    // UTF-8 byte. Mirrors SeStringParser's UTF-8 handling so literal segmentation is identical.
-    private static List<byte> ReadLiteral(byte[] bytes, ref int pos, int end)
+    // Advances pos over a maximal UTF-8 literal run in bytes[pos..end), stopping at 0x02/0xFF or an
+    // invalid UTF-8 byte; the literal is the contiguous range it stepped over. Mirrors
+    // SeStringParser's UTF-8 handling so literal segmentation is identical.
+    private static void SkipLiteral(byte[] bytes, ref int pos, int end)
     {
-        var literal = new List<byte>();
         while (pos < end)
         {
             var b = bytes[pos];
@@ -248,7 +249,6 @@ public static class SeStringTree
 
             if (b <= 0x7F)
             {
-                literal.Add(b);
                 pos++;
             }
             else if ((b & 0xC0) == 0x80)
@@ -259,8 +259,6 @@ public static class SeStringTree
             {
                 if (pos + 1 < end && (bytes[pos + 1] & 0xC0) == 0x80)
                 {
-                    literal.Add(b);
-                    literal.Add(bytes[pos + 1]);
                     pos += 2;
                 }
                 else { break; }
@@ -269,9 +267,6 @@ public static class SeStringTree
             {
                 if (pos + 2 < end && (bytes[pos + 1] & 0xC0) == 0x80 && (bytes[pos + 2] & 0xC0) == 0x80)
                 {
-                    literal.Add(b);
-                    literal.Add(bytes[pos + 1]);
-                    literal.Add(bytes[pos + 2]);
                     pos += 3;
                 }
                 else { break; }
@@ -283,10 +278,6 @@ public static class SeStringTree
                     && (bytes[pos + 2] & 0xC0) == 0x80
                     && (bytes[pos + 3] & 0xC0) == 0x80)
                 {
-                    literal.Add(b);
-                    literal.Add(bytes[pos + 1]);
-                    literal.Add(bytes[pos + 2]);
-                    literal.Add(bytes[pos + 3]);
                     pos += 4;
                 }
                 else { break; }
@@ -296,8 +287,6 @@ public static class SeStringTree
                 break; // invalid 0xF8-0xFE byte
             }
         }
-
-        return literal;
     }
 
     private static void SerializeInto(IReadOnlyList<SeNode> nodes, MemoryStream stream)

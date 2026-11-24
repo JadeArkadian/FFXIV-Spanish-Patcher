@@ -278,6 +278,24 @@ public static class ExdPatcher
             return columnSource[ordinal];
         }
 
+        // Whether the column's tokenized source is exactly <paramref name="source"/>. Plain ASCII
+        // with no macro start and no '<' tokenizes to itself, so those bytes are compared in place;
+        // anything else goes through the tokenizer.
+        bool ColumnHolds(int ordinal, string source)
+        {
+            var columnOffset = stringColumnOffsets[ordinal];
+            if (columnOffset + 4 > fixedDataSize)
+            {
+                return false;
+            }
+
+            var strOffset = BinaryPrimitives.ReadUInt32BigEndian(original.AsSpan(fixedStart + columnOffset, 4));
+            var raw = ExdPage.NulTerminatedSpan(original.AsSpan(stringStart, stringLength), (int)strOffset);
+            return IsPlainAscii(raw) && raw.IndexOf((byte)'<') < 0
+                ? Ascii.Equals(raw, source)
+                : string.Equals(ColumnSource(ordinal), source, StringComparison.Ordinal);
+        }
+
         // Resolves the string-column ordinal a non-empty field-targeted replacement should write.
         // The label resolves to <paramref name="labeled"/>, but a corpus extracted before the
         // offset-correct field resolver can carry field labels PERMUTED relative to the on-disk
@@ -290,7 +308,7 @@ public static class ExdPatcher
         // ambiguous, so Phase A still reports a precise miss instead of guessing.
         int ResolveFieldOrdinal(int labeled, string source)
         {
-            if (string.Equals(ColumnSource(labeled), source, StringComparison.Ordinal))
+            if (ColumnHolds(labeled, source))
             {
                 return labeled;
             }
@@ -298,7 +316,7 @@ public static class ExdPatcher
             var found = -1;
             for (var ordinal = 0; ordinal < columnSource.Length; ordinal++)
             {
-                if (!string.Equals(ColumnSource(ordinal), source, StringComparison.Ordinal))
+                if (!ColumnHolds(ordinal, source))
                 {
                     continue;
                 }
@@ -369,7 +387,7 @@ public static class ExdPatcher
                 if (sourceCandidate.Replacement.Source.Length == 0
                     || fieldTargets[sourceIndex] != emptyCandidate.LabeledOrdinal
                     || sourceCandidate.LabeledOrdinal == emptyCandidate.LabeledOrdinal
-                    || !string.Equals(ColumnSource(sourceCandidate.LabeledOrdinal), string.Empty, StringComparison.Ordinal))
+                    || !ColumnHolds(sourceCandidate.LabeledOrdinal, string.Empty))
                 {
                     continue;
                 }
@@ -410,7 +428,8 @@ public static class ExdPatcher
 
         var matchedSources = new HashSet<string>(StringComparer.Ordinal);
         var rejectedSources = new Dictionary<string, string>(StringComparer.Ordinal);
-        using var newBlob = new MemoryStream();
+        // Sized for the common case so the blob does not regrow as each string is appended.
+        using var newBlob = new MemoryStream(Math.Max(0, stringLength) + 64);
         var appliedFieldTargets = 0;
 
         // Phase A — field-targeted columns. Each gets its OWN fresh blob offset (sharing is split
@@ -439,11 +458,11 @@ public static class ExdPatcher
                 var segments = SeStringParser.Parse(currentRaw);
                 if (SeStringParser.TryReplace(segments, rep.Source, rep.Target, out var newSegments, out var reason))
                 {
-                    newBytes = GuardRunIntegrity(currentRaw, TrimTerminator(SeStringParser.Serialize(newSegments)), rep, rejectedSources);
+                    newBytes = GuardRunIntegrity(currentRaw, SeStringParser.Serialize(newSegments, terminate: false), rep, rejectedSources);
                 }
                 else if (SeStringParser.TryReplaceTokenized(segments, rep.Source, rep.Target, out var tokenSegments, out _))
                 {
-                    newBytes = GuardRunIntegrity(currentRaw, TrimTerminator(SeStringParser.Serialize(tokenSegments)), rep, rejectedSources);
+                    newBytes = GuardRunIntegrity(currentRaw, SeStringParser.Serialize(tokenSegments, terminate: false), rep, rejectedSources);
                 }
                 else if (SeStringTree.TryTranslate(currentRaw, rep.Source, rep.Target, out var runBytes, out _))
                 {
@@ -502,7 +521,9 @@ public static class ExdPatcher
             var currentRaw = ReadNulTerminatedBytes(stringArea, (int)oldOffset);
             byte[] newBytes;
 
-            if (currentRaw.Length > 0)
+            // With nothing to match, a plain ASCII string would be parsed into one literal and
+            // serialized back to the very same bytes: keep them as they are.
+            if (currentRaw.Length > 0 && (contentMatched.Count > 0 || !IsPlainAscii(currentRaw)))
             {
                 var segments = SeStringParser.Parse(currentRaw);
                 string? appliedSource = null;
@@ -538,7 +559,7 @@ public static class ExdPatcher
                     }
                 }
 
-                newBytes = appliedBytes ?? TrimTerminator(SeStringParser.Serialize(segments));
+                newBytes = appliedBytes ?? SeStringParser.Serialize(segments, terminate: false);
 
                 if (appliedSource is not null)
                 {
@@ -581,8 +602,7 @@ public static class ExdPatcher
                 BinaryPrimitives.WriteUInt32BigEndian(fixedData.AsSpan(columnOffset, 4), mapped);
             }
 
-            var currentRaw = ReadNulTerminatedBytes(stringArea, (int)oldOffset);
-            if (currentRaw.Length == 0 && emptyWrites.Count > 0)
+            if (emptyWrites.Count > 0 && ExdPage.NulTerminatedSpan(stringArea, (int)oldOffset).Length == 0)
             {
                 var write = emptyWrites.Dequeue();
                 var freshOffset = (uint)newBlob.Length;
@@ -671,10 +691,10 @@ public static class ExdPatcher
         }
     }
 
-    // Serialize() appends a NUL terminator; the blob writer adds its own, so strip the trailing
-    // NUL here to avoid a double terminator (which would leave a stray empty byte in the blob).
-    private static byte[] TrimTerminator(byte[] bytes)
-        => bytes.Length > 0 && bytes[^1] == 0 ? bytes[..^1] : bytes;
+    // ASCII text with no macro start byte: the parsers read it as a single literal and decode and
+    // encode it without changing a byte. (0xFF runs and NUL are not ASCII or never reach here.)
+    private static bool IsPlainAscii(ReadOnlySpan<byte> bytes)
+        => Ascii.IsValid(bytes) && bytes.IndexOf((byte)0x02) < 0;
 
     // Shared raw NUL-terminated read: see ExdPage.ReadNulTerminatedBytes for the rationale.
     private static byte[] ReadNulTerminatedBytes(ReadOnlySpan<byte> area, int start)
