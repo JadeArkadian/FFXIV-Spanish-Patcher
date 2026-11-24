@@ -67,7 +67,13 @@ public sealed class EmbeddedTranslationSource(Func<Stream> openCompressedBlob) :
 
         try
         {
-            foreach (var entry in Lines().AsParallel().AsOrdered().Select(JsonlSerialization.Deserialize))
+            // One core is left alone: this also runs inside the game, where the plugin loads it.
+            var parsed = Lines()
+                .AsParallel()
+                .AsOrdered()
+                .WithDegreeOfParallelism(Math.Max(1, Environment.ProcessorCount - 1))
+                .Select(JsonlSerialization.Deserialize);
+            foreach (var entry in parsed)
             {
                 if (entry is not null)
                 {

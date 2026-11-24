@@ -302,12 +302,14 @@ Identidad del mod, compartida con el patcher:
 ### Instalación
 
 El candidato y el staging del pipeline se generan dentro del propio directorio de mods, en
-carpetas ocultas (`.FFXIVSpanish.ffxivspanish-candidate-*` y `.ffxivspanish-pipeline-staging`) que
-Penumbra no registra y que la siguiente regeneración limpia si quedaran. Así `ModInstaller` lleva
-el candidato a su staging con un renombrado en vez de copiar miles de archivos; solo si están en
-volúmenes distintos lo copia. En ambos casos vuelve a verificar el árbol, aparta el árbol anterior como copia de seguridad, promueve el nuevo por movimiento y avisa a
-Penumbra (`AddMod` o `ReloadMod`). El árbol anterior solo se limpia tras el éxito; ante cualquier
-fallo se restaura. Nunca se llama a `DeleteMod` y descargar el plugin no borra nada.
+carpetas con prefijo de punto (`.FFXIVSpanish.ffxivspanish-candidate-*` y
+`.ffxivspanish-pipeline-staging`; el punto no las oculta en Windows) que el plugin nunca registra
+en Penumbra y que la siguiente regeneración limpia, en lo posible, si quedaran. Así `ModInstaller`
+lleva el candidato a su staging con un renombrado en vez de copiar miles de archivos; solo si están
+en volúmenes distintos lo copia. En ambos casos vuelve a verificar el árbol, aparta el árbol
+anterior como copia de seguridad, promueve el nuevo por movimiento y avisa a Penumbra (`AddMod` o
+`ReloadMod`). El árbol anterior solo se limpia tras el éxito; ante cualquier fallo se restaura.
+Nunca se llama a `DeleteMod` y descargar el plugin no borra nada.
 
 Deuda conocida: no hay recuperación automática tras un cierre brusco del proceso entre apartar el
 árbol anterior y completar la promoción.

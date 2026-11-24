@@ -64,10 +64,9 @@ public sealed class TranslationRegenerationService(
             .Append(Path.Combine(root, PipelineStagingDirectory));
         foreach (var path in obsolete)
         {
-            if (Directory.Exists(path) && new DirectoryInfo(path).LinkTarget is null)
-            {
-                Directory.Delete(path, recursive: true);
-            }
+            // Best effort: every attempt works under a fresh name, so one that cannot be removed
+            // (a file still held open after the game was killed mid-generation) is not in the way.
+            DeleteCandidateBestEffort(path);
         }
 
         // What the installer itself leaves behind. A failed candidate is kept for diagnosis only

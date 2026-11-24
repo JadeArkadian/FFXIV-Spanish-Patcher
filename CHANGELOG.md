@@ -2,6 +2,20 @@
 
 Resumen de todos los cambios relevantes del proyecto.
 
+## v0.6.1
+
+### Plugin de Dalamud
+
+- **Generación más rápida**: el mod se genera repartiendo el trabajo entre varios núcleos y se
+  instala sin volver a copiar sus miles de archivos. En un MacBook Air M5, solo este último cambio
+  ahorra unos 20 segundos.
+- Mientras genera, el plugin trabaja en carpetas propias dentro de la carpeta de mods de Penumbra
+  (empiezan por `.ffxivspanish` o `.FFXIVSpanish`) y las borra al terminar.
+
+### Patcher
+
+- La generación del paquete también reparte el trabajo entre varios núcleos.
+
 ## v0.6.0
 
 Esta versión estrena el **plugin de Dalamud**: la traducción ya se puede instalar y mantener desde
