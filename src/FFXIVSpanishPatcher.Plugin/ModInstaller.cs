@@ -27,9 +27,10 @@ public sealed class NoOpModInstallationFaultInjector : IModInstallationFaultInje
 }
 
 /// <summary>
-/// Promotes a complete v4 mod tree. New trees are copied to a sibling staging directory, verified,
-/// then moved into place. A regeneration consolidates any duplicate managed trees into one tree;
-/// failures restore every pre-existing tree and retain the failed candidate.
+/// Promotes a complete v4 mod tree. The candidate is taken to a sibling staging directory (moved
+/// when it shares the volume with the mod root, copied otherwise), verified, then moved into place.
+/// A regeneration consolidates any duplicate managed trees into one tree; failures restore every
+/// pre-existing tree and retain the failed candidate.
 /// </summary>
 public sealed class ModInstaller : IModInstaller
 {
@@ -43,12 +44,16 @@ public sealed class ModInstaller : IModInstaller
     private readonly PenumbraModIdentityService _identity;
     private readonly IPluginDiagnosticLogger _log;
     private readonly IModInstallationFaultInjector _faultInjector;
+    private readonly Action<string, string> _moveDirectory;
 
+    /// <param name="moveDirectory">Test seam for the candidate move; defaults to <see cref="Directory.Move"/>.</param>
     public ModInstaller(
         IPenumbraModRegistry registry,
         IPluginDiagnosticLogger log,
-        IModInstallationFaultInjector? faultInjector = null)
+        IModInstallationFaultInjector? faultInjector = null,
+        Action<string, string>? moveDirectory = null)
     {
+        _moveDirectory = moveDirectory ?? Directory.Move;
         _registry = registry;
         _identity = new PenumbraModIdentityService(registry);
         _log = log;
@@ -92,7 +97,7 @@ public sealed class ModInstaller : IModInstaller
 
         try
         {
-            CopyTreeWithoutLinks(request.CandidateTreePath, stagePath, cancellationToken);
+            StageCandidate(request.CandidateTreePath, stagePath, cancellationToken);
             _faultInjector.Before(ModInstallationStep.CandidateCopiedToStaging);
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -244,7 +249,12 @@ public sealed class ModInstaller : IModInstaller
 
     private sealed record ExistingTreeBackup(ModIdentityCandidate Original, string BackupPath);
 
-    private static void CopyTreeWithoutLinks(string sourcePath, string destinationPath, CancellationToken cancellationToken)
+    /// <summary>
+    /// Takes the candidate into the staging directory. A candidate on the mod root's volume is
+    /// renamed, which costs nothing however many files it holds; any other is copied file by file.
+    /// Either way the staged tree is verified afterwards, and that verification rejects links.
+    /// </summary>
+    private void StageCandidate(string sourcePath, string destinationPath, CancellationToken cancellationToken)
     {
         if (!Directory.Exists(sourcePath))
         {
@@ -256,6 +266,21 @@ public sealed class ModInstaller : IModInstaller
             throw new IOException($"Ya existe el directorio temporal de instalación: {destinationPath}");
         }
 
+        try
+        {
+            _moveDirectory(sourcePath, destinationPath);
+            return;
+        }
+        catch (IOException) when (Directory.Exists(sourcePath) && !Directory.Exists(destinationPath))
+        {
+            // Another volume (or a rename the file system refuses): the candidate is untouched.
+        }
+
+        CopyTreeWithoutLinks(sourcePath, destinationPath, cancellationToken);
+    }
+
+    private static void CopyTreeWithoutLinks(string sourcePath, string destinationPath, CancellationToken cancellationToken)
+    {
         Directory.CreateDirectory(destinationPath);
         var pending = new Queue<(string Source, string Destination)>();
         pending.Enqueue((sourcePath, destinationPath));

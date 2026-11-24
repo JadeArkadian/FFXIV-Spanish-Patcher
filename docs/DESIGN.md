@@ -301,8 +301,11 @@ Identidad del mod, compartida con el patcher:
 
 ### Instalación
 
-`ModInstaller` copia el candidato verificado a un staging en el mismo volumen que el directorio de
-mods, aparta el árbol anterior como copia de seguridad, promueve el nuevo por movimiento y avisa a
+El candidato y el staging del pipeline se generan dentro del propio directorio de mods, en
+carpetas ocultas (`.FFXIVSpanish.ffxivspanish-candidate-*` y `.ffxivspanish-pipeline-staging`) que
+Penumbra no registra y que la siguiente regeneración limpia si quedaran. Así `ModInstaller` lleva
+el candidato a su staging con un renombrado en vez de copiar miles de archivos; solo si están en
+volúmenes distintos lo copia. En ambos casos vuelve a verificar el árbol, aparta el árbol anterior como copia de seguridad, promueve el nuevo por movimiento y avisa a
 Penumbra (`AddMod` o `ReloadMod`). El árbol anterior solo se limpia tras el éxito; ante cualquier
 fallo se restaura. Nunca se llama a `DeleteMod` y descargar el plugin no borra nada.
 

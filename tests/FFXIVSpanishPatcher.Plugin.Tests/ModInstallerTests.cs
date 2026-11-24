@@ -206,8 +206,60 @@ public sealed class ModInstallerTests : IDisposable
         var result = await CreateInstaller(new FakeRegistry()).InstallAsync(Request(), TestContext.Current.CancellationToken);
 
         Assert.False(result.Succeeded);
+        Assert.Contains("symlink", result.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.False(Directory.Exists(Path.Combine(_modRoot, PenumbraModIdentity.CanonicalDirectory)));
+        Assert.Empty(Directory.EnumerateDirectories(_modRoot));
+    }
+
+    [Fact]
+    public async Task CandidateSymlink_IsRejectedWhenTheCandidateHasToBeCopied()
+    {
+        try
+        {
+            File.CreateSymbolicLink(Path.Combine(_candidate, "outside-link"), Path.Combine(_root, "outside"));
+        }
+        catch (UnauthorizedAccessException) when (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        var result = await CreateInstaller(new FakeRegistry(), moveDirectory: OtherVolume)
+            .InstallAsync(Request(), TestContext.Current.CancellationToken);
+
+        Assert.False(result.Succeeded);
         Assert.Contains("enlazado", result.Message, StringComparison.OrdinalIgnoreCase);
         Assert.False(Directory.Exists(Path.Combine(_modRoot, PenumbraModIdentity.CanonicalDirectory)));
+    }
+
+    [Fact]
+    public async Task CandidateOnTheModRootVolume_IsMovedInsteadOfCopied()
+    {
+        var moves = new List<(string Source, string Destination)>();
+
+        var result = await CreateInstaller(new FakeRegistry(), moveDirectory: (source, destination) =>
+            {
+                moves.Add((source, destination));
+                Directory.Move(source, destination);
+            })
+            .InstallAsync(Request(), TestContext.Current.CancellationToken);
+
+        Assert.True(result.Succeeded);
+        var move = Assert.Single(moves);
+        Assert.Equal(_candidate, move.Source);
+        Assert.Equal(Path.GetFullPath(_modRoot), Path.GetDirectoryName(move.Destination));
+        Assert.False(Directory.Exists(_candidate));
+        Assert.True(File.Exists(Path.Combine(_modRoot, PenumbraModIdentity.CanonicalDirectory, "meta.json")));
+    }
+
+    [Fact]
+    public async Task CandidateOnAnotherVolume_IsCopiedAndLeftForItsOwnerToRemove()
+    {
+        var result = await CreateInstaller(new FakeRegistry(), moveDirectory: OtherVolume)
+            .InstallAsync(Request(), TestContext.Current.CancellationToken);
+
+        Assert.True(result.Succeeded);
+        Assert.True(File.Exists(Path.Combine(_candidate, "meta.json")));
+        Assert.True(File.Exists(Path.Combine(_modRoot, PenumbraModIdentity.CanonicalDirectory, "meta.json")));
     }
 
     [Fact]
@@ -347,8 +399,15 @@ public sealed class ModInstallerTests : IDisposable
         }
     }
 
-    private ModInstaller CreateInstaller(FakeRegistry registry, IModInstallationFaultInjector? faultInjector = null)
-        => new(registry, new RecordingLogger(), faultInjector);
+    private ModInstaller CreateInstaller(
+        FakeRegistry registry,
+        IModInstallationFaultInjector? faultInjector = null,
+        Action<string, string>? moveDirectory = null)
+        => new(registry, new RecordingLogger(), faultInjector, moveDirectory);
+
+    /// <summary>What <see cref="Directory.Move"/> does when source and destination are on different volumes.</summary>
+    private static void OtherVolume(string source, string destination)
+        => throw new IOException("Source and destination path must have identical roots.");
 
     private ModInstallRequest Request()
         => new(_candidate, _modRoot, new BuildFingerprint(1, "0.6.0", "corpus", "game", "installed", 1, 4, "identity", "payload", DateTimeOffset.UnixEpoch));
