@@ -1173,6 +1173,8 @@ internal sealed class TranslationManagerSession : IAsyncDisposable
             StagingPath = Path.Combine(Path.GetTempPath(), "ffxivspanish-translation-manager", "pipeline-staging"),
             CompatibilityMode = PatchCompatibilityMode.BestEffortVersionMismatch,
             Meta = metadata,
+            // The plugin shares the process with the game: leave it one core.
+            MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount - 1),
         };
 
     private sealed record RegenerationExecution(ModInstallResult Install, bool ActivationApplied);

@@ -54,6 +54,13 @@ public sealed record PatchRequest
     /// <summary>Compatibility policy chosen after the GUI has compared exact version strings.</summary>
     public PatchCompatibilityMode CompatibilityMode { get; init; } = PatchCompatibilityMode.Strict;
 
+    /// <summary>
+    /// Upper bound on the worker threads that validate and patch pages; the pipeline caps it
+    /// further where more threads stop helping. A host that shares the machine with something
+    /// latency-sensitive (the plugin runs inside the game) lowers it.
+    /// </summary>
+    public int MaxDegreeOfParallelism { get; init; } = Environment.ProcessorCount;
+
     /// <summary>Emit verbose diagnostic events intended for troubleshooting, hidden by default.</summary>
     public bool DebugLogging { get; init; }
 

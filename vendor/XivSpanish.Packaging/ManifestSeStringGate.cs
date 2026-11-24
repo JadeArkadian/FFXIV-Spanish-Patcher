@@ -44,25 +44,20 @@ public static class ManifestSeStringGate
     /// entries with a null/empty target are skipped (they are not packageable and are reported as
     /// skips elsewhere).
     /// </summary>
-    public static IReadOnlyList<ManifestSeStringViolation> Check(IEnumerable<TranslationEntry> entries)
-    {
-        var violations = new List<ManifestSeStringViolation>();
-        foreach (var entry in entries)
-        {
-            if (string.IsNullOrEmpty(entry.Target)
-                || (!SeStringCompatibilityValidator.HasPayloads(entry.Source)
-                    && !SeStringStandardMacros.HasReservedDelimiter(entry.Target)))
-            {
-                continue;
-            }
-
-            var report = SeStringCompatibilityValidator.Validate(entry.Source, entry.Target);
-            if (!report.IsCompatible)
-            {
-                violations.Add(new ManifestSeStringViolation(entry, report));
-            }
-        }
-
-        return violations;
-    }
+    public static IReadOnlyList<ManifestSeStringViolation> Check(
+        IEnumerable<TranslationEntry> entries,
+        int? maxDegreeOfParallelism = null)
+        // Each entry is validated on its own, so the rows fan out; AsOrdered keeps the report order.
+        => entries
+            .AsParallel()
+            .AsOrdered()
+            .WithDegreeOfParallelism(Math.Clamp(maxDegreeOfParallelism ?? Environment.ProcessorCount, 1, 512))
+            .Where(entry => !string.IsNullOrEmpty(entry.Target)
+                && (SeStringCompatibilityValidator.HasPayloads(entry.Source)
+                    || SeStringStandardMacros.HasReservedDelimiter(entry.Target)))
+            .Select(entry => new ManifestSeStringViolation(
+                entry,
+                SeStringCompatibilityValidator.Validate(entry.Source, entry.Target)))
+            .Where(violation => !violation.Report.IsCompatible)
+            .ToList();
 }

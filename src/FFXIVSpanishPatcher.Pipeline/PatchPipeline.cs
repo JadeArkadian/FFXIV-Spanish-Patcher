@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Runtime.ExceptionServices;
 using System.Security.Cryptography;
 using XivSpanish.GameData;
 using XivSpanish.Packager;
@@ -15,6 +17,10 @@ namespace FFXIVSpanishPatcher.Pipeline;
 /// </summary>
 public sealed class PatchPipeline
 {
+    // Measured on the shipped corpus: patching allocates heavily, so past about eight workers the
+    // garbage collector's pauses cost more than the extra threads give back.
+    private const int MaxUsefulWorkers = 8;
+
     private readonly ITranslationSource _translations;
     private readonly IPatchBackendFactory _backendFactory;
     private readonly IIntegrityVerifier _verifier;
@@ -51,6 +57,7 @@ public sealed class PatchPipeline
 
         void Conflict(string message) => Report(PipelineComponent.Patcher, message, PipelineLevel.Warning);
 
+        var workers = Math.Clamp(request.MaxDegreeOfParallelism, 1, MaxUsefulWorkers);
         Report(PipelineComponent.Pipeline, "Iniciando generación del mod...");
 
         // 1. Load the approved translation entries.
@@ -148,7 +155,7 @@ public sealed class PatchPipeline
 
         // 2. SeString gate over the build candidates. Unsafe rows are skipped; a few bad corpus
         // rows must not abort an otherwise valid package.
-        var gate = ManifestSeStringGate.Check(entries.Where(IsPackageableEntry));
+        var gate = ManifestSeStringGate.Check(entries.Where(IsPackageableEntry), workers);
         if (gate.Count > 0)
         {
             foreach (var violation in gate)
@@ -280,170 +287,48 @@ public sealed class PatchPipeline
             {
                 temporaryOutput = SiblingTemporaryPath(request.OutputPath);
                 var writer = new PenumbraModTreeWriter(runStaging);
-                foreach (var (exdPath, page) in pages)
+                // Game reads stay serialized: the partitioner pulls one page at a time under its own
+                // lock, so the backend never sees concurrent access. Only the CPU work fans out,
+                // and results come back in page order so counters, events and files stay deterministic.
+                IEnumerable<PageWork> ReadPages()
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
+                    foreach (var (exdPath, page) in pages)
+                    {
+                        yield return ReadPage(backend.BaseSource, exdPath, page);
+                    }
+                }
+
+                var patchedPages = Partitioner
+                    .Create(ReadPages(), EnumerablePartitionerOptions.NoBuffering)
+                    .AsParallel()
+                    .AsOrdered()
+                    .WithDegreeOfParallelism(workers)
+                    .WithCancellation(cancellationToken)
+                    .Select(work => PatchPage(work, broadcast, request.DebugLogging));
+
+                foreach (var work in patchedPages)
+                {
+                    work.Failure?.Throw();
+                    var exdPath = work.ExdPath;
+                    var page = work.Page;
                     var category = categoryStatistics[page.Domain];
-
-                    ExdLayout? layout;
-                    byte[]? raw;
-                    try
+                    foreach (var pageEvent in work.Events)
                     {
-                        layout = backend.BaseSource.ReadStringLayout(page.Sheet);
-                        raw = layout is null ? null : backend.BaseSource.ReadBaseExd(exdPath);
-                    }
-                    catch (Exception exception) when (exception is IOException or InvalidDataException)
-                    {
-                        gameReadErrors++;
-                        SkipPage(PageSkip.MissingPage, exdPath, page, category,
-                            $"omitida página {exdPath}: no se pudo leer ({exception.Message})");
-                        continue;
+                        progress?.Report(pageEvent);
                     }
 
-                    if (layout is null)
+                    if (work.Skip is { } skip)
                     {
-                        SkipPage(PageSkip.MissingSheet, exdPath, page, category,
-                            $"omitida hoja {page.Sheet}: falta su layout EXH ({page.ManifestEntryCount} entrada(s))");
-                        continue;
-                    }
-
-                    if (raw is null)
-                    {
-                        SkipPage(PageSkip.MissingPage, exdPath, page, category,
-                            $"omitida página {exdPath}: no existe en esta versión ({page.ManifestEntryCount} entrada(s))");
-                        continue;
-                    }
-
-                    if (layout.Value.Variant == 2)
-                    {
-                        SkipPage(PageSkip.Unsupported, exdPath, page, category,
-                            $"omitida página {exdPath}: {page.Sheet} es subrow variant 2 (no soportado)");
-                        continue;
-                    }
-
-                    IReadOnlyList<string> fieldNames;
-                    try
-                    {
-                        fieldNames = backend.BaseSource.ResolveFieldNames(
-                            page.Sheet,
-                            layout.Value.StringColumnOffsets.Count);
-                    }
-                    catch (Exception exception) when (exception is IOException or InvalidDataException)
-                    {
-                        gameReadErrors++;
-                        SkipPage(PageSkip.MissingPage, exdPath, page, category,
-                            $"omitida página {exdPath}: no se pudo leer su esquema ({exception.Message})");
-                        continue;
-                    }
-
-                    // Broadcast approved targets to duplicate base rows the manifest does not list.
-                    // Payload-bearing strings require the raw signature of an explicit approved row.
-                    IReadOnlyList<BroadcastColumn> broadcastColumns;
-                    try
-                    {
-                        broadcastColumns = ReadBroadcastColumns(
-                            raw,
-                            layout.Value.FixedDataSize,
-                            layout.Value.StringColumnOffsets,
-                            fieldNames);
-                    }
-                    catch (InvalidDataException exception)
-                    {
-                        SkipPage(PageSkip.Unsupported, exdPath, page, category,
-                            $"omitida página {exdPath}: {exception.Message}");
-                        continue;
-                    }
-                    var broadcasted = 0;
-                    var payloadBroadcasted = 0;
-                    foreach (var column in broadcastColumns)
-                    {
-                        var decision = BroadcastPlanner.Decide(broadcast, page.Sheet, column);
-                        if (decision is null)
+                        if (work.ReadFailed)
                         {
-                            continue;
+                            gameReadErrors++;
                         }
 
-                        if (page.Add(
-                                column.RowId,
-                                new StringReplacement(column.Source, decision.Target, decision.ReplacementField),
-                                Conflict))
-                        {
-                            broadcasted++;
-                        }
-                    }
-
-                    // Payload-bearing duplicates cannot be matched by tokenized source (the corpus is
-                    // run-aware, the base re-tokenization is flat), so they are broadcast by raw byte
-                    // identity: every base row byte-identical to an explicitly-translated payload row
-                    // receives that row's reviewed replacement. This closes the gap that left duplicate
-                    // payload rows (e.g. Addon 196, a byte-identical twin of the translated row 111)
-                    // showing vanilla English.
-                    foreach (var sibling in BroadcastPlanner.PlanPayloadSiblings(
-                                 broadcastColumns,
-                                 page.ToReplacements()))
-                    {
-                        if (page.Add(sibling.RowId, sibling.Replacement, Conflict))
-                        {
-                            broadcasted++;
-                            payloadBroadcasted++;
-                        }
-                    }
-
-                    if (broadcasted > 0)
-                    {
-                        Debug(
-                            $"broadcast {exdPath}: +{broadcasted} duplicados ({payloadBroadcasted} payload-safe)",
-                            broadcasted);
-                    }
-
-                    var fieldAliasBroadcasted = 0;
-                    foreach (var decision in FieldAliasPlanner.Decide(
-                                 page.Sheet,
-                                 broadcastColumns,
-                                 page.ToReplacements()))
-                    {
-                        if (page.Add(
-                                decision.RowId,
-                                new StringReplacement(decision.Source, decision.Target, decision.ReplacementField),
-                                Conflict))
-                        {
-                            fieldAliasBroadcasted++;
-                        }
-                    }
-
-                    if (fieldAliasBroadcasted > 0)
-                    {
-                        Debug(
-                            $"field-alias {exdPath}: +{fieldAliasBroadcasted} alias de campo",
-                            fieldAliasBroadcasted);
-                    }
-
-                    ExdPatchResult result;
-                    try
-                    {
-                        result = ExdPatcher.Patch(
-                            raw,
-                            layout.Value.FixedDataSize,
-                            layout.Value.StringColumnOffsets,
-                            page.ToReplacements(),
-                            fieldNames);
-                    }
-                    catch (InvalidDataException exception)
-                    {
-                        SkipPage(PageSkip.Unsupported, exdPath, page, category,
-                            $"omitida página {exdPath}: {exception.Message}");
+                        SkipPage(skip, exdPath, page, category, work.SkipMessage!);
                         continue;
                     }
 
-                    // The game trusts these offsets blindly. A page that does not hang together is
-                    // left in English rather than handed to the client.
-                    if (ExdPage.FindStructuralProblem(result.Bytes) is { } structuralProblem)
-                    {
-                        SkipPage(PageSkip.Unsupported, exdPath, page, category,
-                            $"omitida página {exdPath}: el resultado no es coherente ({structuralProblem})");
-                        continue;
-                    }
-
+                    var result = work.Result!;
                     appliedWrites += result.Applied;
                     rowMisses += result.Missed.Count;
                     category.AppliedWrites += result.Applied;
@@ -607,6 +492,215 @@ public sealed class PatchPipeline
         }
     }
 
+    /// <summary>Reads one page's base bytes, layout and field names. Never throws: a page that
+    /// cannot be read is marked skipped, anything unexpected is carried to the caller's thread.</summary>
+    private static PageWork ReadPage(IBaseExdSource source, string exdPath, PagePatch page)
+    {
+        var work = new PageWork(exdPath, page);
+        try
+        {
+            ExdLayout? layout;
+            byte[]? raw;
+            try
+            {
+                layout = source.ReadStringLayout(page.Sheet);
+                raw = layout is null ? null : source.ReadBaseExd(exdPath);
+            }
+            catch (Exception exception) when (exception is IOException or InvalidDataException)
+            {
+                work.ReadFailed = true;
+                return work.Skipped(PageSkip.MissingPage,
+                    $"omitida página {exdPath}: no se pudo leer ({exception.Message})");
+            }
+
+            if (layout is null)
+            {
+                return work.Skipped(PageSkip.MissingSheet,
+                    $"omitida hoja {page.Sheet}: falta su layout EXH ({page.ManifestEntryCount} entrada(s))");
+            }
+
+            if (raw is null)
+            {
+                return work.Skipped(PageSkip.MissingPage,
+                    $"omitida página {exdPath}: no existe en esta versión ({page.ManifestEntryCount} entrada(s))");
+            }
+
+            if (layout.Value.Variant == 2)
+            {
+                return work.Skipped(PageSkip.Unsupported,
+                    $"omitida página {exdPath}: {page.Sheet} es subrow variant 2 (no soportado)");
+            }
+
+            try
+            {
+                work.FieldNames = source.ResolveFieldNames(
+                    page.Sheet,
+                    layout.Value.StringColumnOffsets.Count);
+            }
+            catch (Exception exception) when (exception is IOException or InvalidDataException)
+            {
+                work.ReadFailed = true;
+                return work.Skipped(PageSkip.MissingPage,
+                    $"omitida página {exdPath}: no se pudo leer su esquema ({exception.Message})");
+            }
+
+            work.Layout = layout.Value;
+            work.Raw = raw;
+        }
+        catch (Exception exception)
+        {
+            work.Failure = ExceptionDispatchInfo.Capture(exception);
+        }
+
+        return work;
+    }
+
+    /// <summary>Broadcasts and patches one page. Runs on a worker thread, so it touches nothing but
+    /// its own <paramref name="work"/> and the read-only <paramref name="broadcast"/> catalog.</summary>
+    private static PageWork PatchPage(PageWork work, BroadcastCatalog broadcast, bool debugLogging)
+    {
+        if (work.Skip is not null || work.Failure is not null)
+        {
+            return work;
+        }
+
+        try
+        {
+            var exdPath = work.ExdPath;
+            var page = work.Page;
+            var layout = work.Layout;
+            var raw = work.Raw!;
+            var fieldNames = work.FieldNames!;
+
+            void Conflict(string message)
+                => work.Events.Add(new PipelineEvent(PipelineComponent.Patcher, message, PipelineLevel.Warning));
+
+            void Debug(string message, int count)
+            {
+                if (debugLogging)
+                {
+                    work.Events.Add(new PipelineEvent(PipelineComponent.Patcher, message, PipelineLevel.Debug, count));
+                }
+            }
+
+            // Broadcast approved targets to duplicate base rows the manifest does not list.
+            // Payload-bearing strings require the raw signature of an explicit approved row.
+            IReadOnlyList<BroadcastColumn> broadcastColumns;
+            try
+            {
+                broadcastColumns = ReadBroadcastColumns(
+                    raw,
+                    layout.FixedDataSize,
+                    layout.StringColumnOffsets,
+                    fieldNames);
+            }
+            catch (InvalidDataException exception)
+            {
+                return work.Skipped(PageSkip.Unsupported, $"omitida página {exdPath}: {exception.Message}");
+            }
+
+            var broadcasted = 0;
+            var payloadBroadcasted = 0;
+            foreach (var column in broadcastColumns)
+            {
+                var decision = BroadcastPlanner.Decide(broadcast, page.Sheet, column);
+                if (decision is null)
+                {
+                    continue;
+                }
+
+                if (page.Add(
+                        column.RowId,
+                        new StringReplacement(column.Source, decision.Target, decision.ReplacementField),
+                        Conflict))
+                {
+                    broadcasted++;
+                }
+            }
+
+            // Payload-bearing duplicates cannot be matched by tokenized source (the corpus is
+            // run-aware, the base re-tokenization is flat), so they are broadcast by raw byte
+            // identity: every base row byte-identical to an explicitly-translated payload row
+            // receives that row's reviewed replacement. This closes the gap that left duplicate
+            // payload rows (e.g. Addon 196, a byte-identical twin of the translated row 111)
+            // showing vanilla English.
+            foreach (var sibling in BroadcastPlanner.PlanPayloadSiblings(
+                         broadcastColumns,
+                         page.ToReplacements()))
+            {
+                if (page.Add(sibling.RowId, sibling.Replacement, Conflict))
+                {
+                    broadcasted++;
+                    payloadBroadcasted++;
+                }
+            }
+
+            if (broadcasted > 0)
+            {
+                Debug(
+                    $"broadcast {exdPath}: +{broadcasted} duplicados ({payloadBroadcasted} payload-safe)",
+                    broadcasted);
+            }
+
+            var fieldAliasBroadcasted = 0;
+            foreach (var decision in FieldAliasPlanner.Decide(
+                         page.Sheet,
+                         broadcastColumns,
+                         page.ToReplacements()))
+            {
+                if (page.Add(
+                        decision.RowId,
+                        new StringReplacement(decision.Source, decision.Target, decision.ReplacementField),
+                        Conflict))
+                {
+                    fieldAliasBroadcasted++;
+                }
+            }
+
+            if (fieldAliasBroadcasted > 0)
+            {
+                Debug(
+                    $"field-alias {exdPath}: +{fieldAliasBroadcasted} alias de campo",
+                    fieldAliasBroadcasted);
+            }
+
+            ExdPatchResult result;
+            try
+            {
+                result = ExdPatcher.Patch(
+                    raw,
+                    layout.FixedDataSize,
+                    layout.StringColumnOffsets,
+                    page.ToReplacements(),
+                    fieldNames);
+            }
+            catch (InvalidDataException exception)
+            {
+                return work.Skipped(PageSkip.Unsupported, $"omitida página {exdPath}: {exception.Message}");
+            }
+
+            // The game trusts these offsets blindly. A page that does not hang together is
+            // left in English rather than handed to the client.
+            if (ExdPage.FindStructuralProblem(result.Bytes) is { } structuralProblem)
+            {
+                return work.Skipped(PageSkip.Unsupported,
+                    $"omitida página {exdPath}: el resultado no es coherente ({structuralProblem})");
+            }
+
+            work.Result = result;
+        }
+        catch (Exception exception)
+        {
+            work.Failure = ExceptionDispatchInfo.Capture(exception);
+        }
+        finally
+        {
+            work.Raw = null;
+        }
+
+        return work;
+    }
+
     private static BroadcastCatalog BuildBroadcastCatalog(
         IReadOnlyList<TranslationEntry> entries, IReadOnlySet<string> statuses)
     {
@@ -640,12 +734,14 @@ public sealed class PatchPipeline
             }
 
             var field = ordinal < fieldNames.Count ? fieldNames[ordinal] : string.Empty;
+            // The raw signature only identifies payload-bearing duplicates; plain rows match by text.
+            var hasPayload = SeStringCompatibilityValidator.HasPayloads(source);
             columns.Add(new BroadcastColumn(
                 rowId,
                 field,
                 source,
-                SeStringCompatibilityValidator.HasPayloads(source),
-                Convert.ToHexString(SHA256.HashData(rawString))));
+                hasPayload,
+                hasPayload ? Convert.ToHexString(SHA256.HashData(rawString)) : string.Empty));
         }
 
         return columns;
@@ -800,6 +896,30 @@ public sealed class PatchPipeline
 
         public IReadOnlyDictionary<uint, IReadOnlyList<StringReplacement>> ToReplacements()
             => _rows.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<StringReplacement>)pair.Value);
+    }
+
+    /// <summary>One page on its way through read -> patch -> collect. Owned by a single thread at
+    /// a time; the events it gathers are replayed in page order by the collecting thread.</summary>
+    private sealed class PageWork(string exdPath, PagePatch page)
+    {
+        public string ExdPath { get; } = exdPath;
+        public PagePatch Page { get; } = page;
+        public List<PipelineEvent> Events { get; } = [];
+        public ExdLayout Layout { get; set; }
+        public byte[]? Raw { get; set; }
+        public IReadOnlyList<string>? FieldNames { get; set; }
+        public PageSkip? Skip { get; private set; }
+        public string? SkipMessage { get; private set; }
+        public bool ReadFailed { get; set; }
+        public ExdPatchResult? Result { get; set; }
+        public ExceptionDispatchInfo? Failure { get; set; }
+
+        public PageWork Skipped(PageSkip reason, string message)
+        {
+            Skip = reason;
+            SkipMessage = message;
+            return this;
+        }
     }
 
     /// <summary>Why a page was left out; each reason has its own counters.</summary>

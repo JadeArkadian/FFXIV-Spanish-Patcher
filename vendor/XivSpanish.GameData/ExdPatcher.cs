@@ -67,12 +67,42 @@ public static class ExdPatcher
             entries.Add(ExdPage.ReadIndexEntry(original, i));
         }
 
+        // Map a replacement's Field to the string-column ordinal it targets. Only usable when
+        // the caller supplied the ordered field names; the i-th name belongs to the i-th
+        // string column (stringColumnOffsets[i]). This is the inverse of the extractor's
+        // string-column → field-name mapping, so Field round-trips back to the same column.
+        // Built once per page: it is the same for every row.
+        var fieldToOrdinal = new Dictionary<string, int>(StringComparer.Ordinal);
+        if (stringColumnFieldNames is not null)
+        {
+            for (var ordinal = 0; ordinal < stringColumnFieldNames.Count && ordinal < stringColumnOffsets.Count; ordinal++)
+            {
+                // First mapping wins so a duplicated field name cannot silently retarget; the
+                // extractor emits distinct names per string column in practice.
+                fieldToOrdinal.TryAdd(stringColumnFieldNames[ordinal], ordinal);
+            }
+
+            // Positional alias: Column{i} always targets ordinal i. Corpora extracted while the
+            // resolver fell back to Column{i} labels (e.g. Fate before collection expansion) must
+            // stay field-targeted when the resolver later learns the real member names; Column{i}
+            // is positional by definition of the extractor fallback, so the alias is correct on
+            // any sheet. TryAdd keeps a real member name that happens to spell Column{i} authoritative.
+            for (var ordinal = 0; ordinal < stringColumnOffsets.Count; ordinal++)
+            {
+                fieldToOrdinal.TryAdd($"Column{ordinal}", ordinal);
+            }
+        }
+
         var missed = new List<MissedReplacement>();
         var applied = 0;
         var newOffsets = new uint[rowCount];
 
-        using var body = new MemoryStream();
-        var dataStart = (uint)(HeaderSize + (rowCount * 8));
+        // The stream is the whole output page: header and row index are reserved up front and
+        // filled in at the end, so rows are written once and never copied again.
+        var dataStart = HeaderSize + (rowCount * 8);
+        using var body = new MemoryStream(original.Length + (original.Length / 4));
+        body.SetLength(dataStart);
+        body.Position = dataStart;
         var rowHeader = new byte[RowHeaderSize];
 
         for (var i = 0; i < rowCount; i++)
@@ -86,7 +116,7 @@ public static class ExdPatcher
                 throw new InvalidDataException($"Row {rowId} offset {offset} is out of range.");
             }
 
-            var rowCountField = original.AsSpan((int)offset + 4, 2).ToArray();
+            var rowCountField = original.AsSpan((int)offset + 4, 2);
             var fixedStart = row.FixedStart;
             var stringStart = row.StringStart;
             var stringLength = row.StringLength;
@@ -97,8 +127,8 @@ public static class ExdPatcher
             // replacement as missed instead of silently corrupting the row.
             var unsupported = !row.IsSupported;
 
-            byte[] fixedData;
-            byte[] stringBlob;
+            ReadOnlySpan<byte> fixedData;
+            ReadOnlySpan<byte> stringBlob;
 
             if (unsupported)
             {
@@ -106,7 +136,7 @@ public static class ExdPatcher
                 // page stays structurally valid, and report any pending replacement as missed.
                 var safeEnd = (int)Math.Min(rowBlockEnd, original.Length);
                 var preservedDataSize = Math.Max(0, safeEnd - fixedStart);
-                var preserved = original.AsSpan(fixedStart, preservedDataSize).ToArray();
+                var preserved = original.AsSpan(fixedStart, preservedDataSize);
 
                 if (replacements.TryGetValue(rowId, out var skippedReplacements))
                 {
@@ -119,9 +149,9 @@ public static class ExdPatcher
                     }
                 }
 
-                newOffsets[i] = dataStart + (uint)body.Length;
+                newOffsets[i] = (uint)body.Length;
                 BinaryPrimitives.WriteUInt32BigEndian(rowHeader, (uint)preservedDataSize);
-                rowCountField.CopyTo(rowHeader, 4);
+                rowCountField.CopyTo(rowHeader.AsSpan(4));
                 body.Write(rowHeader);
                 body.Write(preserved);
 
@@ -136,30 +166,32 @@ public static class ExdPatcher
 
             if (replacements.TryGetValue(rowId, out var rowReplacements))
             {
-                (fixedData, stringBlob, var rowApplied) = RebuildRow(
+                (var rebuiltFixed, var rebuiltStrings, var rowApplied) = RebuildRow(
                     original,
                     fixedStart,
                     fixedDataSize,
                     stringStart,
                     stringLength,
                     stringColumnOffsets,
-                    stringColumnFieldNames,
+                    fieldToOrdinal,
                     rowId,
                     rowReplacements,
                     missed);
+                fixedData = rebuiltFixed;
+                stringBlob = rebuiltStrings;
                 applied += rowApplied;
             }
             else
             {
-                fixedData = original.AsSpan(fixedStart, fixedDataSize).ToArray();
-                stringBlob = original.AsSpan(stringStart, Math.Max(0, stringLength)).ToArray();
+                fixedData = original.AsSpan(fixedStart, fixedDataSize);
+                stringBlob = original.AsSpan(stringStart, Math.Max(0, stringLength));
             }
 
-            newOffsets[i] = dataStart + (uint)body.Length;
+            newOffsets[i] = (uint)body.Length;
             var newDataSize = fixedData.Length + stringBlob.Length;
 
             BinaryPrimitives.WriteUInt32BigEndian(rowHeader, (uint)newDataSize);
-            rowCountField.CopyTo(rowHeader, 4);
+            rowCountField.CopyTo(rowHeader.AsSpan(4));
             body.Write(rowHeader);
             body.Write(fixedData);
             body.Write(stringBlob);
@@ -187,15 +219,14 @@ public static class ExdPatcher
             }
         }
 
-        var bodyBytes = body.ToArray();
-        var output = new byte[dataStart + bodyBytes.Length];
+        var output = body.ToArray();
         original.AsSpan(0, HeaderSize).CopyTo(output);
 
         // Update the data-section size field (u32 big-endian) to reflect the new body length.
         // The original header value is stale after patching; the game allocates a buffer of
         // DataSize bytes and then dereferences row offsets into it — if DataSize is smaller
         // than the actual body the game crashes on any row whose offset lands beyond the limit.
-        BinaryPrimitives.WriteUInt32BigEndian(output.AsSpan(ExdPage.DataSectionSizeOffset, 4), (uint)bodyBytes.Length);
+        BinaryPrimitives.WriteUInt32BigEndian(output.AsSpan(ExdPage.DataSectionSizeOffset, 4), (uint)(output.Length - dataStart));
 
         for (var i = 0; i < rowCount; i++)
         {
@@ -204,7 +235,6 @@ public static class ExdPatcher
             BinaryPrimitives.WriteUInt32BigEndian(output.AsSpan(entryPos + 4, 4), newOffsets[i]);
         }
 
-        bodyBytes.CopyTo(output, (int)dataStart);
         return new ExdPatchResult(output, applied, missed);
     }
 
@@ -215,7 +245,7 @@ public static class ExdPatcher
         int stringStart,
         int stringLength,
         IReadOnlyList<int> stringColumnOffsets,
-        IReadOnlyList<string>? stringColumnFieldNames,
+        Dictionary<string, int> fieldToOrdinal,
         uint rowId,
         IReadOnlyList<StringReplacement> rowReplacements,
         List<MissedReplacement> missed)
@@ -223,47 +253,29 @@ public static class ExdPatcher
         var fixedData = original.AsSpan(fixedStart, fixedDataSize).ToArray();
         var stringArea = original.AsSpan(stringStart, stringLength);
 
-        // Map a replacement's Field to the string-column ordinal it targets. Only usable when
-        // the caller supplied the ordered field names; the i-th name belongs to the i-th
-        // string column (stringColumnOffsets[i]). This is the inverse of the extractor's
-        // string-column → field-name mapping, so Field round-trips back to the same column.
-        var fieldToOrdinal = new Dictionary<string, int>(StringComparer.Ordinal);
-        if (stringColumnFieldNames is not null)
-        {
-            for (var ordinal = 0; ordinal < stringColumnFieldNames.Count && ordinal < stringColumnOffsets.Count; ordinal++)
-            {
-                // First mapping wins so a duplicated field name cannot silently retarget; the
-                // extractor emits distinct names per string column in practice.
-                fieldToOrdinal.TryAdd(stringColumnFieldNames[ordinal], ordinal);
-            }
-
-            // Positional alias: Column{i} always targets ordinal i. Corpora extracted while the
-            // resolver fell back to Column{i} labels (e.g. Fate before collection expansion) must
-            // stay field-targeted when the resolver later learns the real member names; Column{i}
-            // is positional by definition of the extractor fallback, so the alias is correct on
-            // any sheet. TryAdd keeps a real member name that happens to spell Column{i} authoritative.
-            for (var ordinal = 0; ordinal < stringColumnOffsets.Count; ordinal++)
-            {
-                fieldToOrdinal.TryAdd($"Column{ordinal}", ordinal);
-            }
-        }
-
         // Full current source of each string column (tokenized run-aware, the exact form the
         // manifest carries for a whole column). Used to VERIFY that a replacement's Field label
         // actually points at the column that holds its source, and to recover the right column
         // when it does not (field-name drift, see below). Null entries are out-of-range columns.
+        // Tokenized on first use: the common replacement only ever looks at its own labelled column.
+        // Read from the untouched page bytes, so the answer does not depend on when it is asked.
         var columnSource = new string?[stringColumnOffsets.Count];
-        for (var ordinal = 0; ordinal < stringColumnOffsets.Count; ordinal++)
+        var columnSourceRead = new bool[stringColumnOffsets.Count];
+        string? ColumnSource(int ordinal)
         {
-            var columnOffset = stringColumnOffsets[ordinal];
-            if (columnOffset + 4 > fixedData.Length)
+            if (!columnSourceRead[ordinal])
             {
-                continue;
+                columnSourceRead[ordinal] = true;
+                var columnOffset = stringColumnOffsets[ordinal];
+                if (columnOffset + 4 <= fixedDataSize)
+                {
+                    var strOffset = BinaryPrimitives.ReadUInt32BigEndian(original.AsSpan(fixedStart + columnOffset, 4));
+                    columnSource[ordinal] = SeStringTreeTokenizer.TokenizeRawText(
+                        ReadNulTerminatedBytes(original.AsSpan(stringStart, stringLength), (int)strOffset));
+                }
             }
 
-            var strOffset = BinaryPrimitives.ReadUInt32BigEndian(fixedData.AsSpan(columnOffset, 4));
-            columnSource[ordinal] = SeStringTreeTokenizer.TokenizeRawText(
-                ReadNulTerminatedBytes(stringArea, (int)strOffset));
+            return columnSource[ordinal];
         }
 
         // Resolves the string-column ordinal a non-empty field-targeted replacement should write.
@@ -278,7 +290,7 @@ public static class ExdPatcher
         // ambiguous, so Phase A still reports a precise miss instead of guessing.
         int ResolveFieldOrdinal(int labeled, string source)
         {
-            if (string.Equals(columnSource[labeled], source, StringComparison.Ordinal))
+            if (string.Equals(ColumnSource(labeled), source, StringComparison.Ordinal))
             {
                 return labeled;
             }
@@ -286,7 +298,7 @@ public static class ExdPatcher
             var found = -1;
             for (var ordinal = 0; ordinal < columnSource.Length; ordinal++)
             {
-                if (!string.Equals(columnSource[ordinal], source, StringComparison.Ordinal))
+                if (!string.Equals(ColumnSource(ordinal), source, StringComparison.Ordinal))
                 {
                     continue;
                 }
@@ -357,7 +369,7 @@ public static class ExdPatcher
                 if (sourceCandidate.Replacement.Source.Length == 0
                     || fieldTargets[sourceIndex] != emptyCandidate.LabeledOrdinal
                     || sourceCandidate.LabeledOrdinal == emptyCandidate.LabeledOrdinal
-                    || !string.Equals(columnSource[sourceCandidate.LabeledOrdinal], string.Empty, StringComparison.Ordinal))
+                    || !string.Equals(ColumnSource(sourceCandidate.LabeledOrdinal), string.Empty, StringComparison.Ordinal))
                 {
                     continue;
                 }

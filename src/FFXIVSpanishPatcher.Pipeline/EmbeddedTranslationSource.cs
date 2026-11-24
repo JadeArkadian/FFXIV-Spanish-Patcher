@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.ExceptionServices;
 using System.Text;
 using XivSpanish.Translation;
 using ZstdSharp;
@@ -50,27 +51,42 @@ public sealed class EmbeddedTranslationSource(Func<Stream> openCompressedBlob) :
             return shared;
         }
 
-        string? line;
-        while ((line = reader.ReadLine()) is not null)
+        // Decompression and line splitting are inherently serial; parsing each line is not, and it
+        // is most of the load time. AsOrdered keeps the corpus order the pipeline relies on.
+        IEnumerable<string> Lines()
         {
-            if (string.IsNullOrWhiteSpace(line))
+            string? line;
+            while ((line = reader.ReadLine()) is not null)
             {
-                continue;
-            }
-
-            var entry = JsonlSerialization.Deserialize(line);
-            if (entry is not null)
-            {
-                entry.Status = Shared(entry.Status);
-                if (entry.SourceKey is { } key)
+                if (!string.IsNullOrWhiteSpace(line))
                 {
-                    key.Sheet = Shared(key.Sheet)!;
-                    key.Field = Shared(key.Field)!;
-                    key.ExdPath = Shared(key.ExdPath);
+                    yield return line;
                 }
-
-                entries.Add(entry);
             }
+        }
+
+        try
+        {
+            foreach (var entry in Lines().AsParallel().AsOrdered().Select(JsonlSerialization.Deserialize))
+            {
+                if (entry is not null)
+                {
+                    entry.Status = Shared(entry.Status);
+                    if (entry.SourceKey is { } key)
+                    {
+                        key.Sheet = Shared(key.Sheet)!;
+                        key.Field = Shared(key.Field)!;
+                        key.ExdPath = Shared(key.ExdPath);
+                    }
+
+                    entries.Add(entry);
+                }
+            }
+        }
+        catch (AggregateException aggregate)
+        {
+            // Callers tell a damaged blob apart by exception type; hand them the real failure.
+            ExceptionDispatchInfo.Capture(aggregate.Flatten().InnerExceptions[0]).Throw();
         }
 
         return entries;

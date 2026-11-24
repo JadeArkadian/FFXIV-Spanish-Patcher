@@ -287,6 +287,59 @@ public sealed class PatchPipelineTests : IDisposable
     }
 
     [Fact]
+    public void Run_PatchingOnManyThreads_MatchesTheSingleThreadedRunExactly()
+    {
+        (IReadOnlyList<string> Events, Dictionary<string, string> Files) Build(int threads)
+        {
+            var entries = new List<TranslationEntry>();
+            var source = new FakeExdSource();
+            for (var index = 0; index < 200; index++)
+            {
+                var sheet = $"BulkSheet{index}";
+                var path = $"exd/bulksheet_{index}_0_en.exd";
+                var english = $"Source {index}";
+                entries.Add(Approved(sheet, 1u, string.Empty, path, english, $"Destino {index}"));
+                if (index % 7 == 0)
+                {
+                    // Listed in the manifest, absent from the game: a skipped sheet between patched ones.
+                    continue;
+                }
+
+                // Row 2 duplicates row 1 and is reached only by broadcast; row 3 misses on purpose.
+                source
+                    .AddPage(path, SyntheticExd.BuildExd([(1u, english), (2u, english), (3u, "Other")]))
+                    .AddLayout(sheet, new ExdLayout(4, [0], 1));
+                if (index % 5 == 0)
+                {
+                    entries.Add(Approved(sheet, 3u, string.Empty, path, "Not there", "No está"));
+                }
+            }
+
+            var events = new List<string>();
+            var tree = Path.Combine(_temp, $"tree-{threads}");
+            var result = new PatchPipeline(new ListTranslationSource(entries), new FakePatchBackendFactory(source)).Run(
+                Request() with { TreeOutputPath = tree, MaxDegreeOfParallelism = threads, DebugLogging = true },
+                new SyncProgress<PipelineEvent>(item => events.Add($"{item.Component}|{item.Level}|{item.Count}|{item.Message}")),
+                TestContext.Current.CancellationToken);
+
+            Assert.True(result.Success);
+            var files = Directory.EnumerateFiles(tree, "*", SearchOption.AllDirectories).ToDictionary(
+                file => Path.GetRelativePath(tree, file),
+                file => Convert.ToHexString(File.ReadAllBytes(file)));
+            return (events, files);
+        }
+
+        var sequential = Build(1);
+        var parallel = Build(8);
+
+        Assert.Equal(sequential.Events, parallel.Events);
+        Assert.Equal(sequential.Files, parallel.Files);
+        Assert.Contains(sequential.Events, item => item.Contains("broadcast", StringComparison.Ordinal));
+        Assert.Contains(sequential.Events, item => item.Contains("omitida hoja", StringComparison.Ordinal));
+        Assert.Contains(sequential.Events, item => item.Contains("miss(es)", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Run_ManyMissingPages_ReportsEveryOmissionAndCompleteStatistics()
     {
         var entries = ApprovedManifest().ToList();

@@ -107,7 +107,9 @@ public static class SeStringParser
             else
             {
                 // Try to read valid UTF-8 bytes
-                var literalBytes = new List<byte>();
+                // Every accepted sequence advances i past exactly its own bytes, so the literal is
+                // the contiguous range [literalStart, i).
+                var literalStart = i;
 
                 while (i < bytes.Length && bytes[i] != StartByte && bytes[i] != NulTerminator)
                 {
@@ -117,7 +119,6 @@ public static class SeStringParser
                     if (b <= 0x7F)
                     {
                         // ASCII: valid
-                        literalBytes.Add(b);
                         i++;
                     }
                     else if ((b & 0xC0) == 0x80)
@@ -130,8 +131,6 @@ public static class SeStringParser
                         // 2-byte sequence (0xC0-0xDF)
                         if (i + 1 < bytes.Length && (bytes[i + 1] & 0xC0) == 0x80)
                         {
-                            literalBytes.Add(b);
-                            literalBytes.Add(bytes[i + 1]);
                             i += 2;
                         }
                         else
@@ -147,9 +146,6 @@ public static class SeStringParser
                             && (bytes[i + 1] & 0xC0) == 0x80
                             && (bytes[i + 2] & 0xC0) == 0x80)
                         {
-                            literalBytes.Add(b);
-                            literalBytes.Add(bytes[i + 1]);
-                            literalBytes.Add(bytes[i + 2]);
                             i += 3;
                         }
                         else
@@ -166,10 +162,6 @@ public static class SeStringParser
                             && (bytes[i + 2] & 0xC0) == 0x80
                             && (bytes[i + 3] & 0xC0) == 0x80)
                         {
-                            literalBytes.Add(b);
-                            literalBytes.Add(bytes[i + 1]);
-                            literalBytes.Add(bytes[i + 2]);
-                            literalBytes.Add(bytes[i + 3]);
                             i += 4;
                         }
                         else
@@ -186,9 +178,9 @@ public static class SeStringParser
                 }
 
                 // If we collected any literal bytes, add them as a Literal segment
-                if (literalBytes.Count > 0)
+                if (i > literalStart)
                 {
-                    var text = Encoding.UTF8.GetString(literalBytes.ToArray());
+                    var text = Encoding.UTF8.GetString(bytes, literalStart, i - literalStart);
                     segments.Add(new SeStringSegment.Literal(text));
                 }
 
