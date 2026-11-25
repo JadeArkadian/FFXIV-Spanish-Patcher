@@ -197,6 +197,12 @@ Pulsa **Copiar diagnóstico** y envíalo junto con una descripción desde este f
 
 <https://tally.so/r/1ARKzp>
 
+### Avisar de una errata
+
+Pulsa **Reportar errata** al pie de la ventana o escribe `/ffxives reportar` en el chat. Se abre el
+formulario en tu navegador con la versión del plugin, la versión del juego y el número de la zona en
+la que estás ya rellenados. No se envía nada hasta que pulses enviar en el formulario.
+
 ## Seguridad y límites
 
 - El plugin no modifica los archivos originales del juego ni redistribuye archivos de Square Enix.

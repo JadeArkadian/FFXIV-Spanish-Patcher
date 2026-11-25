@@ -11,6 +11,8 @@ Resumen de todos los cambios relevantes del proyecto.
   ahorra unos 20 segundos.
 - Mientras genera, el plugin trabaja en carpetas propias dentro de la carpeta de mods de Penumbra
   (empiezan por `.ffxivspanish` o `.FFXIVSpanish`) y las borra al terminar.
+- **Reportar errata**: el botón nuevo al pie de la ventana y el comando `/ffxives reportar` abren
+  el formulario de erratas con la versión del plugin, la del juego y la zona actual ya rellenadas.
 
 ### Patcher
 

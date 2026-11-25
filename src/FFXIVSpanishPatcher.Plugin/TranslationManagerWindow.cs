@@ -70,11 +70,13 @@ internal sealed class TranslationManagerWindow : IDisposable
     private float _cardWidth;
     private Vector4? _cardAccent;
     private bool _cardRaised;
+    private readonly Action _openReport;
 
-    public TranslationManagerWindow(DalamudServices dalamud, TranslationManagerSession session)
+    public TranslationManagerWindow(DalamudServices dalamud, TranslationManagerSession session, Action openReport)
     {
         _dalamud = dalamud;
         _session = session;
+        _openReport = openReport;
         // Both follow Dalamud's font and interface scale. Until they are built, Push() keeps the
         // current font, so the window is usable from its first frame.
         var atlas = dalamud.PluginInterface.UiBuilder.FontAtlas;
@@ -472,7 +474,7 @@ internal sealed class TranslationManagerWindow : IDisposable
     private void DrawFooter()
     {
         var gap = ImGui.GetStyle().ItemSpacing.X;
-        var width = MathF.Floor((FullWidth - (gap * 3f)) / 4f);
+        var width = MathF.Floor((FullWidth - (gap * 4f)) / 5f);
         if (IconTextButton(FontAwesomeIcon.Scroll, "Hitos de traducción", width))
         {
             _openMilestonesRequested = true;
@@ -494,6 +496,12 @@ internal sealed class TranslationManagerWindow : IDisposable
         if (IconTextButton(FontAwesomeIcon.Clipboard, "Copiar diagnóstico", width))
         {
             ImGui.SetClipboardText(_session.UiSnapshot().Diagnostic);
+        }
+
+        ImGui.SameLine();
+        if (IconTextButton(FontAwesomeIcon.Bug, "Reportar errata", width))
+        {
+            _openReport();
         }
     }
 
