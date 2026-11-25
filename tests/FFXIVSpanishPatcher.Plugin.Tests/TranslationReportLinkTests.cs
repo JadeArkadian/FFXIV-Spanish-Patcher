@@ -17,12 +17,12 @@ public sealed class TranslationReportLinkTests
     [Fact]
     public void Build_FillsVersionGameAndZone()
         => Assert.Equal(
-            "https://tally.so/r/1ARKzp?version=0.6.1&juego=2026.11.03.0000.0000&zona=132",
+            "https://tally.so/r/1ARKzp?version=0.6.1&juego=2026.11.03.0000.0000&zona=132&origin=plugin",
             TranslationReportLink.Build(new Version(0, 6, 1, 0), "2026.11.03.0000.0000", 132));
 
     [Fact]
     public void Build_EscapesAndToleratesMissingValues()
         => Assert.Equal(
-            "https://tally.so/r/1ARKzp?version=&juego=a%26b%20c&zona=0",
+            "https://tally.so/r/1ARKzp?version=&juego=a%26b%20c&zona=0&origin=plugin",
             TranslationReportLink.Build(null, "a&b c", 0));
 }

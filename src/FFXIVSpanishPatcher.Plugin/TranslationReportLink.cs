@@ -17,6 +17,6 @@ public static class TranslationReportLink
         var plugin = pluginVersion is null ? string.Empty : PluginUpdateCheck.Display(pluginVersion);
         return $"{FormUrl}?version={Uri.EscapeDataString(plugin)}"
                + $"&juego={Uri.EscapeDataString(gameVersion ?? string.Empty)}"
-               + $"&zona={territoryId}";
+               + $"&zona={territoryId}&origin=plugin";
     }
 }

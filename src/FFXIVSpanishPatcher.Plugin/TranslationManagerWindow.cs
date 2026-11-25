@@ -336,6 +336,17 @@ internal sealed class TranslationManagerWindow : IDisposable
         ImGui.Spacing();
     }
 
+    private float IconTextContentWidth(FontAwesomeIcon icon, string label)
+    {
+        float iconWidth;
+        using (IconFont.Push())
+        {
+            iconWidth = ImGui.CalcTextSize(icon.ToIconString()).X;
+        }
+
+        return iconWidth + (8f * Scale) + ImGui.CalcTextSize(label).X;
+    }
+
     /// <summary>A button with an icon and a label centred together, optionally emphasised.</summary>
     private bool IconTextButton(FontAwesomeIcon icon, string label, float width = 0f, bool primary = false)
     {
@@ -348,7 +359,7 @@ internal sealed class TranslationManagerWindow : IDisposable
 
         var labelSize = ImGui.CalcTextSize(label);
         var spacing = 8f * Scale;
-        var contentWidth = iconSize.X + spacing + labelSize.X;
+        var contentWidth = IconTextContentWidth(icon, label);
         var size = new Vector2(
             width > 0f ? width : contentWidth + (ImGui.GetStyle().FramePadding.X * 2f),
             ImGui.GetFrameHeight());
@@ -473,35 +484,45 @@ internal sealed class TranslationManagerWindow : IDisposable
 
     private void DrawFooter()
     {
+        // Five labels of very different lengths: equal widths would not fit the long ones, so every
+        // button gets the same padding around its own content and the row still spans the window.
+        ReadOnlySpan<(FontAwesomeIcon Icon, string Label)> buttons =
+        [
+            (FontAwesomeIcon.Scroll, "Hitos de traducción"),
+            (FontAwesomeIcon.History, "Historial de sesión"),
+            (FontAwesomeIcon.BalanceScale, "Aviso legal"),
+            (FontAwesomeIcon.Clipboard, "Copiar diagnóstico"),
+            (FontAwesomeIcon.Bug, "Reportar errata"),
+        ];
         var gap = ImGui.GetStyle().ItemSpacing.X;
-        var width = MathF.Floor((FullWidth - (gap * 4f)) / 5f);
-        if (IconTextButton(FontAwesomeIcon.Scroll, "Hitos de traducción", width))
+        var content = 0f;
+        foreach (var (icon, label) in buttons)
         {
-            _openMilestonesRequested = true;
+            content += IconTextContentWidth(icon, label);
         }
 
-        ImGui.SameLine();
-        if (IconTextButton(FontAwesomeIcon.History, "Historial de sesión", width))
+        var padding = MathF.Floor((FullWidth - (gap * (buttons.Length - 1)) - content) / buttons.Length);
+        for (var index = 0; index < buttons.Length; index++)
         {
-            _openHistoryRequested = true;
-        }
+            var (icon, label) = buttons[index];
+            if (index > 0)
+            {
+                ImGui.SameLine();
+            }
 
-        ImGui.SameLine();
-        if (IconTextButton(FontAwesomeIcon.BalanceScale, "Aviso legal", width))
-        {
-            _openLegalRequested = true;
-        }
+            if (!IconTextButton(icon, label, IconTextContentWidth(icon, label) + padding))
+            {
+                continue;
+            }
 
-        ImGui.SameLine();
-        if (IconTextButton(FontAwesomeIcon.Clipboard, "Copiar diagnóstico", width))
-        {
-            ImGui.SetClipboardText(_session.UiSnapshot().Diagnostic);
-        }
-
-        ImGui.SameLine();
-        if (IconTextButton(FontAwesomeIcon.Bug, "Reportar errata", width))
-        {
-            _openReport();
+            switch (index)
+            {
+                case 0: _openMilestonesRequested = true; break;
+                case 1: _openHistoryRequested = true; break;
+                case 2: _openLegalRequested = true; break;
+                case 3: ImGui.SetClipboardText(_session.UiSnapshot().Diagnostic); break;
+                default: _openReport(); break;
+            }
         }
     }
 
