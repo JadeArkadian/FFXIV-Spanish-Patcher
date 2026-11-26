@@ -4,6 +4,11 @@ Resumen de todos los cambios relevantes del proyecto.
 
 ## v0.6.1
 
+### Traducción
+
+- Actualizado el corpus embebido: **667.463/827.004 líneas traducibles (80,7 %)** y
+  **5.724/7.024 hojas OK (81,5 %)**
+
 ### Plugin de Dalamud
 
 - **Generación más rápida**: el mod se genera repartiendo el trabajo entre varios núcleos y se
