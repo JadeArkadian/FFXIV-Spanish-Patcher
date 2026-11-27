@@ -3,7 +3,7 @@
     "Author": "Jade Arkadian y colaboradores",
     "Name": "FFXIV Spanish Translation Manager",
     "InternalName": "FFXIVSpanishTranslationManager",
-    "AssemblyVersion": "0.6.0.0",
+    "AssemblyVersion": "0.6.1.0",
     "Description": "Genera y administra la traducción al castellano de FINAL FANTASY XIV mediante Penumbra.",
     "ApplicableVersion": "any",
     "RepoUrl": "https://github.com/JadeArkadian/FFXIV-Spanish-Patcher",
@@ -21,11 +21,11 @@
     "IconUrl": "https://raw.githubusercontent.com/JadeArkadian/FFXIV-Spanish-Patcher/main/src/FFXIVSpanishPatcher.Plugin/images/icon.png",
     "Punchline": "Gestiona la traducción al castellano mediante Penumbra.",
     "AcceptsFeedback": true,
-    "DownloadLinkInstall": "https://github.com/JadeArkadian/FFXIV-Spanish-Patcher/releases/download/v0.6.0/FFXIVSpanishTranslationManager-0.6.0.zip",
-    "DownloadLinkUpdate": "https://github.com/JadeArkadian/FFXIV-Spanish-Patcher/releases/download/v0.6.0/FFXIVSpanishTranslationManager-0.6.0.zip",
-    "DownloadLinkTesting": "https://github.com/JadeArkadian/FFXIV-Spanish-Patcher/releases/download/v0.6.0/FFXIVSpanishTranslationManager-0.6.0.zip",
+    "DownloadLinkInstall": "https://github.com/JadeArkadian/FFXIV-Spanish-Patcher/releases/download/v0.6.1/FFXIVSpanishTranslationManager-0.6.1.zip",
+    "DownloadLinkUpdate": "https://github.com/JadeArkadian/FFXIV-Spanish-Patcher/releases/download/v0.6.1/FFXIVSpanishTranslationManager-0.6.1.zip",
+    "DownloadLinkTesting": "https://github.com/JadeArkadian/FFXIV-Spanish-Patcher/releases/download/v0.6.1/FFXIVSpanishTranslationManager-0.6.1.zip",
     "IsHide": false,
     "IsTestingExclusive": false,
-    "LastUpdate": 1795470952
+    "LastUpdate": 1795777082
   }
 ]
