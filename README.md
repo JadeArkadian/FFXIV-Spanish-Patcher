@@ -1,52 +1,18 @@
-# FFXIVSpanish Patcher
+# FFXIV en Español — traducción de Final Fantasy XIV
 
 <p align="center">
   <img src="docs/assets/logo-git.png" alt="FFXIV en español" width="360">
 </p>
 
-Parcheador de español para **Final Fantasy XIV**.
+Mod de traducción al español para **Final Fantasy XIV** (FF14): interfaz e historia, dentro del
+juego. Proyecto no oficial y sin relación con Square Enix.
 
 Web del proyecto: <https://ffxivspanish.carrd.co/>
 
-El proyecto crea un mod de Penumbra con la traducción usando los archivos de tu propia instalación
-del juego. No modifica los archivos originales de FFXIV y no incluye archivos del juego: extrae solo
-los datos necesarios y les aplica las traducciones incluidas en el programa.
-
-Hay dos formas de usarlo: un **plugin de Dalamud**, que instala y mantiene la traducción por ti, y
-el **patcher de escritorio**, que genera un paquete `.pmp` para importarlo a mano. Las dos producen
-el mismo mod.
-
-La traducción todavía está en progreso. Gran parte de la interfaz, nombres de personajes, NPC,
-monstruos, objetos y textos del sistema ya está traducida, pero parte del guion, conversaciones y
-prosa narrativa puede seguir en inglés.
-
-## Avance del proyecto
-
-Datos del seguimiento EXD actual. El porcentaje principal mide líneas traducidas reales sobre líneas
-traducibles exactas.
-
-| Métrica | Valor | Avance |
-| --- | ---: | --- |
-| Avance total por líneas | 659.014/827.118 (79,7%) | ![79,7%](https://geps.dev/progress/79.7?barColor=7ee787) |
-| Hojas OK | 5.673/7.024 (80,8%) | ![80,8%](https://geps.dev/progress/80.8?barColor=7ee787) |
-
-El desglose por expansión agrupa misiones, cinemáticas y conversaciones con NPC. La interfaz, los
-objetos, el combate, los sistemas y el contenido narrativo que abarca varias expansiones se reúnen
-en **Elementos comunes**, sin contarlos de nuevo en cada expansión.
-
-| Icono | Contenido | Líneas traducidas | Avance |
-| :---: | --- | ---: | --- |
-| <img src="docs/assets/arr-icon.png" alt="A Realm Reborn" width="40"> | **A Realm Reborn** | 38.897/38.897 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
-| <img src="docs/assets/hw-icon.png" alt="Heavensward" width="40"> | **Heavensward** | 25.268/25.268 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
-| <img src="docs/assets/stb-icon.png" alt="Stormblood" width="40"> | **Stormblood** | 31.661/31.664 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
-| <img src="docs/assets/shb-icon.png" alt="Shadowbringers" width="40"> | **Shadowbringers** | 44.094/44.105 (99,0%) | ![100,0%](https://geps.dev/progress/99?barColor=7ee787) |
-| <img src="docs/assets/ew-icon.png" alt="Endwalker" width="40"> | **Endwalker** | 2/47.150 (0,0%) | ![0,0%](https://geps.dev/progress/0?barColor=da3633) |
-| <img src="docs/assets/dt-icon.png" alt="Dawntrail" width="40"> | **Dawntrail** | 2.654/43.016 (6,2%) | ![6,2%](https://geps.dev/progress/6.2?barColor=da3633) |
-| <img src="docs/assets/ec-icon.png" alt="Evercold" width="40"> | **Evercold** | — (progreso desconocido) | ![0,0%](https://geps.dev/progress/0?barColor=da3633) |
-| — | **Elementos comunes** | 516.438/597.018 (86,5%) | ![86,5%](https://geps.dev/progress/86.5?barColor=7ee787) |
-
-Evercold todavía no se ha publicado. Se muestra al 0 % hasta que exista contenido con el que medir
-su progreso real.
+<p align="center">
+  <img src="docs/assets/screenshot-dialogue-bubbles.jpg" alt="Bocadillos de diálogo de Final Fantasy XIV traducidos al español" width="49%">
+  <img src="docs/assets/screenshot-quest-dialogue.jpg" alt="Diálogo de misión de Final Fantasy XIV traducido al español" width="49%">
+</p>
 
 ## Instalar la traducción
 
@@ -75,6 +41,48 @@ La guía completa, con categorías, actualizaciones y solución de problemas, es
 Aplicación independiente para Windows, Linux y macOS. Genera un `.pmp` que importas tú en Penumbra,
 y hay que repetir el proceso con cada versión nueva. Sus instrucciones están en la sección
 siguiente.
+
+## Cómo funciona
+
+El proyecto crea un mod de Penumbra con la traducción usando los archivos de tu propia instalación
+del juego. No modifica los archivos originales de FFXIV y no incluye archivos del juego: extrae solo
+los datos necesarios y les aplica las traducciones incluidas en el programa.
+
+Hay dos formas de usarlo: un **plugin de Dalamud**, que instala y mantiene la traducción por ti, y
+el **patcher de escritorio**, que genera un paquete `.pmp` para importarlo a mano. Las dos producen
+el mismo mod.
+
+## Avance del proyecto
+
+La traducción todavía está en progreso. Gran parte de la interfaz, nombres de personajes, NPC,
+monstruos, objetos y textos del sistema ya está traducida, pero parte del guion, conversaciones y
+prosa narrativa puede seguir en inglés.
+
+Datos del seguimiento EXD actual. El porcentaje principal mide líneas traducidas reales sobre líneas
+traducibles exactas.
+
+| Métrica | Valor | Avance |
+| --- | ---: | --- |
+| Avance total por líneas | 667.463/827.004 (80,7%) | ![80,7%](https://geps.dev/progress/80.7?barColor=7ee787) |
+| Hojas OK | 5.724/7.024 (81,5%) | ![81,5%](https://geps.dev/progress/81.5?barColor=7ee787) |
+
+El desglose por expansión agrupa misiones, cinemáticas y conversaciones con NPC. La interfaz, los
+objetos, el combate, los sistemas y el contenido narrativo que abarca varias expansiones se reúnen
+en **Elementos comunes**, sin contarlos de nuevo en cada expansión.
+
+| Icono | Contenido | Líneas traducidas | Avance |
+| :---: | --- | ---: | --- |
+| <img src="docs/assets/arr-icon.png" alt="A Realm Reborn" width="40"> | **A Realm Reborn** | 38.897/38.897 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
+| <img src="docs/assets/hw-icon.png" alt="Heavensward" width="40"> | **Heavensward** | 25.268/25.268 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
+| <img src="docs/assets/stb-icon.png" alt="Stormblood" width="40"> | **Stormblood** | 31.661/31.661 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
+| <img src="docs/assets/shb-icon.png" alt="Shadowbringers" width="40"> | **Shadowbringers** | 44.094/44.094 (100,0%) | ![100,0%](https://geps.dev/progress/100?barColor=2ea043) |
+| <img src="docs/assets/ew-icon.png" alt="Endwalker" width="40"> | **Endwalker** | 8.451/46.998 (18,0%) | ![18,0%](https://geps.dev/progress/18?barColor=da3633) |
+| <img src="docs/assets/dt-icon.png" alt="Dawntrail" width="40"> | **Dawntrail** | 2.654/42.945 (6,2%) | ![6,2%](https://geps.dev/progress/6.2?barColor=da3633) |
+| <img src="docs/assets/ec-icon.png" alt="Evercold" width="40"> | **Evercold** | — (progreso desconocido) | ![0,0%](https://geps.dev/progress/0?barColor=da3633) |
+| — | **Elementos comunes** | 516.438/597.141 (86,5%) | ![86,5%](https://geps.dev/progress/86.5?barColor=7ee787) |
+
+Evercold todavía no se ha publicado. Se muestra al 0 % hasta que exista contenido con el que medir
+su progreso real.
 
 ## Patcher de escritorio
 

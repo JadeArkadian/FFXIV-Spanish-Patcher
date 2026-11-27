@@ -1016,10 +1016,11 @@ internal sealed class TranslationManagerSession : IAsyncDisposable
                 configuration.LastSuccessfulFingerprint,
                 _categories.Snapshot.ModEnabled,
                 configuration.ManagedModEnabled);
+            // Beside the installed tree, so the installer promotes it with a rename instead of
+            // copying thousands of files across volumes. The service clears leftovers by this name.
             var candidateTree = Path.Combine(
-                Path.GetTempPath(),
-                "ffxivspanish-translation-manager",
-                $"candidate-{Guid.NewGuid():N}");
+                availability.ModDirectory!,
+                $".{PenumbraModIdentity.CanonicalDirectory}{TranslationRegenerationService.CandidateInfix}{Guid.NewGuid():N}");
             var sessionWasValidated = _categories.Snapshot.SessionActivationAllowed;
             attempted = true;
             var execution = await _controller.RunExclusiveAsync(
@@ -1170,9 +1171,12 @@ internal sealed class TranslationManagerSession : IAsyncDisposable
         {
             TreeOutputPath = request.CandidateTreePath,
             OutputPath = Path.Combine(modDirectory, ".ffxivspanish-transient-output.pmp"),
-            StagingPath = Path.Combine(Path.GetTempPath(), "ffxivspanish-translation-manager", "pipeline-staging"),
+            // Same volume as the candidate tree: the pipeline promotes its staging with a rename.
+            StagingPath = Path.Combine(modDirectory, TranslationRegenerationService.PipelineStagingDirectory),
             CompatibilityMode = PatchCompatibilityMode.BestEffortVersionMismatch,
             Meta = metadata,
+            // The plugin shares the process with the game: leave it one core.
+            MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount - 1),
         };
 
     private sealed record RegenerationExecution(ModInstallResult Install, bool ActivationApplied);

@@ -3,6 +3,8 @@ using Dalamud.Interface.ImGuiNotification;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
+using Dalamud.Utility;
+using FFXIVSpanishPatcher.Pipeline;
 
 namespace FFXIVSpanishPatcher.Plugin;
 
@@ -22,6 +24,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
     [PluginService] internal static IFramework Framework { get; private set; } = null!;
     [PluginService] internal static ITextureProvider TextureProvider { get; private set; } = null!;
     [PluginService] internal static INotificationManager NotificationManager { get; private set; } = null!;
+    [PluginService] internal static IClientState ClientState { get; private set; } = null!;
 
     private readonly TranslationManagerSession _session;
     private readonly TranslationManagerWindow _window;
@@ -40,16 +43,33 @@ public sealed class Plugin : IAsyncDalamudPlugin
         TranslationManagerWindow? window = null;
         var notifications = new TranslationManagerNotifications(dalamud, () => window?.Open());
         _session = new TranslationManagerSession(dalamud, notifications);
-        _window = window = new TranslationManagerWindow(dalamud, _session);
+        _window = window = new TranslationManagerWindow(dalamud, _session, OpenReport);
 
-        CommandManager.AddHandler(OpenCommandName, new CommandInfo((_, _) => _window.Open())
+        CommandManager.AddHandler(OpenCommandName, new CommandInfo(OnCommand)
         {
-            HelpMessage = "Abre FFXIV Spanish Translation Manager.",
+            HelpMessage = "Abre FFXIV Spanish Translation Manager. Con «reportar», abre el formulario de erratas.",
         });
         PluginInterface.UiBuilder.Draw += _window.Draw;
         PluginInterface.UiBuilder.OpenConfigUi += _window.Open;
         PluginInterface.UiBuilder.OpenMainUi += _window.Open;
     }
+
+    private void OnCommand(string command, string arguments)
+    {
+        if (!TranslationReportLink.IsReportCommand(arguments))
+        {
+            _window.Open();
+            return;
+        }
+
+        OpenReport();
+    }
+
+    private void OpenReport()
+        => Util.OpenLink(TranslationReportLink.Build(
+            _session.PluginVersion,
+            GamePathDetector.TryReadGameVersion(DataManager.GameData.DataPath.FullName),
+            ClientState.TerritoryType));
 
     /// <summary>Checks that Dalamud-owned game data is readable without taking ownership of it.</summary>
     public Task LoadAsync(CancellationToken cancellationToken) => _session.LoadAsync(cancellationToken);

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using XivSpanish.GameData;
 
 namespace XivSpanish.Packager;
@@ -31,13 +32,21 @@ public sealed class ClientExdSource(ExdResolver resolver) : IBaseExdSource
 {
     private readonly ExdResolver _resolver = resolver;
 
+    // A sheet's layout and field names are the same for every one of its pages, and resolving the
+    // names walks the sheet through reflection. Kept per instance, so a new run reads them afresh.
+    private readonly ConcurrentDictionary<string, ExdLayout?> _layouts = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<(string Sheet, int Count), IReadOnlyList<string>> _fieldNames = new();
+
     public byte[]? ReadBaseExd(string exdPath) => _resolver.ReadRawFile(exdPath);
 
-    public ExdLayout? ReadStringLayout(string sheet) => _resolver.ReadStringLayout(sheet);
+    public ExdLayout? ReadStringLayout(string sheet)
+        => _layouts.GetOrAdd(sheet, _resolver.ReadStringLayout);
 
     // Prefer the offset-correct alignment (uses the open client's typed sheet metadata); fall back
     // to reflection-only declaration order when the alignment cannot be determined unambiguously.
     public IReadOnlyList<string> ResolveFieldNames(string sheet, int stringColumnCount)
-        => SheetStringFieldResolver.ResolveByOffset(_resolver.GameData, sheet, stringColumnCount)
-            ?? SheetStringFieldResolver.Resolve(sheet, stringColumnCount);
+        => _fieldNames.GetOrAdd(
+            (sheet, stringColumnCount),
+            key => SheetStringFieldResolver.ResolveByOffset(_resolver.GameData, key.Sheet, key.Count)
+                ?? SheetStringFieldResolver.Resolve(key.Sheet, key.Count));
 }

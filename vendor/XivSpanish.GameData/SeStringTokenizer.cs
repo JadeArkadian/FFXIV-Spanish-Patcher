@@ -126,6 +126,12 @@ public static class SeStringTokenizer
     /// </summary>
     public static TokenizedSeString Tokenize(IReadOnlyList<SeStringSegment> segments)
     {
+        // Most strings are one run of plain text: same result as the loop below, without its buffers.
+        if (segments.Count == 1 && segments[0] is SeStringSegment.Literal only)
+        {
+            return new TokenizedSeString(only.Text.Replace("<", "<<", StringComparison.Ordinal), []);
+        }
+
         var sb = new StringBuilder();
         var tokens = new List<TokenOccurrence>();
         var nameCounts = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -259,7 +265,8 @@ public static class SeStringTokenizer
     /// </summary>
     public static IReadOnlyList<string> FindTokenReferences(string text)
     {
-        var references = new List<string>();
+        // Most text carries no token: the list is only created for the first one found.
+        List<string>? references = null;
 
         for (var i = 0; i < text.Length; i++)
         {
@@ -283,12 +290,12 @@ public static class SeStringTokenizer
             var body = text[(i + 1)..close];
             if (IsKnownTokenBody(body))
             {
-                references.Add(text[i..(close + 1)]);
+                (references ??= []).Add(text[i..(close + 1)]);
                 i = close;
             }
         }
 
-        return references;
+        return references ?? (IReadOnlyList<string>)[];
     }
 
     /// <summary>
@@ -297,17 +304,17 @@ public static class SeStringTokenizer
     /// </summary>
     public static IReadOnlyList<char> FindUnsafeControlReferences(string text)
     {
-        var references = new List<char>();
+        List<char>? references = null;
         foreach (var c in text)
         {
             if ((c <= '\x08' || c is '\x0B' or '\x0C' || (c >= '\x0E' && c <= '\x1F'))
                 && c != '\0')
             {
-                references.Add(c);
+                (references ??= []).Add(c);
             }
         }
 
-        return references;
+        return references ?? (IReadOnlyList<char>)[];
     }
 
     private static bool IsKnownTokenBody(string body)

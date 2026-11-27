@@ -9,6 +9,10 @@ public sealed class TranslationRegenerationService(
     IPluginConfigurationStore configurationStore,
     PluginConfiguration configuration)
 {
+    // Working directories the session creates inside Penumbra's mod root for one regeneration.
+    internal const string CandidateInfix = ".ffxivspanish-candidate-";
+    internal const string PipelineStagingDirectory = ".ffxivspanish-pipeline-staging";
+
     public async Task<ModInstallResult> RegenerateAsync(
         TreeBuildRequest buildRequest,
         string modRootPath,
@@ -42,6 +46,9 @@ public sealed class TranslationRegenerationService(
         finally
         {
             DeleteCandidateBestEffort(buildRequest.CandidateTreePath);
+            // The pipeline removes its own run from the staging directory; do not leave the empty
+            // parent behind in the user's mod root.
+            DeleteCandidateBestEffort(Path.Combine(modRootPath, PipelineStagingDirectory));
         }
     }
 
@@ -53,14 +60,13 @@ public sealed class TranslationRegenerationService(
         }
 
         var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(modRootPath));
-        var obsolete = Directory.EnumerateDirectories(root, $".{PenumbraModIdentity.CanonicalDirectory}.ffxivspanish-candidate-*")
-            .Append(Path.Combine(root, ".ffxivspanish-pipeline-staging"));
+        var obsolete = Directory.EnumerateDirectories(root, $".{PenumbraModIdentity.CanonicalDirectory}{CandidateInfix}*")
+            .Append(Path.Combine(root, PipelineStagingDirectory));
         foreach (var path in obsolete)
         {
-            if (Directory.Exists(path) && new DirectoryInfo(path).LinkTarget is null)
-            {
-                Directory.Delete(path, recursive: true);
-            }
+            // Best effort: every attempt works under a fresh name, so one that cannot be removed
+            // (a file still held open after the game was killed mid-generation) is not in the way.
+            DeleteCandidateBestEffort(path);
         }
 
         // What the installer itself leaves behind. A failed candidate is kept for diagnosis only
@@ -116,7 +122,8 @@ public sealed class TranslationRegenerationService(
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            // A temporary candidate outside Penumbra's mod root is never a usable installed mod.
+            // The installer has usually renamed the candidate away; one left behind is never
+            // registered with Penumbra, and the next regeneration removes it by name.
         }
     }
 }

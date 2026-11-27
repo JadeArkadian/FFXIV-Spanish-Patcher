@@ -114,6 +114,13 @@ Sí. Las diez categorías de la ventana (misiones, objetos, acciones, interfaz�
 desactivan por separado. Son las mismas opciones que muestra Penumbra en el mod, y se sincronizan en
 los dos sentidos.
 
+### He encontrado carpetas que empiezan por `.ffxivspanish` o `.FFXIVSpanish` en mi carpeta de mods
+
+Son carpetas de trabajo del plugin: ahí prepara la traducción nueva antes de instalarla, y las borra
+al terminar. Si cerraste el juego mientras generaba, puede quedar alguna; la siguiente generación la
+limpia sola. No son la traducción instalada: esa vive en la carpeta `FFXIVSpanish`, sin punto
+delante.
+
 ## Desinstalar
 
 ### ¿Qué pasa si desinstalo el plugin?
